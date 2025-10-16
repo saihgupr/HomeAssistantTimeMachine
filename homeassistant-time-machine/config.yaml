@@ -8,16 +8,25 @@
   "startup": "application",
   "boot": "auto",
   "init": false,
+  "ingress": true,
+  "ingress_port": 0,
+  "panel_icon": "mdi:backup-restore",
+  "panel_title": "Time Machine",
   "ports": {
     "3000/tcp": 3000
   },
   "ports_description": {
-    "3000/tcp": "Web interface"
+    "3000/tcp": "Web interface (fallback if not using ingress)"
   },
   "host_network": false,
   "map": [
     "config:rw",
     "media:rw"
   ],
-  "webui": "http://[HOST]:[PORT:3000]"
+  "options": {
+    "internal_port": 3000
+  },
+  "schema": {
+    "internal_port": "port"
+  }
 }
