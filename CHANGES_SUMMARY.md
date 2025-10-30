@@ -89,7 +89,7 @@ The app still respects the `INGRESS_ENTRY` environment variable when set by Home
 [INIT] basePath will be: (empty - ingress mode)
 [static] Static files configured for direct and ingress access
 ============================================================
-Home Assistant Time Machine v2.9.268
+Home Assistant Time Machine v2.1.0
 ============================================================
 Server running at http://0.0.0.0:54000
 Ingress mode: ENABLED
@@ -122,7 +122,7 @@ Environment: production
 [INIT] basePath will be: (empty - ingress mode)
 [static] Static files configured for direct and ingress access
 ============================================================
-Home Assistant Time Machine v2.9.268
+Home Assistant Time Machine v2.1.0
 ============================================================
 Server running at http://0.0.0.0:54000
 Ingress mode: DISABLED
@@ -149,7 +149,7 @@ Environment: development
 3. **Full Health Check:**
    ```bash
    curl http://homeassistant.local:54000/api/health
-   # Expected: {"ok":true,"version":"2.9.268","mode":"addon","ingress":true,"isAddonMode":true,...}
+   # Expected: {"ok":true,"version":"2.1.0","mode":"addon","ingress":true,"isAddonMode":true,...}
    ```
 
 ### Verification Steps
@@ -181,6 +181,6 @@ These changes are **fully backward compatible**:
 
 ## Version
 
-**Updated to:** v2.9.268
+**Updated to:** v2.1.0
 **Date:** 2025-10-30
 

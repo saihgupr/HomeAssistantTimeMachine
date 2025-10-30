@@ -123,7 +123,7 @@ If these work but ingress doesn't, it's an ingress-specific issue.
 [INIT] basePath will be: (empty - ingress mode)
 [static] Static files configured for direct and ingress access
 ============================================================
-Home Assistant Time Machine v2.9.268
+Home Assistant Time Machine v2.1.0
 ============================================================
 Server running at http://0.0.0.0:54000
 Ingress mode: ENABLED

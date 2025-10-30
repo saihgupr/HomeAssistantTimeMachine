@@ -7,7 +7,7 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const https = require('https');
 
-const version = '2.9.270';
+const version = '2.1.0';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
@@ -181,7 +181,7 @@ app.get('/', async (req, res) => {
     ]);
     res.render('index', {
       title: 'Home Assistant Time Machine',
-      version: '2.9.304',
+      version: '2.1.0',
       currentMode: 'automations',
       esphomeEnabled,
       packagesEnabled
@@ -190,7 +190,7 @@ app.get('/', async (req, res) => {
     console.error('[home] Failed to determine feature status:', error);
     res.render('index', {
       title: 'Home Assistant Time Machine',
-      version: '2.9.304',
+      version: '2.1.0',
       currentMode: 'automations',
       esphomeEnabled: false,
       packagesEnabled: false
@@ -1895,7 +1895,7 @@ app.get('/api/health', async (req, res) => {
     const options = await getAddonOptions();
     res.json({
       ok: true,
-      version: '2.9.268',
+      version: '2.1.0',
       mode: options.mode,
       ingress: ingressEnabled,
       ingressPath: INGRESS_PATH || 'none',
@@ -1910,7 +1910,7 @@ app.get('/api/health', async (req, res) => {
 // Start server with error handling
 const server = app.listen(PORT, HOST, () => {
   console.log('='.repeat(60));
-  console.log('Home Assistant Time Machine v2.9.268');
+  console.log('Home Assistant Time Machine v2.1.0');
   console.log('='.repeat(60));
   console.log(`Server running at http://${HOST}:${PORT}`);
   console.log(`Ingress mode: ${ingressEnabled ? 'ENABLED' : 'DISABLED'}`);
