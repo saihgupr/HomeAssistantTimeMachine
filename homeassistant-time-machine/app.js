@@ -50,8 +50,16 @@ const isTlsCertificateError = (error) => {
 const app = express();
 const PORT = process.env.PORT || 54000;
 const HOST = process.env.HOST || '0.0.0.0';
-const INGRESS_PATH = process.env.INGRESS_ENTRY || '';
+
+// Detect if running as Home Assistant add-on
+const isAddonMode = fsSync.existsSync('/data/options.json') || 
+                    (fsSync.existsSync('/data') && (process.env.SUPERVISOR_TOKEN || process.env.HASSIO_TOKEN));
+
+// Set ingress path - default to empty for add-on mode (supervisor will handle routing)
+// For add-on mode, if INGRESS_ENTRY is not set, we're still in ingress mode but with empty path
+const INGRESS_PATH = process.env.INGRESS_ENTRY || (isAddonMode ? '' : '');
 const basePath = INGRESS_PATH || '';
+const ingressEnabled = isAddonMode || !!process.env.INGRESS_ENTRY;
 const BODY_SIZE_LIMIT = '50mb';
 
 const DATA_DIR = (() => {
@@ -78,8 +86,10 @@ const DATA_DIR = (() => {
 console.log('[data-dir] Using persistent data directory:', DATA_DIR);
 
 // Log ingress configuration immediately
+console.log('[INIT] Running in add-on mode:', isAddonMode);
 console.log('[INIT] INGRESS_ENTRY env var:', process.env.INGRESS_ENTRY || '(not set)');
-console.log('[INIT] basePath will be:', basePath || '(empty - direct access)');
+console.log('[INIT] Ingress enabled:', ingressEnabled);
+console.log('[INIT] basePath will be:', basePath || '(empty - ingress mode)');
 
 // Middleware
 app.use(express.json({ limit: BODY_SIZE_LIMIT }));
@@ -98,7 +108,19 @@ app.use((err, req, res, next) => {
 
 // Ingress path detection and URL rewriting middleware
 app.use((req, res, next) => {
-  debugLog(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  // Always log ingress-related requests for debugging
+  if (isAddonMode || req.headers['x-ingress-path'] || req.headers['x-forwarded-prefix']) {
+    console.log(`[ingress-request] ${req.method} ${req.originalUrl}`);
+    console.log(`[ingress-request] Headers:`, {
+      'x-ingress-path': req.headers['x-ingress-path'],
+      'x-forwarded-prefix': req.headers['x-forwarded-prefix'],
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+      'x-real-ip': req.headers['x-real-ip'],
+      'host': req.headers['host']
+    });
+  } else {
+    debugLog(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  }
   
   // Detect ingress path from headers
   const ingressPath = req.headers['x-ingress-path'] || 
@@ -107,17 +129,20 @@ app.use((req, res, next) => {
                       '';
   
   // Make ingress path available to templates  
-  res.locals.ingressPath = ingressPath;
-  res.locals.url = (path) => ingressPath + path;
+  res.locals.ingressPath = ingressPath || '';
+  res.locals.url = (path) => (ingressPath || '') + path;
   
   if (ingressPath) {
-    debugLog(`[ingress] Detected: ${ingressPath}, Original URL: ${req.originalUrl}`);
+    console.log(`[ingress] Detected ingress path: ${ingressPath}`);
+    console.log(`[ingress] Original URL: ${req.originalUrl}`);
     
     // Strip ingress prefix from URL for routing
     if (req.originalUrl.startsWith(ingressPath)) {
       req.url = req.originalUrl.substring(ingressPath.length) || '/';
-      debugLog(`[ingress] Rewritten URL: ${req.url}`);
+      console.log(`[ingress] Rewritten URL: ${req.url}`);
     }
+  } else if (isAddonMode) {
+    console.log(`[ingress] Running in add-on mode but no ingress path header detected`);
   }
   
   next();
@@ -126,6 +151,15 @@ app.use((req, res, next) => {
 // Set up view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Simple ping endpoint for ingress health check (must be before other routes)
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+app.get('/api/ping', (req, res) => {
+  res.json({ status: 'ok', timestamp: Date.now(), ingress: ingressEnabled });
+});
 
 // Static files - serve at both root and any ingress path
 app.use('/static', express.static(path.join(__dirname, 'public')));
@@ -1863,8 +1897,9 @@ app.get('/api/health', async (req, res) => {
       ok: true,
       version: '2.9.268',
       mode: options.mode,
-      ingress: !!INGRESS_PATH,
+      ingress: ingressEnabled,
       ingressPath: INGRESS_PATH || 'none',
+      isAddonMode: isAddonMode,
       timestamp: Date.now()
     });
   } catch (error) {
@@ -1872,15 +1907,18 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
+// Start server with error handling
+const server = app.listen(PORT, HOST, () => {
   console.log('='.repeat(60));
   console.log('Home Assistant Time Machine v2.9.268');
   console.log('='.repeat(60));
   console.log(`Server running at http://${HOST}:${PORT}`);
-  console.log(`Ingress mode: ${INGRESS_PATH ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`Ingress mode: ${ingressEnabled ? 'ENABLED' : 'DISABLED'}`);
   if (INGRESS_PATH) {
     console.log(`Ingress path: ${INGRESS_PATH}`);
+  }
+  if (isAddonMode) {
+    console.log('Running as Home Assistant Add-on');
   }
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('='.repeat(60));
@@ -1929,5 +1967,25 @@ app.listen(PORT, HOST, () => {
       }
     });
     console.log('[scheduler] Initialization complete.');
+  }).catch(err => {
+    console.error('[scheduler] Failed to initialize schedules:', err);
   });
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('[server] Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`[server] Port ${PORT} is already in use`);
+    process.exit(1);
+  }
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('[process] Uncaught exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[process] Unhandled rejection at:', promise, 'reason:', reason);
 });
