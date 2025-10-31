@@ -1333,7 +1333,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: false,
+      hourCycle: 'h23'
     });
     
     const parts = formatter.formatToParts(now);
@@ -1341,6 +1342,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     MM = parts.find(p => p.type === 'month').value;
     DD = parts.find(p => p.type === 'day').value;
     HH = parts.find(p => p.type === 'hour').value;
+    if (HH === '24') {
+      HH = '00';
+    }
     mm = parts.find(p => p.type === 'minute').value;
     ss = parts.find(p => p.type === 'second').value;
   } else {

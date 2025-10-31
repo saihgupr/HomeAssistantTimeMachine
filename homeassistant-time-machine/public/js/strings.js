@@ -18,11 +18,11 @@ window.STRINGS = {
       scooby_doo: "Jeepers! Lovelace is back! Restart Home Assistant to, like, see the ghost... I mean, changes!"
     },
     automationsReloaded: {
-      default: "You did it! {mode}s reloaded successfully in Home Assistant!",
+      default: "{mode}s reloaded successfully in Home Assistant!",
       pirate: "Blow me down! Yer {mode}s be reloaded true in Home Assistant!",
       hacker: "Injection successful. {mode} daemons reloaded. We're in.",
-      noir_detective: "You pulled it off. The {mode} routines are squared away in Home Assistant.",
-      personal_trainer: "YOU CRUSHED IT! YOUR {mode}S ARE RE-LOADED, PUMPED, AND READY TO DOMINATE HOME ASSISTANT! FEEL THE POWER!",
+      noir_detective: "The {mode} routines are squared away in Home Assistant.",
+      personal_trainer: "{mode}S ARE RE-LOADED, PUMPED, AND READY TO DOMINATE HOME ASSISTANT! FEEL THE POWER!",
       scooby_doo: "Zoinks! You did it! {mode}s reloaded in Home Assistant, man!"
     },
     errorReloadingHA: {
