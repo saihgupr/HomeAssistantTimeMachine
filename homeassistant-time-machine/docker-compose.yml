@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "54000:54000"
+    volumes:
+      - .:/app
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+    restart: unless-stopped
