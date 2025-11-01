@@ -1,3 +1,8 @@
+# v2.0.2
+
+## Changelog!
+- Minor tweaks and bug fixes.
+
 # v2.0
 
 ## What's New!
