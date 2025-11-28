@@ -74,7 +74,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 3. Start the service:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 **Option B: Docker Run (pre-built image):**
