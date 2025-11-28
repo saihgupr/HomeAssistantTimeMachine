@@ -1,0 +1,20 @@
+# Docker
+Dockerfile
+.dockerignore
+
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+.next
+npm-debug.log
+yarn-error.log
+
+# Editor
+.vscode
+.idea
+
+# OS
+.DS_Store
