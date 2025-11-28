@@ -1,7 +1,0 @@
-.DS_Store
-config.js 
-node_modules/
-*.log
-.env
-.next
-.env.local/
