@@ -268,8 +268,9 @@ async function getAddonOptions() {
 
     let esphomeEnabled = parsedOptions?.esphome ?? false;
     let packagesEnabled = parsedOptions?.packages ?? false;
+    let dockerSettings = {};
     try {
-      const dockerSettings = await loadDockerSettings();
+      dockerSettings = await loadDockerSettings();
       if (dockerSettings.__loadedFromFile) {
         if (typeof dockerSettings.packagesEnabled === 'boolean') {
           packagesEnabled = dockerSettings.packagesEnabled;
@@ -289,6 +290,8 @@ async function getAddonOptions() {
       language: parsedOptions?.language || 'en',
       esphome: esphomeEnabled,
       packages: packagesEnabled,
+      backupFolderPath: dockerSettings.backupFolderPath,
+      liveConfigPath: dockerSettings.liveConfigPath,
     };
   } catch (error) {
     debugLog('[options] Running in Docker/local mode, checking for environment variables or saved settings');
