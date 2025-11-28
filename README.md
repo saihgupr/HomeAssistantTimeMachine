@@ -126,7 +126,7 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ### Home Assistant add-on
 
-1.  **Configure the add-on:** In the add-on's configuration tab, set the Home Assistant URL and Long-Lived Access Token.
+1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, esphome/packages toggle, and port.
 2.  **Start the add-on.**
 3.  **Open the Web UI:**
     *   Use **Open Web UI** from the add-on panel to launch ingress (default recommended when the external port is disabled).

@@ -126,7 +126,7 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ### Home Assistant add-on
 
-1.  **Configure the add-on:** In the add-on's configuration tab, set the Home Assistant URL and Long-Lived Access Token.
+1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, esphome/packages toggle, and port.
 2.  **Start the add-on.**
 3.  **Open the Web UI:**
     *   Use **Open Web UI** from the add-on panel to launch ingress (default recommended when the external port is disabled).
@@ -152,8 +152,6 @@ To configure backups to a remote share, first set up network storage within Home
 ## Creating Backups
 
 This add-on relies on having file-based backups of your Home Assistant configuration. You can now set up a scheduled backup directly within the UI. If you prefer to manage backups externally, here is an example of a simple shell script that you can use to create timestamped backups of your YAML files:
-
-> **Important:** The paths in this script (for example, `/homeassistant`) are placeholders. Adjust them to match your actual Home Assistant configuration directory (such as `/config` on HAOS).
 
 > **Important:** The paths in this script (for example, `/homeassistant`) are placeholders. Adjust them to match your actual Home Assistant configuration directory (such as `/config` on HAOS).
 
