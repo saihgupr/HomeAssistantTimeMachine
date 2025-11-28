@@ -2,8 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
-const YAML = require('yaml');
-const jsyaml = require('js-yaml');
+const yaml = require('js-yaml');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
 const https = require('https');
@@ -89,7 +88,7 @@ app.use(express.urlencoded({ extended: true, limit: BODY_SIZE_LIMIT }));
 // Error handling middleware for payload size errors
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
-    return res.status(413).json({
+    return res.status(413).json({ 
       error: `Payload too large: ${err.message}`,
       limit: BODY_SIZE_LIMIT
     });
@@ -100,27 +99,27 @@ app.use((err, req, res, next) => {
 // Ingress path detection and URL rewriting middleware
 app.use((req, res, next) => {
   debugLog(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-
+  
   // Detect ingress path from headers
-  const ingressPath = req.headers['x-ingress-path'] ||
-    req.headers['x-forwarded-prefix'] ||
-    req.headers['x-external-url'] ||
-    '';
-
+  const ingressPath = req.headers['x-ingress-path'] || 
+                      req.headers['x-forwarded-prefix'] || 
+                      req.headers['x-external-url'] ||
+                      '';
+  
   // Make ingress path available to templates  
   res.locals.ingressPath = ingressPath;
   res.locals.url = (path) => ingressPath + path;
-
+  
   if (ingressPath) {
     debugLog(`[ingress] Detected: ${ingressPath}, Original URL: ${req.originalUrl}`);
-
+    
     // Strip ingress prefix from URL for routing
     if (req.originalUrl.startsWith(ingressPath)) {
       req.url = req.originalUrl.substring(ingressPath.length) || '/';
       debugLog(`[ingress] Rewritten URL: ${req.url}`);
     }
   }
-
+  
   next();
 });
 
@@ -142,14 +141,16 @@ app.get('/favicon.ico', (req, res) => {
 // Home page
 app.get('/', async (req, res) => {
   try {
-    const options = await getAddonOptions();
+    const [esphomeEnabled, packagesEnabled] = await Promise.all([
+      isEsphomeEnabled(),
+      isPackagesEnabled()
+    ]);
     res.render('index', {
       title: 'Home Assistant Time Machine',
       version,
       currentMode: 'automations',
-      esphomeEnabled: options.esphome,
-      packagesEnabled: options.packages,
-      language: options.language || 'en'
+      esphomeEnabled,
+      packagesEnabled
     });
   } catch (error) {
     console.error('[home] Failed to determine feature status:', error);
@@ -158,8 +159,7 @@ app.get('/', async (req, res) => {
       version,
       currentMode: 'automations',
       esphomeEnabled: false,
-      packagesEnabled: false,
-      language: 'en'
+      packagesEnabled: false
     });
   }
 });
@@ -184,38 +184,6 @@ const resolveSupervisorToken = () => {
   }
   return null;
 };
-
-// Cache for parsed YAML files
-const yamlCache = new Map();
-
-async function loadYamlWithCache(filePath) {
-  try {
-    const stats = await fs.stat(filePath);
-    const mtime = stats.mtime.getTime();
-
-    if (yamlCache.has(filePath)) {
-      const cached = yamlCache.get(filePath);
-      if (cached.mtime === mtime) {
-        return cached.data;
-      }
-    }
-
-    const content = await fs.readFile(filePath, 'utf-8');
-    const data = jsyaml.load(content);
-
-    yamlCache.set(filePath, {
-      mtime,
-      data
-    });
-
-    return data;
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return null;
-    }
-    throw error;
-  }
-}
 
 const YAML_EXTENSIONS = new Set(['.yaml', '.yml']);
 
@@ -296,14 +264,13 @@ async function getAddonOptions() {
     const options = await fs.readFile('/data/options.json', 'utf-8');
     debugLog('[options] Successfully read /data/options.json');
     const parsedOptions = JSON.parse(options);
+    debugLog('[options] text_style configured as:', parsedOptions?.text_style || 'default');
     debugLog('[options] theme configured as:', parsedOptions?.theme || 'dark');
-    debugLog('[options] language configured as:', parsedOptions?.language || 'en');
 
     let esphomeEnabled = parsedOptions?.esphome ?? false;
     let packagesEnabled = parsedOptions?.packages ?? false;
-    let dockerSettings = {};
     try {
-      dockerSettings = await loadDockerSettings();
+      const dockerSettings = await loadDockerSettings();
       if (dockerSettings.__loadedFromFile) {
         if (typeof dockerSettings.packagesEnabled === 'boolean') {
           packagesEnabled = dockerSettings.packagesEnabled;
@@ -319,12 +286,10 @@ async function getAddonOptions() {
       long_lived_access_token: null,
       supervisor_token: supervisorToken,
       credentials_source: supervisorToken ? 'supervisor' : 'none',
+      text_style: parsedOptions?.text_style || 'default',
       theme: parsedOptions?.theme || 'dark',
-      language: parsedOptions?.language || 'en',
       esphome: esphomeEnabled,
       packages: packagesEnabled,
-      backupFolderPath: dockerSettings.backupFolderPath,
-      liveConfigPath: dockerSettings.liveConfigPath,
     };
   } catch (error) {
     debugLog('[options] Running in Docker/local mode, checking for environment variables or saved settings');
@@ -343,8 +308,8 @@ async function getAddonOptions() {
         long_lived_access_token: process.env.LONG_LIVED_ACCESS_TOKEN,
         supervisor_token: supervisorToken,
         credentials_source: 'env',
-        theme: process.env.THEME || dockerSettings.theme || 'dark',
-        language: dockerSettings.language || 'en',
+        text_style: 'default',
+        theme: process.env.THEME || 'dark',
         esphome: dockerSettings.esphomeEnabled ?? false,
         packages: dockerSettings.packagesEnabled ?? false,
       };
@@ -361,8 +326,8 @@ async function getAddonOptions() {
         long_lived_access_token: parsed.long_lived_access_token || null,
         supervisor_token: supervisorToken,
         credentials_source: hasSavedCreds ? 'stored' : 'none',
-        theme: process.env.THEME || dockerSettings.theme || parsed.theme || 'dark',
-        language: dockerSettings.language || parsed.language || 'en',
+        text_style: parsed.text_style || 'default',
+        theme: process.env.THEME || parsed.theme || 'dark',
         esphome: dockerSettings.esphomeEnabled ?? false,
         packages: dockerSettings.packagesEnabled ?? false,
       };
@@ -374,8 +339,8 @@ async function getAddonOptions() {
         long_lived_access_token: null,
         supervisor_token: supervisorToken,
         credentials_source: 'none',
-        theme: process.env.THEME || dockerSettings.theme || 'dark',
-        language: dockerSettings.language || 'en',
+        text_style: 'default',
+        theme: process.env.THEME || 'dark',
         esphome: dockerSettings.esphomeEnabled ?? false,
         packages: dockerSettings.packagesEnabled ?? false,
       };
@@ -448,9 +413,9 @@ app.get('/api/app-settings', async (req, res) => {
     debugLog('[app-settings] --- Start ESPHome Flag Resolution ---');
 
     const options = await getAddonOptions();
-    debugLog('[app-settings] Addon options loaded:', {
-      esphome: options.esphome,
-      mode: options.mode
+    debugLog('[app-settings] Addon options loaded:', { 
+      esphome: options.esphome, 
+      mode: options.mode 
     });
 
     let esphomeEnabled = !!(options.esphome);
@@ -478,6 +443,7 @@ app.get('/api/app-settings', async (req, res) => {
       haAuthMode: auth.source,
       haAuthConfigured: !!auth.token,
       haCredentialsSource: options.credentials_source || null,
+      textStyle: options.text_style || 'default',
       theme: options.theme || 'dark',
       esphomeEnabled,
       packagesEnabled,
@@ -500,6 +466,7 @@ app.get('/api/app-settings', async (req, res) => {
       const mergedSettings = {
         liveConfigPath: savedSettings.liveConfigPath || '/config',
         backupFolderPath: savedSettings.backupFolderPath || '/media/backups/yaml',
+        textStyle: options.text_style || savedSettings.textStyle || 'default',
         theme: options.theme || savedSettings.theme || baseResponse.theme || 'dark',
         esphomeEnabled: options.esphome ?? finalEsphomeEnabled,
         packagesEnabled: finalPackagesEnabled,
@@ -512,6 +479,7 @@ app.get('/api/app-settings', async (req, res) => {
         ...baseResponse,
         backupFolderPath: mergedSettings.backupFolderPath,
         liveConfigPath: mergedSettings.liveConfigPath,
+        textStyle: mergedSettings.textStyle,
         theme: mergedSettings.theme,
         esphomeEnabled: mergedSettings.esphomeEnabled,
       };
@@ -533,8 +501,8 @@ app.get('/api/app-settings', async (req, res) => {
       ...baseResponse,
       backupFolderPath: dockerSettings.backupFolderPath || '/media/timemachine',
       liveConfigPath: dockerSettings.liveConfigPath || '/config',
+      textStyle: dockerSettings.textStyle || 'default',
       theme: effectiveTheme,
-      language: dockerSettings.language || 'en',
       esphomeEnabled: finalEsphomeEnabled,
       packagesEnabled: dockerSettings.packagesEnabled ?? false,
     };
@@ -550,21 +518,21 @@ app.get('/api/app-settings', async (req, res) => {
 // Save Docker app settings
 app.post('/api/app-settings', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language } = req.body;
+    const { liveConfigPath, backupFolderPath, textStyle, theme, esphomeEnabled, packagesEnabled } = req.body;
 
     const existingSettings = await loadDockerSettings();
     const settings = {
       liveConfigPath: liveConfigPath || existingSettings.liveConfigPath || '/config',
       backupFolderPath: backupFolderPath || existingSettings.backupFolderPath || '/media/backups/yaml',
+      textStyle: textStyle || existingSettings.textStyle || 'default',
       theme: theme || existingSettings.theme || 'dark',
-      language: language || existingSettings.language || 'en',
       esphomeEnabled: typeof esphomeEnabled === 'boolean' ? esphomeEnabled : existingSettings.esphomeEnabled ?? false,
       packagesEnabled: typeof packagesEnabled === 'boolean' ? packagesEnabled : existingSettings.packagesEnabled ?? false,
     };
 
     await saveDockerSettings(settings);
     console.log('[save-docker-settings] Saved Docker app settings:', settings);
-
+    
     res.json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {
     console.error('[save-docker-settings] Error:', error);
@@ -576,21 +544,21 @@ app.post('/api/app-settings', async (req, res) => {
 app.post('/api/docker-ha-credentials', async (req, res) => {
   try {
     const { homeAssistantUrl, longLivedAccessToken } = req.body;
-
+    
     // Only allow saving credentials in Docker mode and when env vars aren't set
     if (process.env.HOME_ASSISTANT_URL || process.env.LONG_LIVED_ACCESS_TOKEN) {
       return res.status(400).json({ error: 'HA credentials are configured via environment variables' });
     }
-
+    
     const credentials = {
       home_assistant_url: homeAssistantUrl,
       long_lived_access_token: longLivedAccessToken
     };
-
+    
     // Ensure data directory exists
     await fs.writeFile(path.join(DATA_DIR, 'docker-ha-credentials.json'), JSON.stringify(credentials, null, 2), 'utf-8');
     console.log('[docker-ha-credentials] Saved Docker HA credentials to', path.join(DATA_DIR, 'docker-ha-credentials.json'));
-
+    
     res.json({ success: true, message: 'HA credentials saved successfully' });
   } catch (error) {
     console.error('[docker-ha-credentials] Error:', error);
@@ -604,8 +572,8 @@ async function loadDockerSettings() {
   const defaultSettings = {
     liveConfigPath: '/config',
     backupFolderPath: '/media/timemachine',
+    textStyle: 'default',
     theme: process.env.THEME || 'dark',
-    language: 'en',
     esphomeEnabled: false,
     packagesEnabled: false,
     ...cachedSettings
@@ -613,7 +581,7 @@ async function loadDockerSettings() {
 
   try {
     const settingsPath = path.join(DATA_DIR, 'docker-app-settings.json');
-
+    
     // Check if settings file exists
     try {
       await fs.access(settingsPath);
@@ -626,16 +594,16 @@ async function loadDockerSettings() {
       // Update in-memory settings
       global.dockerSettings = settings;
 
-
+      
       console.log('Loaded settings from file:', settings);
       return settings;
     } catch (err) {
       if (err.code === 'ENOENT') {
-
+        
       } else {
         console.error('Error loading settings:', err);
       }
-
+      
       // Ensure in-memory settings are set to defaults
       global.dockerSettings = defaultSettings;
       return defaultSettings;
@@ -654,12 +622,12 @@ async function saveDockerSettings(settings) {
   const settingsToSave = {
     liveConfigPath: settings.liveConfigPath || '/config',
     backupFolderPath: settings.backupFolderPath || '/media/timemachine',
+    textStyle: settings.textStyle || 'default',
     theme: settings.theme || 'dark',
-    language: settings.language || 'en',
     esphomeEnabled: settings.esphomeEnabled ?? false,
     packagesEnabled: settings.packagesEnabled ?? false
   };
-
+  
   // Save to file
   const settingsPath = path.join(DATA_DIR, 'docker-app-settings.json');
   try {
@@ -668,12 +636,12 @@ async function saveDockerSettings(settings) {
     console.error('[saveDockerSettings] Failed to ensure data directory exists:', error);
   }
   await fs.writeFile(settingsPath, JSON.stringify(settingsToSave, null, 2), 'utf-8');
-
+  
   console.log('Settings saved successfully to', settingsPath);
-
+  
   // Update the in-memory settings
   global.dockerSettings = settingsToSave;
-
+  
   return settingsToSave;
 }
 
@@ -683,10 +651,10 @@ const SKIP_BACKUP_DIRS = new Set(['esphome', '.storage', 'packages']);
 async function getBackupDirs(dir, depth = 0) {
   let results = [];
   const indent = '  '.repeat(depth);
-
+  
   try {
     const list = await fs.readdir(dir, { withFileTypes: true });
-
+    
     for (const dirent of list) {
       const fullPath = path.resolve(dir, dirent.name);
       if (dirent.isDirectory()) {
@@ -730,7 +698,7 @@ async function getBackupDirs(dir, depth = 0) {
   } catch (error) {
     console.error(`${indent}[scan-backups] Error reading ${dir}:`, error.message);
   }
-
+  
   return results.filter(result => !SKIP_BACKUP_DIRS.has(path.basename(result.path)));
 }
 
@@ -740,25 +708,25 @@ app.post('/api/scan-backups', async (req, res) => {
     // Accept backupRootPath from request body or use default
     const backupRootPath = req.body?.backupRootPath || '/media/timemachine';
     console.log('[scan-backups] Scanning backup directory:', backupRootPath);
-
+    
     // Basic security check
     if (backupRootPath.includes('..')) {
       return res.status(400).json({ error: 'Invalid path' });
     }
-
+    
     const backups = await getBackupDirs(backupRootPath);
-
+    
     // Sort descending to show newest first
     backups.sort((a, b) => b.folderName.localeCompare(a.folderName));
-
+    
     console.log('[scan-backups] Found backups:', backups.length);
     res.json({ backups });
   } catch (error) {
     console.error('[scan-backups] Error:', error);
     if (error.code === 'ENOENT') {
-      return res.status(404).json({
-        error: `Directory not found: ${error.path}`,
-        code: 'DIR_NOT_FOUND'
+      return res.status(404).json({ 
+        error: `Directory not found: ${error.path}`, 
+        code: 'DIR_NOT_FOUND' 
       });
     }
     res.status(500).json({ error: 'Failed to scan backup directory.', details: error.message });
@@ -770,7 +738,8 @@ app.post('/api/get-backup-automations', async (req, res) => {
   try {
     const { backupPath } = req.body;
     const automationsFile = path.join(backupPath, 'automations.yaml');
-    const automations = await loadYamlWithCache(automationsFile) || [];
+    const content = await fs.readFile(automationsFile, 'utf-8');
+    const automations = yaml.load(content) || [];
     res.json({ automations });
   } catch (error) {
     console.error('[get-backup-automations] Error:', error);
@@ -783,8 +752,9 @@ app.post('/api/get-backup-scripts', async (req, res) => {
   try {
     const { backupPath } = req.body;
     const scriptsFile = path.join(backupPath, 'scripts.yaml');
-    const scriptsObject = await loadYamlWithCache(scriptsFile);
-
+    const content = await fs.readFile(scriptsFile, 'utf-8');
+    const scriptsObject = yaml.load(content);
+    
     // Scripts are stored as a dictionary/object, not an array
     // Transform: { script_id: { alias: '...', sequence: [...] } }
     // Into: [{ id: 'script_id', alias: '...', sequence: [...] }]
@@ -798,7 +768,7 @@ app.post('/api/get-backup-scripts', async (req, res) => {
       // Fallback for array format (shouldn't happen)
       scripts = scriptsObject;
     }
-
+    
     res.json({ scripts });
   } catch (error) {
     console.error('[get-backup-scripts] Error:', error);
@@ -813,9 +783,10 @@ app.post('/api/get-live-items', async (req, res) => {
     const configPath = liveConfigPath || '/config';
     const fileName = mode === 'automations' ? 'automations.yaml' : 'scripts.yaml';
     const filePath = path.join(configPath, fileName);
-
-    let allItems = await loadYamlWithCache(filePath) || [];
-
+    
+    const content = await fs.readFile(filePath, 'utf-8');
+    let allItems = yaml.load(content) || [];
+    
     // Handle scripts dictionary format
     if (mode === 'scripts' && typeof allItems === 'object' && !Array.isArray(allItems)) {
       allItems = Object.keys(allItems).map(scriptId => ({
@@ -823,7 +794,7 @@ app.post('/api/get-live-items', async (req, res) => {
         ...allItems[scriptId]
       }));
     }
-
+    
     const liveItems = {};
     itemIdentifiers.forEach(identifier => {
       const item = allItems.find(i => (i.id === identifier || i.alias === identifier));
@@ -831,7 +802,7 @@ app.post('/api/get-live-items', async (req, res) => {
         liveItems[identifier] = item;
       }
     });
-
+    
     res.json({ liveItems });
   } catch (error) {
     console.error('[get-live-items] Error:', error);
@@ -845,13 +816,14 @@ app.post('/api/get-live-automation', async (req, res) => {
     const { automationIdentifier, liveConfigPath } = req.body;
     const configPath = liveConfigPath || '/config';
     const filePath = path.join(configPath, 'automations.yaml');
-    const automations = await loadYamlWithCache(filePath) || [];
+    const content = await fs.readFile(filePath, 'utf-8');
+    const automations = yaml.load(content) || [];
     const automation = automations.find(a => a.id === automationIdentifier || a.alias === automationIdentifier);
-
+    
     if (!automation) {
       return res.status(404).json({ error: 'Automation not found' });
     }
-
+    
     res.json({ automation });
   } catch (error) {
     console.error('[get-live-automation] Error:', error);
@@ -865,13 +837,14 @@ app.post('/api/get-live-script', async (req, res) => {
     const { automationIdentifier, liveConfigPath } = req.body;
     const configPath = liveConfigPath || '/config';
     const filePath = path.join(configPath, 'scripts.yaml');
-    const scripts = await loadYamlWithCache(filePath) || [];
+    const content = await fs.readFile(filePath, 'utf-8');
+    const scripts = yaml.load(content) || [];
     const script = scripts.find(s => s.id === automationIdentifier || s.alias === automationIdentifier);
-
+    
     if (!script) {
       return res.status(404).json({ error: 'Script not found' });
     }
-
+    
     res.json({ script });
   } catch (error) {
     console.error('[get-live-script] Error:', error);
@@ -882,72 +855,34 @@ app.post('/api/get-live-script', async (req, res) => {
 // Restore automation
 app.post('/api/restore-automation', async (req, res) => {
   try {
-    const { backupPath, automationIdentifier, timezone, liveConfigPath } = req.body;
-
-    if (!backupPath || !automationIdentifier) {
-      return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
-    }
-
-    // Perform a backup before restoring (unchanged)
+    const { automationObject, timezone, liveConfigPath } = req.body;
+    // Perform a backup before restoring
     await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
 
     const configPath = liveConfigPath || '/config';
-    const liveFilePath = path.join(configPath, 'automations.yaml');
-    const backupFilePath = path.join(backupPath, 'automations.yaml');
-
-    // Read raw contents
-    let liveContent = '';
+    const filePath = path.join(configPath, 'automations.yaml');
+    
+    let automations = [];
     try {
-      liveContent = await fs.readFile(liveFilePath, 'utf-8');
+      const content = await fs.readFile(filePath, 'utf-8');
+      automations = yaml.load(content) || [];
     } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
-      // If file doesn't exist, start with empty list
-      liveContent = '[]';
+      // File doesn't exist, start with empty array
     }
-
-    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
-
-    // Parse documents (preserves ranges)
-    const liveDoc = YAML.parseDocument(liveContent);
-    const backupDoc = YAML.parseDocument(backupContent);
-
-    // Find backup node
-    const backupItems = backupDoc.contents?.items || [];
-    const backupIndex = backupItems.findIndex(item => {
-      const obj = item.toJSON();
-      return obj.id === automationIdentifier || obj.alias === automationIdentifier;
-    });
-    if (backupIndex === -1) {
-      return res.status(404).json({ error: 'Automation not found in backup' });
-    }
-    const backupNode = backupItems[backupIndex];
-    const [backupStart, backupEnd] = findFullRange(backupContent, backupNode, true);
-    const backupSnippet = backupContent.substring(backupStart, backupEnd);
-
-    // Find live node
-    const liveItems = liveDoc.contents?.items || [];
-    const liveIndex = liveItems.findIndex(item => {
-      const obj = item.toJSON();
-      return obj.id === automationIdentifier || obj.alias === automationIdentifier;
-    });
-
-    let newLiveContent;
-    if (liveIndex !== -1) {
-      // Replace existing: Use full ranges to swap entire blocks (including comments/dash)
-      const liveNode = liveItems[liveIndex];
-      const [liveStart, liveEnd] = findFullRange(liveContent, liveNode, true);
-      newLiveContent = liveContent.substring(0, liveStart) + backupSnippet + liveContent.substring(liveEnd);
-    } else {
-      // Add new: Append to end
-      // Just append the full snippet (which includes dash). Ensure newline separator.
-      const prefix = (liveContent.length > 0 && !liveContent.endsWith('\n')) ? '\n' : '';
-      newLiveContent = liveContent + prefix + backupSnippet;
-    }
-
-    // Write back
-    await fs.writeFile(liveFilePath, newLiveContent, 'utf-8');
-
-    res.json({ success: true, message: 'Automation restored successfully with preserved formatting' });
+    
+    // Remove existing automation with same ID/alias
+    automations = automations.filter(a => 
+      a.id !== automationObject.id && a.alias !== automationObject.alias
+    );
+    
+    // Add restored automation
+    automations.push(automationObject);
+    
+    // Write back to file
+    const newContent = yaml.dump(automations);
+    await fs.writeFile(filePath, newContent, 'utf-8');
+    
+    res.json({ success: true, message: 'Automation restored successfully' });
   } catch (error) {
     console.error('[restore-automation] Error:', error);
     res.status(500).json({ error: error.message });
@@ -955,65 +890,60 @@ app.post('/api/restore-automation', async (req, res) => {
 });
 
 // Restore script
-// Restore script endpoint with text replacement
 app.post('/api/restore-script', async (req, res) => {
   try {
-    const { backupPath, automationIdentifier: scriptIdentifier, timezone, liveConfigPath } = req.body;
-
-    if (!backupPath || !scriptIdentifier) {
-      return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
-    }
-
-    // Perform a backup before restoring (unchanged)
+    const { scriptObject, timezone, liveConfigPath } = req.body;
+    // Perform a backup before restoring
     await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
 
     const configPath = liveConfigPath || '/config';
-    const liveFilePath = path.join(configPath, 'scripts.yaml');
-    const backupFilePath = path.join(backupPath, 'scripts.yaml');
-
-    // Read raw contents
-    let liveContent = '';
+    const filePath = path.join(configPath, 'scripts.yaml');
+    
+    let scripts = [];
+    let originalIsObject = false;
     try {
-      liveContent = await fs.readFile(liveFilePath, 'utf-8');
+      const content = await fs.readFile(filePath, 'utf-8');
+      const loadedScripts = yaml.load(content);
+      if (loadedScripts && typeof loadedScripts === 'object' && !Array.isArray(loadedScripts)) {
+        originalIsObject = true;
+        scripts = Object.keys(loadedScripts).map(scriptId => ({
+          id: scriptId,
+          ...loadedScripts[scriptId]
+        }));
+      } else if (Array.isArray(loadedScripts)) {
+        scripts = loadedScripts;
+      }
     } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
-      // If file doesn't exist, start with empty dict
-      liveContent = '{}';
+      // File doesn't exist, start with empty array
     }
-
-    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
-
-    // Parse documents (preserves ranges)
-    const liveDoc = YAML.parseDocument(liveContent);
-    const backupDoc = YAML.parseDocument(backupContent);
-
-    // Find backup node - for scripts, it's a map
-    const backupNode = backupDoc.get(scriptIdentifier);
-    if (!backupNode) {
-      return res.status(404).json({ error: 'Script not found in backup' });
-    }
-    const [backupStart, backupEnd] = findFullRange(backupContent, backupNode, false);
-    const backupSnippet = backupContent.substring(backupStart, backupEnd);
-
-    // Find live node
-    const liveNode = liveDoc.get(scriptIdentifier);
-
-    let newLiveContent;
-    if (liveNode) {
-      // Replace existing: Use full ranges to swap entire blocks (including comments/key)
-      const [liveStart, liveEnd] = findFullRange(liveContent, liveNode, false);
-      newLiveContent = liveContent.substring(0, liveStart) + backupSnippet + liveContent.substring(liveEnd);
+    
+    // Remove existing script with same ID/alias
+    scripts = scripts.filter(s => 
+      s.id !== scriptObject.id && s.alias !== scriptObject.alias
+    );
+    
+    // Add restored script
+    scripts.push(scriptObject);
+    
+    let newContent;
+    if (originalIsObject) {
+      // Convert back to object format if original was an object
+      const scriptsObject = {};
+      scripts.forEach(s => {
+        const id = s.id || s.alias;
+        if (id) {
+          const { id: _, ...rest } = s; // Remove the 'id' property if it was added during conversion
+          scriptsObject[id] = rest;
+        }
+      });
+      newContent = yaml.dump(scriptsObject);
     } else {
-      // Add new: Append to end
-      // Just append the full snippet (which includes key). Ensure newline separator.
-      const prefix = (liveContent.length > 0 && !liveContent.endsWith('\n')) ? '\n' : '';
-      newLiveContent = liveContent + prefix + backupSnippet;
+      newContent = yaml.dump(scripts);
     }
-
-    // Write back
-    await fs.writeFile(liveFilePath, newLiveContent, 'utf-8');
-
-    res.json({ success: true, message: 'Script restored successfully with preserved formatting' });
+    
+    await fs.writeFile(filePath, newContent, 'utf-8');
+    
+    res.json({ success: true, message: 'Script restored successfully' });
   } catch (error) {
     console.error('[restore-script] Error:', error);
     res.status(500).json({ error: error.message });
@@ -1024,7 +954,7 @@ app.post('/api/restore-script', async (req, res) => {
 app.post('/api/reload-home-assistant', async (req, res) => {
   try {
     const { service } = req.body;
-
+    
     if (!service) {
       return res.status(400).json({ error: 'Missing required parameter: service' });
     }
@@ -1045,14 +975,14 @@ app.post('/api/reload-home-assistant', async (req, res) => {
     if (auth.source === 'supervisor') {
       headers['X-Supervisor-Token'] = auth.token;
     }
-
+    
     // Make async call to HA (don't wait for response)
     fetch(serviceUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({})
     }).catch(err => console.error('[reload-home-assistant] Background error:', err));
-
+    
     res.json({ message: 'Home Assistant reload initiated successfully' });
   } catch (error) {
     console.error('[reload-home-assistant] Error:', error);
@@ -1063,14 +993,14 @@ app.post('/api/reload-home-assistant', async (req, res) => {
 // Helper to check if directory contains backups (recursively)
 async function hasBackupsRecursive(dir, depth = 0, maxDepth = 5) {
   if (depth > maxDepth) return false;
-
+  
   try {
     const list = await fs.readdir(dir, { withFileTypes: true });
-
+    
     // Check for YAML files in current directory
     const hasYaml = list.some(item => !item.isDirectory() && (item.name.endsWith('.yaml') || item.name.endsWith('.yml')));
     if (hasYaml) return true;
-
+    
     // Check for backup-pattern directories
     const hasBackupPattern = list.some(item => {
       if (!item.isDirectory()) return false;
@@ -1078,7 +1008,7 @@ async function hasBackupsRecursive(dir, depth = 0, maxDepth = 5) {
       return /^\d{4}-\d{2}-\d{2}-\d{6}$/.test(name) || /^\d{12}$/.test(name);
     });
     if (hasBackupPattern) return true;
-
+    
     // Recursively check subdirectories
     for (const item of list) {
       if (item.isDirectory()) {
@@ -1087,7 +1017,7 @@ async function hasBackupsRecursive(dir, depth = 0, maxDepth = 5) {
         if (hasNested) return true;
       }
     }
-
+    
     return false;
   } catch (error) {
     return false;
@@ -1098,27 +1028,27 @@ async function hasBackupsRecursive(dir, depth = 0, maxDepth = 5) {
 app.post('/api/validate-backup-path', async (req, res) => {
   try {
     const { path: folderPath } = req.body;
-
+    
     if (!folderPath) {
       return res.status(400).json({ isValid: false, error: 'Path is required' });
     }
-
+    
     const stats = await fs.stat(folderPath);
-
+    
     if (!stats.isDirectory()) {
       return res.status(400).json({ isValid: false, error: 'Provided path is not a directory' });
     }
-
+    
     // Check recursively for backups or YAML files
     const hasBackups = await hasBackupsRecursive(folderPath);
-
+    
     if (!hasBackups) {
-      return res.status(400).json({
-        isValid: false,
-        error: 'No backup folders or YAML files found in directory tree (searched 5 levels deep)'
+      return res.status(400).json({ 
+        isValid: false, 
+        error: 'No backup folders or YAML files found in directory tree (searched 5 levels deep)' 
       });
     }
-
+    
     res.json({ isValid: true });
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -1148,7 +1078,7 @@ app.post('/api/test-home-assistant-connection', async (req, res) => {
       res.status(400).json({ success: false, message: 'Home Assistant access is not configured. For Docker deployments without ingress, supply a URL and long-lived token.' });
       return;
     }
-
+    
     const headers = {
       'Authorization': `Bearer ${auth.token}`,
       'Content-Type': 'application/json',
@@ -1181,7 +1111,7 @@ app.post('/api/test-home-assistant-connection', async (req, res) => {
         throw fetchError;
       }
     }
-
+    
     if (response.ok) {
       res.json({
         success: true,
@@ -1197,8 +1127,8 @@ app.post('/api/test-home-assistant-connection', async (req, res) => {
         baseUrl: auth.baseUrl,
         errorText,
       });
-      res.status(response.status).json({
-        success: false,
+      res.status(response.status).json({ 
+        success: false, 
         message: `Connection failed: ${response.status} - ${errorText}`,
         tlsFallback: tlsFallbackUsed ? 'insecure' : 'strict',
       });
@@ -1218,13 +1148,13 @@ async function loadScheduledJobs() {
   try {
     const content = await fs.readFile(SCHEDULE_FILE, 'utf-8');
     const data = JSON.parse(content);
-
+    
     // Normalize: ensure we only have { jobs: {...} } structure
     // Remove any legacy top-level job keys
     if (!data.jobs) {
       data.jobs = {};
     }
-
+    
     // Clean up: return only the jobs wrapper
     return { jobs: data.jobs };
   } catch (error) {
@@ -1252,22 +1182,22 @@ app.get('/api/schedule-backup', async (req, res) => {
 app.post('/api/schedule-backup', async (req, res) => {
   try {
     const { id, cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount } = req.body;
-
+    
     const jobs = await loadScheduledJobs();
     jobs.jobs = jobs.jobs || {};
     jobs.jobs[id] = { cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount };
     console.log('[scheduler] New schedule saved:', jobs.jobs[id]);
-
+    
     // Clean structure: only save { jobs: {...} }
     const cleanJobs = { jobs: jobs.jobs };
     await saveScheduledJobs(cleanJobs);
-
+    
     // Stop existing cron job if any
     if (scheduledJobs[id]) {
       scheduledJobs[id].stop();
       delete scheduledJobs[id];
     }
-
+    
     // Start new cron job if enabled
     const jobConfig = jobs.jobs[id];
     if (enabled) {
@@ -1304,7 +1234,7 @@ app.post('/api/schedule-backup', async (req, res) => {
         }
       }, { timezone });
     }
-
+    
     res.json({ success: true, message: 'Schedule updated successfully' });
   } catch (error) {
     console.error('[set-schedule] Error:', error);
@@ -1356,7 +1286,7 @@ app.post('/api/validate-path', async (req, res) => {
 async function performBackup(liveConfigPath, backupFolderPath, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null) {
   const configPath = liveConfigPath || '/config';
   const backupRoot = backupFolderPath || '/media/timemachine';
-
+  
   console.log(`[backup-${source}] Starting backup...`);
   console.log(`[backup-${source}] Config path:`, configPath);
   console.log(`[backup-${source}] Backup root:`, backupRoot);
@@ -1392,7 +1322,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   // Create backup folder with timestamp
   let now = new Date();
   let YYYY, MM, DD, HH, mm, ss;
-
+  
   if (timezone) {
     // Use the specified timezone
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -1406,7 +1336,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       hour12: false,
       hourCycle: 'h23'
     });
-
+    
     const parts = formatter.formatToParts(now);
     YYYY = parts.find(p => p.type === 'year').value;
     MM = parts.find(p => p.type === 'month').value;
@@ -1426,12 +1356,12 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     mm = String(now.getMinutes()).padStart(2, '0');
     ss = String(now.getSeconds()).padStart(2, '0');
   }
-
+  
   const timestamp = `${YYYY}-${MM}-${DD}-${HH}${mm}${ss}`;
-
+  
   const backupPath = path.join(backupRoot, YYYY, MM, timestamp);
   console.log(`[backup-${source}] Creating directory:`, backupPath);
-
+  
   try {
     await fs.mkdir(backupPath, { recursive: true });
     console.log(`[backup-${source}] Directory created successfully`);
@@ -1447,7 +1377,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   const files = await fs.readdir(configPath);
   const yamlFiles = files.filter(file => file.endsWith('.yaml') || file.endsWith('.yml'));
   console.log(`[backup-${source}] Found ${yamlFiles.length} YAML files to copy.`);
-
+  
   let copiedYamlCount = 0;
   for (const file of yamlFiles) {
     const sourcePath = path.join(configPath, file);
@@ -1470,7 +1400,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     const storageFiles = await fs.readdir(storagePath);
     const lovelaceFiles = storageFiles.filter(file => file.startsWith('lovelace'));
     console.log(`[backup-${source}] Found ${lovelaceFiles.length} Lovelace files to copy.`);
-
+    
     let copiedLovelaceCount = 0;
     for (const file of lovelaceFiles) {
       const sourcePath = path.join(storagePath, file);
@@ -1523,7 +1453,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   } else {
     console.log(`[backup-${source}] Skipping ESPHome backups (feature disabled).`);
   }
-
+  
   if (packagesEnabled) {
     // Backup Packages files
     const packagesPath = path.join(configPath, 'packages');
@@ -1555,7 +1485,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   } else {
     console.log(`[backup-${source}] Skipping Packages backups (feature disabled).`);
   }
-
+  
   console.log(`[backup-${source}] Backup completed successfully at:`, backupPath);
 
   // Cleanup old backups if maxBackups is enabled
@@ -1577,21 +1507,21 @@ async function cleanupOldBackups(backupRoot, maxBackupsCount) {
   try {
     console.log(`[cleanup] Scanning backup directory: ${backupRoot}`);
     const allBackups = await getBackupDirs(backupRoot);
-
+    
     // Sort by folderName descending (newest first)
     allBackups.sort((a, b) => b.folderName.localeCompare(a.folderName));
-
+    
     console.log(`[cleanup] Found ${allBackups.length} total backups, keeping max ${maxBackupsCount}`);
-
+    
     if (allBackups.length <= maxBackupsCount) {
       console.log(`[cleanup] No cleanup needed - only ${allBackups.length} backups exist`);
       return;
     }
-
+    
     // Get backups to delete (all beyond maxBackupsCount)
     const backupsToDelete = allBackups.slice(maxBackupsCount);
     console.log(`[cleanup] Will delete ${backupsToDelete.length} old backups`);
-
+    
     for (const backup of backupsToDelete) {
       try {
         console.log(`[cleanup] Deleting old backup: ${backup.path}`);
@@ -1602,7 +1532,7 @@ async function cleanupOldBackups(backupRoot, maxBackupsCount) {
         // Continue with other deletions even if one fails
       }
     }
-
+    
     console.log(`[cleanup] Cleanup completed. Kept ${Math.min(allBackups.length, maxBackupsCount)} backups.`);
   } catch (error) {
     console.error('[cleanup] Error during cleanup:', error.message);
@@ -1631,10 +1561,10 @@ app.post('/api/get-backup-lovelace', async (req, res) => {
   try {
     const { backupPath } = req.body;
     const lovelaceDir = path.join(backupPath, '.storage');
-
+    
     const files = await fs.readdir(lovelaceDir);
     const lovelaceFiles = files.filter(f => f.startsWith('lovelace'));
-
+    
     res.json({ lovelaceFiles });
   } catch (error) {
     console.error('[get-backup-lovelace] Error:', error);
@@ -1646,9 +1576,9 @@ app.post('/api/get-backup-lovelace-file', async (req, res) => {
   try {
     const { backupPath, fileName } = req.body;
     const filePath = path.join(backupPath, '.storage', fileName);
-
+    
     console.log(`[get-backup-lovelace-file] Request for file: ${fileName} in backup: ${backupPath}`);
-
+    
     res.sendFile(filePath, (err) => {
       if (err) {
         console.error('[get-backup-lovelace-file] Error sending file:', err);
@@ -1673,9 +1603,9 @@ const getLiveLovelaceFile = async (req, res) => {
 
     const configPath = liveConfigPath || '/config';
     const filePath = path.join(configPath, '.storage', fileName);
-
+    
     console.log(`[get-live-lovelace-file] Request for file: ${fileName} in config: ${configPath}`);
-
+    
     res.sendFile(filePath, (err) => {
       if (err) {
         console.error('[get-live-lovelace-file] Error sending file:', err);
@@ -1806,9 +1736,9 @@ app.post('/api/restore-esphome-file', async (req, res) => {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     // Handle content being an object or a string
-    const contentToWrite = typeof content === 'string' ? content : YAML.stringify(content);
+    const contentToWrite = typeof content === 'string' ? content : yaml.dump(content);
     await fs.writeFile(filePath, contentToWrite, 'utf-8');
-
+    
     // Check if HA config is available to determine if a restart is needed
     const auth = await getHomeAssistantAuth();
     const needsRestart = !!(auth.baseUrl && auth.token);
@@ -1829,7 +1759,7 @@ app.post('/api/get-backup-packages', async (req, res) => {
     }
     const { backupPath } = req.body;
     const packagesDir = path.join(backupPath, 'packages');
-
+    
     try {
       // Check if packages directory exists
       await fs.access(packagesDir);
@@ -1908,9 +1838,9 @@ app.post('/api/restore-packages-file', async (req, res) => {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     // Handle content being an object or a string
-    const contentToWrite = typeof content === 'string' ? content : YAML.stringify(content);
+    const contentToWrite = typeof content === 'string' ? content : yaml.dump(content);
     await fs.writeFile(filePath, contentToWrite, 'utf-8');
-
+    
     // Check if HA config is available to determine if a restart is needed
     const auth = await getHomeAssistantAuth();
     const needsRestart = !!(auth.baseUrl && auth.token);
@@ -1992,58 +1922,3 @@ app.listen(PORT, HOST, () => {
     console.log('[scheduler] Initialization complete.');
   });
 });
-
-// Helper to find the full range of a YAML item including comments and structure
-function findFullRange(content, node, isListItem) {
-  let start = node.range[0];
-  let end = node.range[1];
-
-  // 1. Find the start of the item structure (dash or key)
-  if (isListItem) {
-    // Scan backwards for dash
-    while (start > 0 && content[start] !== '-') {
-      start--;
-    }
-  } else {
-    // For map item (script), node is the value. We need to find the key.
-    // Scan backwards for ':'
-    while (start > 0 && content[start] !== ':') {
-      start--;
-    }
-    // Now scan backwards for the key start (start of line or after whitespace)
-    if (start > 0) {
-      // Scan back to newline or start of file.
-      while (start > 0 && content[start - 1] !== '\n') {
-        start--;
-      }
-    }
-  }
-
-  // 2. Scan backwards for comments and empty lines
-  let current = start;
-  while (current > 0) {
-    const prevChar = content[current - 1];
-    if (prevChar === '\n') {
-      // Check the line before this newline
-      let lineEnd = current - 1;
-      let lineStart = lineEnd;
-      while (lineStart > 0 && content[lineStart - 1] !== '\n') {
-        lineStart--;
-      }
-      const line = content.substring(lineStart, lineEnd);
-      if (line.trim().startsWith('#') || line.trim() === '') {
-        // Include this line
-        current = lineStart;
-      } else {
-        // This line is content (previous item), stop.
-        break;
-      }
-    } else {
-      // Consume spaces/indentation before the item start
-      current--;
-    }
-  }
-  start = current;
-
-  return [start, end];
-}
