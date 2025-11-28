@@ -58,9 +58,26 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 
 ### 2. Standalone Docker Installation
 
-For Docker users who aren't using the Home Assistant add-on, you can either use the pre-built image or build locally.
+For Docker users who aren't using the Home Assistant add-on, you have three deployment options:
 
-**Option A: Use pre-built image (recommended):**
+**Option A: Docker Compose (recommended):**
+
+1. Download the docker-compose.yml file:
+   ```bash
+   curl -o docker-compose.yml https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/docker-compose.yml
+   ```
+
+2. Edit the file to set your paths and credentials:
+   ```bash
+   nano docker-compose.yml
+   ```
+
+3. Start the service:
+   ```bash
+   docker-compose up -d
+   ```
+
+**Option B: Docker Run (pre-built image):**
 
 ```bash
 docker run -d \
@@ -74,11 +91,11 @@ docker run -d \
   ghcr.io/saihgupr/homeassistanttimemachinebeta:latest
 ```
 
-**Option B: Build locally:**
+**Option C: Build locally:**
 
 ```bash
 git clone https://github.com/saihgupr/HomeAssistantTimeMachineBeta.git
-cd HomeAssistantTimeMachine/homeassistant-time-machine
+cd HomeAssistantTimeMachineBeta/homeassistant-time-machine
 docker build -t ha-time-machine .
 
 docker run -d \

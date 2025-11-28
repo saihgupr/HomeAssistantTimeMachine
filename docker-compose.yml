@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ha-time-machine:
+    image: ghcr.io/saihgupr/homeassistanttimemachinebeta:latest
+    container_name: ha-time-machine
+    privileged: true
+    ports:
+      - "54000:54000"
+    environment:
+      # Optional: Set these to lock credentials in read-only mode
+      # If omitted, you can configure via the web UI
+      - HOME_ASSISTANT_URL=http://your-ha-instance:8123
+      - LONG_LIVED_ACCESS_TOKEN=your-token-here
+      # Optional: Override default theme
+      # - THEME=dark
+    volumes:
+      # Mount your Home Assistant config directory (read-only recommended)
+      - /path/to/your/ha/config:/config:ro
+      # Mount your backup directory
+      - /path/to/your/backups:/media
+      # Persist app data (settings, credentials)
+      - ha-time-machine-data:/data
+    restart: unless-stopped
+
+volumes:
+  ha-time-machine-data:
