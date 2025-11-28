@@ -45,6 +45,14 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 
     [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/HomeAssistantTimeMachineBeta)
 
+    **Or manually add it:**
+    - Navigate to **Settings** → **Add-ons** → **Add-on Store**
+    - Click the three dots (⋮) in the top right corner and select **Repositories**
+    - Add the repository URL:
+      ```
+      https://github.com/saihgupr/HomeAssistantTimeMachineBeta
+      ```
+
 2.  **Install the Add-on:**
     The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
 
