@@ -4,17 +4,17 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
-*   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
-*   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
-*   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
-*   **Backup Now Button:** Trigger an immediate backup of your Home Assistant configuration directly from the UI with a single click. This utilizes a new API for programmatic backups, shared with the scheduled backup feature.
-*   **Max Backups:** Set a limit on how many backups are kept.
-*   **Authentication:** Secure access with Home Assistant authentication integration, automatically proxying through the Supervisor when available.
-*   **Docker Container Installation:** Simplified installation process with a dedicated Docker container option, providing more flexibility for users without the Home Assistant add-on store.
-*   **Optimized Size & Performance:** The add-on is now 4X smaller and uses 6X less memory, making it faster to download and run.  
-*   **Dark/Light Mode:** Choose between dark and light themes in the configuration.
-*   **Flexible Backup Locations:** Backups can now be stored in `/share` `/backup` `/config` or `/media`. Folders are created automatically, and remote share backups are supported.
-*   **REST API:** Comprehensive API for managing backups, restores, and configurations.
+- **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
+- **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
+- **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
+- **Backup Now Button:** Trigger an immediate backup of your Home Assistant configuration directly from the UI with a single click. This utilizes a new API for programmatic backups, shared with the scheduled backup feature.
+- **Max Backups:** Set a limit on how many backups are kept.
+- **Authentication:** Secure access with Home Assistant authentication integration, automatically proxying through the Supervisor when available.
+- **Docker Container Installation:** Simplified installation process with a dedicated Docker container option, providing more flexibility for users without the Home Assistant add-on store.
+- **Optimized Size & Performance:** The add-on is now 4X smaller and uses 6X less memory, making it faster to download and run.
+- **Dark/Light Mode:** Choose between dark and light themes in the configuration.
+- **Flexible Backup Locations:** Backups can now be stored in `/share` `/backup` `/config` or `/media`. Folders are created automatically, and remote share backups are supported.
+- **REST API:** Comprehensive API for managing backups, restores, and configurations.
 
 ## Screenshots
 
@@ -49,9 +49,25 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 
 ### 2. Standalone Docker Installation
 
-Build and run the container locally when you aren’t using the Home Assistant add-on.
+Run the container using a pre-built image or build it locally when you aren't using the Home Assistant add-on.
 
-**Clone, build, and start (recommended):**
+**Pull and run pre-built image:**
+
+```bash
+docker run -d \
+  -p 54000:54000 \
+  -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
+  -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -v /path/to/your/ha/config:/config \
+  -v /path/to/your/backups:/media \
+  -v ha-time-machine-data:/data \
+  --name ha-time-machine \
+  ghcr.io/GITHUB_USERNAME/REPO_NAME:latest
+```
+
+Replace `GITHUB_USERNAME/REPO_NAME` with the repository owner and name. For example, if using the official repository, use `ghcr.io/saihgupr/homeassistanttimemachine:latest`.
+
+**Clone, build, and start:**
 
 ```bash
 git clone https://github.com/saihgupr/HomeAssistantTimeMachine.git
@@ -183,6 +199,7 @@ cp /homeassistant/packages/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"/packag
 - **GET /api/health**: Simple status endpoint exposing version, ingress state, and timestamp.
 
 Example usage:
+
 ```bash
 # Trigger backup
 curl -X POST http://localhost:54000/api/backup-now \
