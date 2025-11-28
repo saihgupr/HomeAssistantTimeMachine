@@ -4,6 +4,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
+*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
 *   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
 *   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
 *   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
@@ -32,7 +33,6 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Safety first:** It automatically creates a backup of your YAML files in your backups folder before restoring anything.
 *   **Reload Home Assistant:** Reload automations or scripts in Home Assistant directly from the UI after a restore.
 *   **Scheduled Backups:** Configure automatic backups of your Home Assistant configuration directly from the UI.
-*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
 
 ## Installation
 
@@ -84,14 +84,13 @@ curl -X POST http://localhost:54000/api/app-settings \
   -d '{
         "liveConfigPath": "/config",
         "backupFolderPath": "/media/timemachine",
-        "textStyle": "default",
         "theme": "dark",
         "esphomeEnabled": true,
         "packagesEnabled": true
       }'
 ```
 
-Adjust the payload if you need different paths, theme, text style, or want to enable/disable features (`"esphomeEnabled": true|false`, `"packagesEnabled": true|false`, `"theme": light|dark`, `"textStyle": default|pirate|hacker|noir_detective|personal_trainer|scooby_doo`, `"language": en|es|de|fr|nl|it`).
+Adjust the payload if you need different paths, theme, or want to enable/disable features (`"esphomeEnabled": true|false`, `"packagesEnabled": true|false`, `"theme": light|dark`, `"language": en|es|de|fr|nl|it`).
 
 #### Accessing the Web Interface
 
