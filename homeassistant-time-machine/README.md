@@ -1,4 +1,4 @@
-# Home Assistant Time Machine Beta
+# Home Assistant Time Machine Beta.
 
 Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" for your Home Assistant configuration. Browse YAML backups across automations, scripts, Lovelace dashboards, ESPHome files, and packages, then restore individual items back to your live setup with confidence.
 
