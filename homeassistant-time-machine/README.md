@@ -71,13 +71,13 @@ docker run -d \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
   --name ha-time-machine \
-  ghcr.io/saihgupr/homeassistanttimemachine:latest
+  ghcr.io/saihgupr/homeassistanttimemachinebeta:latest
 ```
 
 **Option B: Build locally:**
 
 ```bash
-git clone https://github.com/saihgupr/HomeAssistantTimeMachine.git
+git clone https://github.com/saihgupr/HomeAssistantTimeMachineBeta.git
 cd HomeAssistantTimeMachine/homeassistant-time-machine
 docker build -t ha-time-machine .
 
@@ -222,7 +222,7 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 ## Support, Feedback & Contributing
 
-- File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
+- File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachineBeta/issues).
 - Share feedback on usability so we can keep refining backup workflows.
 
 **If you find this add-on helpful, please ⭐ star the repository!**
