@@ -5,6 +5,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 ## What's New!
 
 *   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
+*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `docker-compose.yml` is included for easy one-command deployment.
 *   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
 *   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
 *   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
