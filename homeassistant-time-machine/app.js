@@ -307,8 +307,8 @@ async function getAddonOptions() {
         long_lived_access_token: process.env.LONG_LIVED_ACCESS_TOKEN,
         supervisor_token: supervisorToken,
         credentials_source: 'env',
-        theme: process.env.THEME || 'dark',
-        language: 'en',
+        theme: process.env.THEME || dockerSettings.theme || 'dark',
+        language: dockerSettings.language || 'en',
         esphome: dockerSettings.esphomeEnabled ?? false,
         packages: dockerSettings.packagesEnabled ?? false,
       };
@@ -325,8 +325,8 @@ async function getAddonOptions() {
         long_lived_access_token: parsed.long_lived_access_token || null,
         supervisor_token: supervisorToken,
         credentials_source: hasSavedCreds ? 'stored' : 'none',
-        theme: process.env.THEME || parsed.theme || 'dark',
-        language: 'en',
+        theme: process.env.THEME || dockerSettings.theme || parsed.theme || 'dark',
+        language: dockerSettings.language || parsed.language || 'en',
         esphome: dockerSettings.esphomeEnabled ?? false,
         packages: dockerSettings.packagesEnabled ?? false,
       };
@@ -338,8 +338,8 @@ async function getAddonOptions() {
         long_lived_access_token: null,
         supervisor_token: supervisorToken,
         credentials_source: 'none',
-        theme: process.env.THEME || 'dark',
-        language: 'en',
+        theme: process.env.THEME || dockerSettings.theme || 'dark',
+        language: dockerSettings.language || 'en',
         esphome: dockerSettings.esphomeEnabled ?? false,
         packages: dockerSettings.packagesEnabled ?? false,
       };
@@ -498,6 +498,7 @@ app.get('/api/app-settings', async (req, res) => {
       backupFolderPath: dockerSettings.backupFolderPath || '/media/timemachine',
       liveConfigPath: dockerSettings.liveConfigPath || '/config',
       theme: effectiveTheme,
+      language: dockerSettings.language || 'en',
       esphomeEnabled: finalEsphomeEnabled,
       packagesEnabled: dockerSettings.packagesEnabled ?? false,
     };
@@ -513,13 +514,14 @@ app.get('/api/app-settings', async (req, res) => {
 // Save Docker app settings
 app.post('/api/app-settings', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled } = req.body;
+    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language } = req.body;
 
     const existingSettings = await loadDockerSettings();
     const settings = {
       liveConfigPath: liveConfigPath || existingSettings.liveConfigPath || '/config',
       backupFolderPath: backupFolderPath || existingSettings.backupFolderPath || '/media/backups/yaml',
       theme: theme || existingSettings.theme || 'dark',
+      language: language || existingSettings.language || 'en',
       esphomeEnabled: typeof esphomeEnabled === 'boolean' ? esphomeEnabled : existingSettings.esphomeEnabled ?? false,
       packagesEnabled: typeof packagesEnabled === 'boolean' ? packagesEnabled : existingSettings.packagesEnabled ?? false,
     };
@@ -567,6 +569,7 @@ async function loadDockerSettings() {
     liveConfigPath: '/config',
     backupFolderPath: '/media/timemachine',
     theme: process.env.THEME || 'dark',
+    language: 'en',
     esphomeEnabled: false,
     packagesEnabled: false,
     ...cachedSettings
@@ -616,6 +619,7 @@ async function saveDockerSettings(settings) {
     liveConfigPath: settings.liveConfigPath || '/config',
     backupFolderPath: settings.backupFolderPath || '/media/timemachine',
     theme: settings.theme || 'dark',
+    language: settings.language || 'en',
     esphomeEnabled: settings.esphomeEnabled ?? false,
     packagesEnabled: settings.packagesEnabled ?? false
   };
