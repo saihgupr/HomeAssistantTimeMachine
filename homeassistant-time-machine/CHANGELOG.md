@@ -8,7 +8,6 @@
 
 ## Improvements
 - Restore Logic: Restoring automations and scripts now preserves their original position instead of moving them to the bottom.
-- Performance: Significant optimizations for faster load times and smoother operation.
 
 # v2.0.2
 
