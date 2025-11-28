@@ -223,5 +223,6 @@ curl -X POST http://localhost:54000/api/scan-backups \
 ## Support, Feedback & Contributing
 
 - File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
-- Pull requests are welcome—check existing issues or propose enhancements.
 - Share feedback on usability so we can keep refining backup workflows.
+
+**If you find this add-on helpful, please ⭐ star the repository!**

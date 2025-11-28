@@ -1,4 +1,4 @@
-# Home Assistant Time Machine Beta.
+# Home Assistant Time Machine Beta
 
 Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" for your Home Assistant configuration. Browse YAML backups across automations, scripts, Lovelace dashboards, ESPHome files, and packages, then restore individual items back to your live setup with confidence.
 
@@ -40,19 +40,41 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 
 ### 1. Home Assistant add-on (Recommended for most users)
 
-1.  Navigate to the Add-on Store in your Home Assistant instance.
-2.  Click on the three dots in the top right corner and select "Repositories".
-3.  Paste the URL of this repository and click "Add":
-    ```
-    https://github.com/saihgupr/HomeAssistantTimeMachine
-    ```
-4.  The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
+1.  **Add Repository:**
+    Click the button below to add the repository to your Home Assistant instance:
+
+    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/HomeAssistantTimeMachineBeta)
+
+    **Or manually add it:**
+    - Navigate to **Settings** → **Add-ons** → **Add-on Store**
+    - Click the three dots (⋮) in the top right corner and select **Repositories**
+    - Add the repository URL:
+      ```
+      https://github.com/saihgupr/HomeAssistantTimeMachineBeta
+      ```
+
+2.  **Install the Add-on:**
+    The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
 
 ### 2. Standalone Docker Installation
 
-Build and run the container locally when you aren’t using the Home Assistant add-on.
+For Docker users who aren't using the Home Assistant add-on, you can either use the pre-built image or build locally.
 
-**Clone, build, and start (recommended):**
+**Option A: Use pre-built image (recommended):**
+
+```bash
+docker run -d \
+  -p 54000:54000 \
+  -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
+  -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -v /path/to/your/ha/config:/config \
+  -v /path/to/your/backups:/media \
+  -v ha-time-machine-data:/data \
+  --name ha-time-machine \
+  ghcr.io/saihgupr/homeassistanttimemachine:latest
+```
+
+**Option B: Build locally:**
 
 ```bash
 git clone https://github.com/saihgupr/HomeAssistantTimeMachine.git
@@ -201,5 +223,6 @@ curl -X POST http://localhost:54000/api/scan-backups \
 ## Support, Feedback & Contributing
 
 - File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
-- Pull requests are welcome—check existing issues or propose enhancements.
 - Share feedback on usability so we can keep refining backup workflows.
+
+**If you find this add-on helpful, please ⭐ star the repository!**
