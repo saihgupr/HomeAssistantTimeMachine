@@ -43,6 +43,8 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
