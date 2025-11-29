@@ -5,13 +5,12 @@ services:
     ports:
       - "54000:54000"
     environment:
-      - HOME_ASSISTANT_URL=http://your-ha-instance:8123
+      - HOME_ASSISTANT_URL=http://ha-ip-address:8123
       - LONG_LIVED_ACCESS_TOKEN=your-long-lived-access-token
     volumes:
-      - /path/to/your/ha/config:/config
-      - /path/to/your/backups:/media
+      - /mnt/homeassistant/config:/config
+      - /mnt/homeassistant/timemachine:/media/timemachine
       - ha-time-machine-data:/data
     restart: unless-stopped
-
 volumes:
   ha-time-machine-data:
