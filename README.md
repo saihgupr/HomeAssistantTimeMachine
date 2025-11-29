@@ -122,11 +122,10 @@ After the container is running, you can toggle ESPHome support, adjust text styl
 curl -X POST http://localhost:54000/api/app-settings \
   -H 'Content-Type: application/json' \
   -d '{
-        "liveConfigPath": "/config",
-        "backupFolderPath": "/media/timemachine",
-        "theme": "dark",
+        "theme": "light",
         "esphomeEnabled": true,
-        "packagesEnabled": true
+        "packagesEnabled": true,
+        "language": "de"
       }'
 ```
 
