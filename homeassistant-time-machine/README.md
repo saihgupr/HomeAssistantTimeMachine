@@ -5,7 +5,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 ## What's New!
 
 *   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
-*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `docker-compose.yml` is included for easy one-command deployment.
+*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
 *   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
 *   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
 *   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
@@ -63,14 +63,14 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 **Option A: Docker Compose (recommended):**
 
-1. Download the docker-compose.yml file:
+1. Download the compose.yaml file:
    ```bash
-   curl -o docker-compose.yml https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/docker-compose.yml
+   curl -o compose.yaml https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
    ```bash
-   nano docker-compose.yml
+   nano compose.yaml
    ```
 
 3. Start the service:
