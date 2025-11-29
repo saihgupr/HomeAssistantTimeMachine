@@ -44,14 +44,14 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 1.  **Add Repository:**
     Click the button below to add the repository to your Home Assistant instance:
 
-    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/HomeAssistantTimeMachineBeta)
+    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/ha-addons)
 
     **Or manually add it:**
     - Navigate to **Settings** → **Add-ons** → **Add-on Store**
     - Click the three dots (⋮) in the top right corner and select **Repositories**
     - Add the repository URL:
       ```
-      https://github.com/saihgupr/HomeAssistantTimeMachineBeta
+      https://github.com/saihgupr/ha-addons
       ```
 
 2.  **Install the Add-on:**
@@ -166,46 +166,6 @@ After starting the container, access the web interface at `http://localhost:5400
 ## Backup to Remote Share
 
 To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
-
-## Creating Backups
-
-This add-on relies on having file-based backups of your Home Assistant configuration. You can now set up a scheduled backup directly within the UI. If you prefer to manage backups externally, here is an example of a simple shell script that you can use to create timestamped backups of your YAML files:
-
-> **Important:** The paths in this script (for example, `/homeassistant`) are placeholders. Adjust them to match your actual Home Assistant configuration directory (such as `/config` on HAOS).
-
-```bash
-#!/bin/bash
-
-DATE=$(date +%Y-%m-%d-%H%M%S)
-
-YEAR=$(date +%Y)
-
-MONTH=$(date +%m)
-
-### HOME ASSISTANT ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"
-cp /homeassistant/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"
-
-### Lovelace ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace_dashboards /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace_resources /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace.* /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-
-### ESPHOME ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"/esphome
-cp /homeassistant/esphome/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"/esphome
-
-### PACKAGES ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"/packages
-cp /homeassistant/packages/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"/packages
-```
-
-**Important:**
-*   Run this script at a regular interval (e.g., every 24 hours) to keep backups current. You can use a `cron` job on your host machine or a Home Assistant automation with a `shell_command` integration to automate it.
-
-
 
 ## API Endpoints
 
