@@ -5,7 +5,7 @@
 ## New Features
 - Multi-language Support: Added full support for Spanish, German, French, Dutch, and Italian.
 - Docker Images: Automated Docker image builds are now available on GitHub Container Registry (GHCR).
-- Docker Compose: Added docker-compose.yml file for simplified Docker deployment with a single command.
+- Docker Compose: Added compose.yml file for simplified Docker deployment with a single command.
 
 ## Improvements
 - Restore Logic: Restoring automations and scripts now preserves their original position instead of moving them to the bottom.
