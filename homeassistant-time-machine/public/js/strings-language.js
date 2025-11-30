@@ -543,7 +543,7 @@ window.STRINGS = {
         it: "{path} non è una cartella. Scegli invece una directory."
       },
       missingAutomations: {
-        en: "We couldn't find automations.yaml in {path}. Point to your Home Assistant config folder.",
+        en: "We couldn't find automations.yaml in {path}. Please ensure you have mounted your Home Assistant configuration directory to this path.",
         es: "No pudimos encontrar automations.yaml en {path}. Apunta a tu carpeta de configuración de Home Assistant.",
         de: "Wir konnten automations.yaml in {path} nicht finden. Zeige auf deinen Home Assistant-Konfigurationsordner.",
         fr: "Impossible de trouver automations.yaml dans {path}. Pointez vers votre dossier de configuration Home Assistant.",
