@@ -61,7 +61,7 @@ jobs:
         id: build-and-push
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./homeassistant-time-machine
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
