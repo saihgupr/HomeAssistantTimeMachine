@@ -314,9 +314,9 @@ window.STRINGS = {
       },
       scripts: {
         en: "Scripts",
-        es: "Scripts",
+        es: "Guiones",
         de: "Skripte",
-        fr: "Scripts",
+        fr: "Scénarios",
         nl: "Scripts",
         it: "Script"
       },
@@ -473,6 +473,30 @@ window.STRINGS = {
         fr: "Heure",
         nl: "Tijd",
         it: "Ora"
+      },
+      daily: {
+        en: "Daily",
+        es: "Diario",
+        de: "Täglich",
+        fr: "Quotidien",
+        nl: "Dagelijks",
+        it: "Giornaliero"
+      },
+      hourly: {
+        en: "Hourly",
+        es: "Por hora",
+        de: "Stündlich",
+        fr: "Horaire",
+        nl: "Per uur",
+        it: "Orario"
+      },
+      weekly: {
+        en: "Weekly",
+        es: "Semanal",
+        de: "Wöchentlich",
+        fr: "Hebdomadaire",
+        nl: "Wekelijks",
+        it: "Settimanale"
       }
     },
     connectionTest: {
@@ -519,7 +543,7 @@ window.STRINGS = {
         it: "{path} non è una cartella. Scegli invece una directory."
       },
       missingAutomations: {
-        en: "We couldn't find automations.yaml in {path}. Point to your Home Assistant config folder.",
+        en: "We couldn't find automations.yaml in {path}. Please ensure you have mounted your Home Assistant configuration directory to this path.",
         es: "No pudimos encontrar automations.yaml en {path}. Apunta a tu carpeta de configuración de Home Assistant.",
         de: "Wir konnten automations.yaml in {path} nicht finden. Zeige auf deinen Home Assistant-Konfigurationsordner.",
         fr: "Impossible de trouver automations.yaml dans {path}. Pointez vers votre dossier de configuration Home Assistant.",
@@ -625,6 +649,46 @@ window.STRINGS = {
         fr: "Version actuelle",
         nl: "Huidige versie",
         it: "Versione corrente"
+      },
+      liveVersion: {
+        en: "Live Version",
+        es: "Versión en vivo",
+        de: "Live-Version",
+        fr: "Version live",
+        nl: "Live versie",
+        it: "Versione live"
+      },
+      backupVersion: {
+        en: "Backup Version",
+        es: "Versión de respaldo",
+        de: "Sicherungsversion",
+        fr: "Version de sauvegarde",
+        nl: "Back-upversie",
+        it: "Versione di backup"
+      },
+      expandContext: {
+        en: "Expand context...",
+        es: "Ampliar contexto...",
+        de: "Kontext erweitern...",
+        fr: "Étendre le contexte...",
+        nl: "Context uitvouwen...",
+        it: "Espandi contesto..."
+      },
+      linesPrefix: {
+        en: "Lines",
+        es: "Líneas",
+        de: "Zeilen",
+        fr: "Lignes",
+        nl: "Regels",
+        it: "Linee"
+      },
+      linesArrow: {
+        en: "→",
+        es: "→",
+        de: "→",
+        fr: "→",
+        nl: "→",
+        it: "→"
       }
     },
     lovelace: {

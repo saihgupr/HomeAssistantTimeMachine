@@ -18,9 +18,9 @@
     root.classList.add('theme-preload');
     window.__initialTheme = savedTheme;
   </script>
-  <script defer src="<%= url('/static/js/strings.js?v=2.9.270') %>"></script>
+  <script defer src="<%= url('/static/js/strings-language.js?v=2.9.270') %>"></script>
 </head>
-<body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>" data-packages-enabled="<%= packagesEnabled ? 'true' : 'false' %>">
+<body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>" data-packages-enabled="<%= packagesEnabled ? 'true' : 'false' %>" data-language="<%= language || 'en' %>">
   <script>
     (function applyInitialTheme(theme) {
       const normalized = theme === 'light' ? 'light' : 'dark';
@@ -108,9 +108,9 @@
             <div class="form-group">
               <label for="scheduleFrequency" id="frequencyLabel">Frequency</label>
               <select id="scheduleFrequency">
-                <option value="daily" selected>Daily</option>
-                <option value="hourly">Hourly</option>
-                <option value="weekly">Weekly</option>
+                <option value="daily" selected id="daily-option"></option>
+                <option value="hourly" id="hourly-option"></option>
+                <option value="weekly" id="weekly-option"></option>
               </select>
               <p id="scheduleFrequencyError" class="settings-error-text"></p>
               <style>
@@ -241,10 +241,10 @@
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;">
             <div class="file-icon-container">
               <svg class="file-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0112.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
-            <p class="empty-state-message">Select a backup to view <%= currentMode === 'lovelace' ? 'Lovelace files' : currentMode === 'esphome' ? 'ESPHome files' : currentMode === 'packages' ? 'Packages files' : currentMode %></p>
+            <p class="empty-state-message" id="emptyStateMessage"></p>
           </div>
         </div>
       </div>
@@ -269,7 +269,6 @@
     let itemStatuses = {};
     let selectedItem = null;
     let haConfig = null;
-    let currentTextStyle = 'default';
     let currentTheme = document.body.dataset.theme || document.documentElement.dataset.theme || 'dark';
     let esphomeFeatureEnabled = document.body.dataset.esphomeEnabled === 'true';
     let packagesFeatureEnabled = document.body.dataset.packagesEnabled === 'true';
@@ -283,32 +282,6 @@
       document.documentElement.style.colorScheme = currentTheme;
     }
 
-    const TEXT_STYLE_TONES = {
-      default: {
-        prefix: { success: '', info: '', error: '' },
-        suffix: { success: '', info: '', error: '' },
-      },
-      pirate: {
-        prefix: { success: 'Ahoy! ', info: 'Listen up, matey: ', error: 'Blimey! ' },
-        suffix: { success: '', info: '', error: '' },
-      },
-      hacker: {
-        prefix: { success: 'Access confirmed: ', info: 'Signal: ', error: 'Alert: ' },
-        suffix: { success: '', info: '', error: '' },
-      },
-      noir_detective: {
-        prefix: { success: 'Case file: ', info: 'Here’s the brief: ', error: 'Heads-up, kid: ' },
-        suffix: { success: '', info: '', error: '' },
-      },
-      personal_trainer: {
-        prefix: { success: 'CRUSHED IT! ', info: 'LISTEN UP! ', error: 'NO EXCUSES! ' },
-        suffix: { success: ' DOMINATION COMPLETE!', info: ' GET AFTER IT!', error: ' FIX IT NOW!' },
-      },
-      scooby_doo: {
-        prefix: { success: 'Zoinks! ', info: 'Jinkies! ', error: 'Ruh-roh! ' },
-        suffix: { success: ' Scoob!', info: ', gang!', error: '!' },
-      },
-    };
 
     const SETTINGS_MESSAGE_LOOKUP = {
       directory_not_found: 'ui.settingsMessages.directoryNotFound',
@@ -392,6 +365,11 @@
       document.getElementById('maxBackupsLabel').textContent = getStyledText('ui.labels.maxBackups');
       document.getElementById('maxBackupsCountLabel').textContent = getStyledText('ui.labels.backupsToKeep');
       
+      // Update frequency options
+      document.getElementById('daily-option').textContent = getStyledText('ui.settings.daily');
+      document.getElementById('hourly-option').textContent = getStyledText('ui.settings.hourly');
+      document.getElementById('weekly-option').textContent = getStyledText('ui.settings.weekly');
+
       // Update tab buttons
       document.getElementById('automationsTab').textContent = getStyledText('ui.buttons.automations');
       document.getElementById('scriptsTab').textContent = getStyledText('ui.buttons.scripts');
@@ -402,6 +380,7 @@
       
       // Update main panel titles
       document.getElementById('backupsTitle').textContent = getStyledText('ui.labels.backups');
+      document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${currentMode}`);
       
       // Update sort options
       const sortSelect = document.getElementById('sortSelect');
@@ -416,6 +395,7 @@
       document.getElementById('testConnection').textContent = getStyledText('ui.buttons.testConnection');
       document.getElementById('backupNow').textContent = getStyledText('ui.buttons.backupNow');
       document.getElementById('cancelSettings').textContent = getStyledText('ui.buttons.cancel');
+      document.getElementById('cancelDiff').textContent = getStyledText('ui.buttons.cancel');
       
       // Update save button (this is inside the form submit handler, so we need to find it differently)
       const saveBtn = document.querySelector('#settingsForm button[type="submit"]');
@@ -424,9 +404,18 @@
       // Update restore button text
       document.getElementById('restoreBtn').textContent = getStyledText('ui.buttons.restore');
       
+      // Update empty state message
+      const emptyStateMode = getStyledText(`ui.buttons.${currentMode}`) || currentMode;
+      const emptyStateEl = document.getElementById('emptyStateMessage');
+      if (emptyStateEl) {
+        emptyStateEl.textContent = getStyledText('ui.itemsList.selectBackup', { mode: emptyStateMode });
+      }
+
       // Update placeholders
       updatePlaceholders();
     }
+
+    let currentLanguage = 'en';
 
     function getStyledText(path, replacements = {}) {
       if (!window.STRINGS) {
@@ -441,26 +430,18 @@
       }
       
       if (!value) return '';
-      if (typeof value === 'string') {
-        return value;
-      }
 
-      const styledText = value[currentTextStyle] || value.default || '';
+      // Get the string for the current language, fallback to english
+      let translatedText = value[currentLanguage] || value['en'] || '';
 
       // Replace placeholders like {mode}, {error}, etc.
-      return styledText.replace(/{(\w+)}/g, (match, key) => {
+      return translatedText.replace(/{(\w+)}/g, (match, key) => {
         return replacements[key] || match;
       });
     }
 
     function applyTextStyle(message, tone = 'info') {
-      if (!message) return '';
-      const toneKey = tone === 'error' ? 'error' : tone === 'success' ? 'success' : 'info';
-      const styleKey = TEXT_STYLE_TONES[currentTextStyle] ? currentTextStyle : 'default';
-      const config = TEXT_STYLE_TONES[styleKey] || TEXT_STYLE_TONES.default;
-      const prefix = (config.prefix && (config.prefix[toneKey] ?? config.prefix.info ?? '')) || '';
-      const suffix = (config.suffix && (config.suffix[toneKey] ?? config.suffix.info ?? '')) || '';
-      return `${prefix}${message}${suffix}`;
+      return message || '';
     }
 
     function getEsphomeDisabledMessage() {
@@ -507,7 +488,7 @@
         if (response.ok) {
           haConfig = await response.json();
           await waitForStrings();
-          currentTextStyle = haConfig?.textStyle || 'default';
+          currentLanguage = document.body.dataset.language || 'en';
           applyTheme(haConfig?.theme);
           esphomeFeatureEnabled = !!haConfig?.esphomeEnabled;
           updateEsphomeVisibility();
@@ -629,19 +610,15 @@
         return folderName; // Invalid date, return original name
       }
 
-      const formattedDate = new Intl.DateTimeFormat('en-US', {
+      // Use a single Intl.DateTimeFormat call for full date and time formatting
+      return new Intl.DateTimeFormat(currentLanguage, {
         month: 'short',
         day: '2-digit',
         year: 'numeric',
-      }).format(date);
-      
-      const formattedTime = new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
+        hour12: true // This will handle AM/PM and 'at' for English, and appropriate for other locales
       }).format(date);
-      
-      return `${formattedDate} at ${formattedTime}`;
     }
 
     // Format backup name
@@ -718,7 +695,7 @@
       currentBackupMtime = mtime;
       
       // Update title and subtitle
-      document.getElementById('itemsTitle').textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
+      document.getElementById('itemsTitle').textContent = getStyledText('ui.titles.items', { mode: getStyledText(`ui.buttons.${currentMode}`) });
       document.getElementById('itemsSubtitle').textContent = formatFolderName(folderName, currentBackupMtime);
       
       // Reload backup list to update selection styling
@@ -878,8 +855,8 @@
       itemsList.innerHTML = items.map((item, idx) => {
         const key = item.id || item.alias || '';
         const status = itemStatuses[key] || '';
-        const statusBadge = status === 'changed' ? '<span class="badge badge-changed">Changed</span>' :
-                           status === 'deleted' ? '<span class="badge badge-deleted">Deleted</span>' : '';
+        const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` : 
+                           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         
         return `
           <div class="list-item" data-index="${idx}">
@@ -904,6 +881,39 @@
           showDiffViewer(items[idx]);
         });
       });
+    }
+
+    // Show diff for a specific entity
+    async function showDiff(entityId, entityType) {
+      try {
+        const liveContent = await getLiveContent(entityId, entityType);
+        const backup = findBackupByEntityId(entityId);
+        if (!backup) {
+          throw new Error('Backup not found for this entity.');
+        }
+
+        const backupContent = backup.content;
+        const backupDate = new Date(backup.timestamp);
+        const formattedDate = `${backupDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} at ${backupDate.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+        
+        const bannerText = `${getStyledText('ui.diffViewer.backupVersion') || 'Backup version'} ${formattedDate}`;
+
+        const diffHtml = generateDiff(liveContent, backupContent, {
+          bannerText: bannerText
+        });
+
+        document.getElementById('diffContent').innerHTML = diffHtml;
+        document.getElementById('diffModal').style.display = 'flex';
+        
+        // Set restore button attributes
+        const restoreBtn = document.getElementById('confirmRestore');
+        restoreBtn.dataset.entityId = entityId;
+        restoreBtn.dataset.entityType = entityType;
+
+      } catch (error) {
+        console.error('Error showing diff:', error);
+        showToast(`Error: ${error.message}`, 'error');
+      }
     }
 
     // Show diff viewer
@@ -948,8 +958,8 @@
         document.getElementById('diffSubtitle').textContent = getStyledText('ui.diffViewer.compareVersions');
         const backupTimestamp = currentBackupName ? formatFolderName(currentBackupName, currentBackupMtime) : '';
         const diffHtml = generateDiff(liveYaml, backupYaml, {
-          leftLabel: 'Live version',
-          rightLabel: 'Backup version',
+          leftLabel: getStyledText('ui.diffViewer.liveVersion'),
+          rightLabel: getStyledText('ui.diffViewer.backupVersion'),
           rightMeta: backupTimestamp,
           bannerText: formatFolderName(currentBackupName, currentBackupMtime)
         });
@@ -963,13 +973,17 @@
 
     // Restore item
     async function restoreItem() {
-      if (!selectedItem) return;
-      
-      try {
-        const endpoint = currentMode === 'automations' ? '/api/restore-automation' : '/api/restore-script';
-        const body = currentMode === 'automations' 
-          ? { automationObject: selectedItem, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, liveConfigPath: haConfig.liveConfigPath }
-          : { scriptObject: selectedItem, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, liveConfigPath: haConfig.liveConfigPath };
+  if (!selectedItem) return;
+  
+  try {
+    const endpoint = currentMode === 'automations' ? '/api/restore-automation' : '/api/restore-script';
+    const identifier = selectedItem.id || selectedItem.alias;
+    const body = { 
+      backupPath: currentBackupPath, 
+      automationIdentifier: identifier, 
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, 
+      liveConfigPath: haConfig.liveConfigPath 
+    };
         
         const response = await fetch(url(endpoint), {
           method: 'POST',
@@ -1095,8 +1109,8 @@
       }
       itemsList.innerHTML = files.map((file, idx) => {
         const status = lovelaceFileStatuses[file.name] || '';
-        const statusBadge = status === 'changed' ? '<span class="badge badge-changed">Changed</span>' :
-                           status === 'deleted' ? '<span class="badge badge-deleted">Deleted</span>' : '';
+        const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` : 
+                           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
           <div class="list-item" data-index="${idx}">
             <div class="item-content">
@@ -1135,6 +1149,116 @@
                 lovelaceLiveContent = await liveResp.text();
               }
             }
+
+    // Generate split diff with paired columns
+    function generateDiff(oldText, newText, options = {}) {
+      const { leftLabel = getStyledText('ui.diffViewer.liveVersion') || 'Live version', rightLabel = getStyledText('ui.diffViewer.backupVersion') || 'Backup version', rightMeta = '', bannerText = '' } = options;
+
+      const diff = Diff.diffLines(oldText, newText);
+      const MAX_CONTEXT_LINES = 12;
+
+      const diffLines = [];
+      let oldLineNum = 1;
+      let newLineNum = 1;
+
+      diff.forEach(part => {
+        let lines = part.value.split('\n');
+        if (lines.length && lines[lines.length - 1] === '') {
+          lines.pop();
+        }
+
+        if (part.added) {
+          lines.forEach(line => {
+            diffLines.push({ type: 'added', text: line, oldLine: null, newLine: newLineNum });
+            newLineNum++;
+          });
+        } else if (part.removed) {
+          lines.forEach(line => {
+            diffLines.push({ type: 'removed', text: line, oldLine: oldLineNum, newLine: null });
+            oldLineNum++;
+          });
+        } else {
+          lines.forEach(line => {
+            diffLines.push({ type: 'context', text: line, oldLine: oldLineNum, newLine: newLineNum });
+            oldLineNum++;
+            newLineNum++;
+          });
+        }
+      });
+
+      const hunks = [];
+      let index = 0;
+
+      while (index < diffLines.length) {
+        while (index < diffLines.length && diffLines[index].type === 'context') {
+          index++;
+        }
+
+        if (index >= diffLines.length) break;
+
+        let hunkStart = Math.max(0, index - MAX_CONTEXT_LINES);
+        let hunkEnd = index;
+        let postContextCount = 0;
+
+        while (hunkEnd < diffLines.length) {
+          const line = diffLines[hunkEnd];
+          if (line.type === 'context') {
+            postContextCount++;
+            if (postContextCount > MAX_CONTEXT_LINES) {
+              break;
+            }
+          } else {
+            postContextCount = 0;
+          }
+          hunkEnd++;
+        }
+
+        const hunkLines = diffLines.slice(hunkStart, hunkEnd);
+        const firstChangeIndex = hunkLines.findIndex(line => line.type !== 'context');
+
+        const contextBefore = firstChangeIndex > 0 ? hunkLines.slice(0, firstChangeIndex) : [];
+        const lines = firstChangeIndex >= 0 ? hunkLines.slice(firstChangeIndex) : hunkLines.slice();
+
+        const oldLines = hunkLines.filter(line => line.oldLine !== null);
+        const newLines = hunkLines.filter(line => line.newLine !== null);
+
+        hunks.push({
+          oldStart: oldLines.length ? oldLines[0].oldLine : 1,
+          newStart: newLines.length ? newLines[0].newLine : 1,
+          oldCount: oldLines.length,
+          newCount: newLines.length,
+          contextBefore,
+          lines
+        });
+
+        index = hunkEnd;
+      }
+
+      if (!hunks.length) {
+        return `
+          <div class="diff-empty-state">
+            <div class="diff-empty-card">
+              <h3>No visible differences</h3>
+              <p>Everything matches between backup and live.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="diff-banners-grid diff-banners-grid--standalone">
+          <div class="diff-state-banner diff-state-banner-current diff-state-banner--header"><span class="diff-state-label">${getStyledText('ui.diffViewer.currentVersion')}</span></div>
+          ${bannerText ? `<div class="diff-state-banner diff-state-banner-changed diff-state-banner--header"><span class="diff-state-label">${escapeHtml(bannerText)}</span></div>` : '<div class="diff-state-banner diff-state-banner-empty diff-state-banner--header"></div>'}
+        </div>
+        <div class="diff-viewer-shell">
+          <div class="diff-viewer-split">
+            <div class="diff-hunks">
+              ${hunks.map((hunk, index) => renderSplitHunk(hunk, index)).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
             showLovelaceDiffModal();
           } catch (error) {
             showNotification('Error loading file: ' + error.message, 'error');
@@ -1183,8 +1307,8 @@
         document.getElementById('diffSubtitle').textContent = getStyledText('ui.diffViewer.compareVersions');
         const backupTimestamp = currentBackupName ? formatFolderName(currentBackupName, currentBackupMtime) : '';
         const diffHtml = generateDiff(lovelaceLiveContent, lovelaceBackupContent, {
-          leftLabel: 'Live version',
-          rightLabel: 'Backup version',
+          leftLabel: getStyledText('ui.diffViewer.liveVersion'),
+          rightLabel: getStyledText('ui.diffViewer.backupVersion'),
           rightMeta: backupTimestamp,
           bannerText: formatFolderName(currentBackupName, currentBackupMtime)
         });
@@ -1315,8 +1439,8 @@
       }
       itemsList.innerHTML = files.map((file, idx) => {
         const status = esphomeFileStatuses[file.name] || '';
-        const statusBadge = status === 'changed' ? '<span class="badge badge-changed">Changed</span>' :
-                           status === 'deleted' ? '<span class="badge badge-deleted">Deleted</span>' : '';
+        const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` : 
+                           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
           <div class="list-item" data-index="${idx}">
             <div class="item-content">
@@ -1406,8 +1530,8 @@
         document.getElementById('diffSubtitle').textContent = 'Compare backup with current live version.';
         const backupTimestamp = currentBackupName ? formatFolderName(currentBackupName, currentBackupMtime) : '';
         const diffHtml = generateDiff(esphomeLiveContent, esphomeBackupContent, {
-          leftLabel: 'Live version',
-          rightLabel: 'Backup version',
+          leftLabel: getStyledText('ui.diffViewer.liveVersion'),
+          rightLabel: getStyledText('ui.diffViewer.backupVersion'),
           rightMeta: backupTimestamp,
           bannerText: formatFolderName(currentBackupName, currentBackupMtime)
         });
@@ -1509,8 +1633,8 @@
       }
       itemsList.innerHTML = files.map((file, idx) => {
         const status = packagesFileStatuses[file.name] || '';
-        const statusBadge = status === 'changed' ? '<span class="badge badge-changed">Changed</span>' :
-                           status === 'deleted' ? '<span class="badge badge-deleted">Deleted</span>' : '';
+        const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` : 
+                           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
           <div class="list-item" data-index="${idx}">
             <div class="item-content">
@@ -1600,8 +1724,8 @@
         document.getElementById('diffSubtitle').textContent = 'Compare backup with current live version.';
         const backupTimestamp = currentBackupName ? formatFolderName(currentBackupName, currentBackupMtime) : '';
         const diffHtml = generateDiff(packagesLiveContent, packagesBackupContent, {
-          leftLabel: 'Live version',
-          rightLabel: 'Backup version',
+          leftLabel: getStyledText('ui.diffViewer.liveVersion'),
+          rightLabel: getStyledText('ui.diffViewer.backupVersion'),
           rightMeta: backupTimestamp,
           bannerText: formatFolderName(currentBackupName, currentBackupMtime)
         });
@@ -1697,7 +1821,7 @@
         updatePlaceholders();
         
         // Update title
-        document.getElementById('itemsTitle').textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
+        document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${newMode}`);
         
         if (currentBackupPath && (currentMode === 'automations' || currentMode === 'scripts')) {
           loadBackupItems();
@@ -1709,12 +1833,8 @@
           loadPackagesFiles();
         } else {
           // Show empty state based on mode
-          const modeLabel = currentMode === 'lovelace'
-            ? 'lovelace files'
-            : currentMode === 'esphome'
-              ? 'ESPHome files'
-              : currentMode;
-          const emptyMessage = 'Select a backup to view ' + modeLabel;
+          const modeLabel = getStyledText(`ui.buttons.${currentMode}`) || currentMode;
+          const emptyMessage = getStyledText('ui.itemsList.selectBackup', { mode: modeLabel });
           document.getElementById('itemsList').innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;"><div style="width: 64px; height: 64px; background-color: rgba(255, 255, 255, 0.05); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg style="width: 32px; height: 32px; color: #6b7280;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0112.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg></div><p style="color: #9ca3af;">${emptyMessage}</p></div>`;
         }
       });
@@ -1820,7 +1940,6 @@
 
         haUrlField.value = allowManual ? (haConfig.haUrl || '') : '';
         haTokenField.value = '';
-        currentTextStyle = haConfig?.textStyle || 'default';
 
         document.getElementById('liveConfigPath').value = haConfig.liveConfigPath || '/config';
         document.getElementById('backupFolderPath').value = haConfig.backupFolderPath || '/media/backups/yaml';
@@ -1869,7 +1988,6 @@
       
       const liveConfigPath = document.getElementById('liveConfigPath').value;
       const backupFolderPath = document.getElementById('backupFolderPath').value;
-      const textStyle = currentTextStyle || 'default';
       
       const isDocker = haConfig && haConfig.mode === 'docker';
       const isAddon = haConfig && haConfig.mode === 'addon';
@@ -1907,7 +2025,6 @@
             body: JSON.stringify({
               liveConfigPath,
               backupFolderPath,
-              textStyle,
               theme: currentTheme,
               esphomeEnabled: esphomeFeatureEnabled,
               packagesEnabled: packagesFeatureEnabled
@@ -1927,9 +2044,7 @@
       if (haConfig) {
         haConfig.liveConfigPath = liveConfigPath;
         haConfig.backupFolderPath = backupFolderPath;
-        haConfig.textStyle = textStyle;
         haConfig.esphomeEnabled = esphomeFeatureEnabled;
-        currentTextStyle = textStyle;
         updateEsphomeVisibility();
 
         // Update currentBackupPath if we're in a backup folder view
@@ -2175,23 +2290,13 @@
     (async () => {
       updateEsphomeVisibility();
       await loadAppSettings();
-      await waitForStrings();
-      document.getElementById('itemsTitle').textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
       updatePlaceholders();
       loadBackups();
     })();
 
     // Generate split diff with paired columns
     function generateDiff(oldText, newText, options = {}) {
-      if (!window.Diff) {
-        return '<div class="diff-loading">Loading diff library...</div>';
-      }
-
-      const leftLabel = options.leftLabel || 'Live version';
-      const rightLabel = options.rightLabel || 'Backup Version';
-      const leftMeta = options.leftMeta || '';
-      const rightMeta = options.rightMeta || '';
-      const bannerText = options.bannerText || '';
+      const { leftLabel = getStyledText('ui.diffViewer.liveVersion') || 'Live version', rightLabel = getStyledText('ui.diffViewer.backupVersion') || 'Backup version', rightMeta = '', bannerText = '' } = options;
 
       const diff = Diff.diffLines(oldText, newText);
       const MAX_CONTEXT_LINES = 12;
@@ -2286,7 +2391,7 @@
 
       return `
         <div class="diff-banners-grid diff-banners-grid--standalone">
-          <div class="diff-state-banner diff-state-banner-current diff-state-banner--header"><span class="diff-state-label">Current Version</span></div>
+          <div class="diff-state-banner diff-state-banner-current diff-state-banner--header"><span class="diff-state-label">${getStyledText('ui.diffViewer.currentVersion')}</span></div>
           ${bannerText ? `<div class="diff-state-banner diff-state-banner-changed diff-state-banner--header"><span class="diff-state-label">${escapeHtml(bannerText)}</span></div>` : '<div class="diff-state-banner diff-state-banner-empty diff-state-banner--header"></div>'}
         </div>
         <div class="diff-viewer-shell">
@@ -2304,12 +2409,12 @@
       const newCount = hunk.newCount || 1;
       const oldEnd = oldCount ? hunk.oldStart + oldCount - 1 : hunk.oldStart;
       const newEnd = newCount ? hunk.newStart + newCount - 1 : hunk.newStart;
-      const summary = `Lines ${hunk.oldStart}${oldEnd !== hunk.oldStart ? `-${oldEnd}` : ''} → ${hunk.newStart}${newEnd !== hunk.newStart ? `-${newEnd}` : ''}`;
+      const summary = `${getStyledText('ui.diffViewer.linesPrefix')} ${hunk.oldStart}${oldEnd !== hunk.oldStart ? `-${oldEnd}` : ''} ${getStyledText('ui.diffViewer.linesArrow')} ${hunk.newStart}${newEnd !== hunk.newStart ? `-${newEnd}` : ''}`;
       const completeLines = [...(hunk.contextBefore || []), ...hunk.lines];
       const rowsHtml = renderSplitRows(completeLines);
       const contextLineCount = completeLines.filter(line => line.type === 'context').length;
       const hunkId = `diff-hunk-${index}`;
-      const showLabel = 'Expand context ...';
+      const showLabel = getStyledText('ui.diffViewer.expandContext');
       const hideLabel = 'Collapse context';
       const buttonHtml = contextLineCount
         ? `<button class="diff-context-toggle" type="button" data-show-label="${showLabel}" data-hide-label="${hideLabel}" aria-expanded="false" onclick="toggleHunkContext('${hunkId}', this)">${showLabel}</button>`

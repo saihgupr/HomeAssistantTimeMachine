@@ -8,11 +8,12 @@
     "dev": "node app.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
     "ejs": "^3.1.9",
+    "express": "^4.18.2",
     "js-yaml": "^4.1.0",
     "node-cron": "^4.2.1",
-    "node-fetch": "^2.6.12"
+    "node-fetch": "^2.6.12",
+    "yaml": "^2.8.1"
   },
   "overrides": {
     "brace-expansion": "2.0.2"

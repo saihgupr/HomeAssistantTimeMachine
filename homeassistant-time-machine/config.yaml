@@ -1,7 +1,7 @@
 name: Home Assistant Time Machine
 version: 2.0.2
 slug: homeassistant-time-machine
-description: Browse and restore Home Assistant configuration backups.
+description: Browse and restore Home Assistant configuration backups
 url: https://github.com/saihgupr/HomeAssistantTimeMachine
 changelog: https://github.com/saihgupr/HomeAssistantTimeMachine/blob/main/homeassistant-time-machine/CHANGELOG.md
 arch:
@@ -19,16 +19,16 @@ ingress: true
 ingress_port: 54000
 panel_icon: mdi:history
 panel_title: Time Machine
-map: [config:rw, backup:rw, media:rw, share:rw, ssl:rw, addons:rw, addon_configs:rw]
+map: [config:rw, backup:rw, media:rw, share:rw, ssl:rw, addons:rw]
 ports:
   54000/tcp: null
 options:
-  text_style: default
   theme: dark
-  esphome: true
-  packages: true
+  esphome: false
+  packages: false
+  language: 'en'
 schema:
-  text_style: list(default|pirate|hacker|noir_detective|personal_trainer|scooby_doo)
   theme: list(dark|light)
   esphome: bool?
   packages: bool?
+  language: 'list(en|es|de|fr|nl|it)'

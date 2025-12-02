@@ -4,6 +4,8 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
+*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
+*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
 *   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
 *   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
 *   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
@@ -39,19 +41,58 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 
 ### 1. Home Assistant add-on (Recommended for most users)
 
-1.  Navigate to the Add-on Store in your Home Assistant instance.
-2.  Click on the three dots in the top right corner and select "Repositories".
-3.  Paste the URL of this repository and click "Add":
-    ```
-    https://github.com/saihgupr/HomeAssistantTimeMachine
-    ```
-4.  The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
+1.  **Add Repository:**
+    Click the button below to add the repository to your Home Assistant instance:
+
+    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/ha-addons)
+
+    **Or manually add it:**
+    - Navigate to **Settings** → **Add-ons** → **Add-on Store**
+    - Click the three dots (⋮) in the top right corner and select **Repositories**
+    - Add the repository URL:
+      ```
+      https://github.com/saihgupr/ha-addons
+      ```
+
+2.  **Install the Add-on:**
+    The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
 
 ### 2. Standalone Docker Installation
 
-Build and run the container locally when you aren’t using the Home Assistant add-on.
+For Docker users who aren't using the Home Assistant add-on, you have three deployment options:
 
-**Clone, build, and start (recommended):**
+**Option A: Docker Compose (recommended):**
+
+1. Download the compose.yaml file:
+   ```bash
+   curl -o compose.yaml https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/compose.yaml
+   ```
+
+2. Edit the file to set your paths and credentials:
+   ```bash
+   nano compose.yaml
+   ```
+
+3. Start the service:
+   ```bash
+   docker compose up -d
+   ```
+
+**Option B: Docker Run (pre-built image):**
+
+```bash
+docker run -d \
+  -p 54000:54000 \
+  -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
+  -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -v /path/to/your/ha/config:/config \
+  -v /path/to/your/backups:/media \
+  -v ha-time-machine-data:/data \
+  --name ha-time-machine \
+  ghcr.io/saihgupr/homeassistanttimemachine:latest
+```
+
+**Option C: Build locally:**
 
 ```bash
 git clone https://github.com/saihgupr/HomeAssistantTimeMachine.git
@@ -81,16 +122,14 @@ After the container is running, you can toggle ESPHome support, adjust text styl
 curl -X POST http://localhost:54000/api/app-settings \
   -H 'Content-Type: application/json' \
   -d '{
-        "liveConfigPath": "/config",
-        "backupFolderPath": "/media/timemachine",
-        "textStyle": "default",
-        "theme": "dark",
+        "theme": "light",
         "esphomeEnabled": true,
-        "packagesEnabled": true
+        "packagesEnabled": true,
+        "language": "de"
       }'
 ```
 
-Adjust the payload if you need different paths, theme, text style, or want to enable/disable features (`"esphomeEnabled": true|false`, `"packagesEnabled": true|false`, `"theme": light|dark`, `"textStyle": default|pirate|hacker|noir_detective|personal_trainer|scooby_doo`).
+Adjust the payload if you need different paths, theme, or want to enable/disable features (`"esphomeEnabled": true|false`, `"packagesEnabled": true|false`, `"theme": light|dark`, `"language": en|es|de|fr|nl|it`).
 
 #### Accessing the Web Interface
 
@@ -104,7 +143,7 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ### Home Assistant add-on
 
-1.  **Configure the add-on:** In the add-on's configuration tab, set the Home Assistant URL and Long-Lived Access Token.
+1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, esphome/packages toggle, and port.
 2.  **Start the add-on.**
 3.  **Open the Web UI:**
     *   Use **Open Web UI** from the add-on panel to launch ingress (default recommended when the external port is disabled).
@@ -126,48 +165,6 @@ After starting the container, access the web interface at `http://localhost:5400
 ## Backup to Remote Share
 
 To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
-
-## Creating Backups
-
-This add-on relies on having file-based backups of your Home Assistant configuration. You can now set up a scheduled backup directly within the UI. If you prefer to manage backups externally, here is an example of a simple shell script that you can use to create timestamped backups of your YAML files:
-
-> **Important:** The paths in this script (for example, `/homeassistant`) are placeholders. Adjust them to match your actual Home Assistant configuration directory (such as `/config` on HAOS).
-
-> **Important:** The paths in this script (for example, `/homeassistant`) are placeholders. Adjust them to match your actual Home Assistant configuration directory (such as `/config` on HAOS).
-
-```bash
-#!/bin/bash
-
-DATE=$(date +%Y-%m-%d-%H%M%S)
-
-YEAR=$(date +%Y)
-
-MONTH=$(date +%m)
-
-### HOME ASSISTANT ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"
-cp /homeassistant/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"
-
-### Lovelace ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace_dashboards /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace_resources /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-cp /homeassistant/.storage/lovelace.* /media/timemachine/$YEAR/$MONTH/"$DATE"/.storage
-
-### ESPHOME ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"/esphome
-cp /homeassistant/esphome/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"/esphome
-
-### PACKAGES ###
-mkdir -p  /media/timemachine/$YEAR/$MONTH/"$DATE"/packages
-cp /homeassistant/packages/*.yaml /media/timemachine/$YEAR/$MONTH/"$DATE"/packages
-```
-
-**Important:**
-*   Run this script at a regular interval (e.g., every 24 hours) to keep backups current. You can use a `cron` job on your host machine or a Home Assistant automation with a `shell_command` integration to automate it.
-
-
 
 ## API Endpoints
 
@@ -201,5 +198,6 @@ curl -X POST http://localhost:54000/api/scan-backups \
 ## Support, Feedback & Contributing
 
 - File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
-- Pull requests are welcome—check existing issues or propose enhancements.
 - Share feedback on usability so we can keep refining backup workflows.
+
+**If you find this add-on helpful, please ⭐ star the repository!**

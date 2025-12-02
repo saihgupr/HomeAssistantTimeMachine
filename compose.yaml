@@ -1,0 +1,16 @@
+services:
+  ha-time-machine:
+    image: ghcr.io/saihgupr/homeassistanttimemachinebeta:latest
+    container_name: ha-time-machine
+    ports:
+      - "54000:54000"
+    environment:
+      - HOME_ASSISTANT_URL=http://ha-ip-address:8123
+      - LONG_LIVED_ACCESS_TOKEN=your-long-lived-access-token
+    volumes:
+      - /mnt/homeassistant/config:/config
+      - /mnt/homeassistant/timemachine:/media/timemachine
+      - ha-time-machine-data:/data
+    restart: unless-stopped
+volumes:
+  ha-time-machine-data:
