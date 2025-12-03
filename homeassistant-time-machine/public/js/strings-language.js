@@ -316,7 +316,7 @@ window.STRINGS = {
         en: "Scripts",
         es: "Guiones",
         de: "Skripte",
-        fr: "Scénarios",
+        fr: "Scripts",
         nl: "Scripts",
         it: "Script"
       },
