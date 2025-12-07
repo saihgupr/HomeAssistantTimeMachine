@@ -740,8 +740,8 @@
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
       const filteredBackups = [];
 
-      // Start with empty container and static loading message
-      backupCount.textContent = getStyledText('ui.snapshotFilter.loading');
+      // Start with empty container and placeholder space (maintains line height)
+      backupCount.innerHTML = '&nbsp;';
       backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
       const container = document.getElementById('backupListContainer');
 
