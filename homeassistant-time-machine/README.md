@@ -9,11 +9,11 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## Screenshots
 
-![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/1.png)
-![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/2.png)
-![Screenshot 3](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/3.png)
-![Screenshot 4](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/4.png)
-![Screenshot 5](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/5-new.png)
+![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/5.png)
 
 ## Features
 
