@@ -850,6 +850,40 @@ window.STRINGS = {
         nl: "Automatisch beheerd door Home Assistant",
         it: "Gestito automaticamente da Home Assistant"
       }
+    },
+    snapshotFilter: {
+      showOnlyChanges: {
+        en: "Show only snapshots with changes",
+        es: "Mostrar solo instantáneas con cambios",
+        de: "Nur Snapshots mit Änderungen anzeigen",
+        fr: "Afficher uniquement les instantanés avec modifications",
+        nl: "Alleen snapshots met wijzigingen tonen",
+        it: "Mostra solo istantanee con modifiche"
+      },
+      checking: {
+        en: "Checking {current} of {total}...",
+        es: "Comprobando {current} de {total}...",
+        de: "Prüfe {current} von {total}...",
+        fr: "Vérification {current} sur {total}...",
+        nl: "Controleren {current} van {total}...",
+        it: "Verifica {current} di {total}..."
+      },
+      noChangesFound: {
+        en: "No snapshots with changes found",
+        es: "No se encontraron instantáneas con cambios",
+        de: "Keine Snapshots mit Änderungen gefunden",
+        fr: "Aucun instantané avec modifications trouvé",
+        nl: "Geen snapshots met wijzigingen gevonden",
+        it: "Nessuna istantanea con modifiche trovata"
+      },
+      snapshotsWithChanges: {
+        en: "{count} snapshots with changes",
+        es: "{count} instantáneas con cambios",
+        de: "{count} Snapshots mit Änderungen",
+        fr: "{count} instantanés avec modifications",
+        nl: "{count} snapshots met wijzigingen",
+        it: "{count} istantanee con modifiche"
+      }
     }
   }
 };

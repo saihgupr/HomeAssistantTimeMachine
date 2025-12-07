@@ -765,6 +765,103 @@ app.post('/api/scan-backups', async (req, res) => {
   }
 });
 
+// Check if a snapshot has any changes compared to live config
+app.post('/api/check-snapshot-changes', async (req, res) => {
+  try {
+    const { backupPath, liveConfigPath } = req.body;
+    const configPath = liveConfigPath || '/config';
+
+    if (!backupPath) {
+      return res.status(400).json({ error: 'backupPath is required' });
+    }
+
+    let hasChanges = false;
+
+    // Check automations.yaml
+    try {
+      const backupAutomationsFile = path.join(backupPath, 'automations.yaml');
+      const liveAutomationsFile = path.join(configPath, 'automations.yaml');
+
+      const [backupAutomations, liveAutomations] = await Promise.all([
+        loadYamlWithCache(backupAutomationsFile).catch(() => []),
+        loadYamlWithCache(liveAutomationsFile).catch(() => [])
+      ]);
+
+      // Compare each backup automation against live
+      const backupArray = Array.isArray(backupAutomations) ? backupAutomations : [];
+      const liveArray = Array.isArray(liveAutomations) ? liveAutomations : [];
+
+      for (const backupItem of backupArray) {
+        const key = backupItem.id || backupItem.alias;
+        if (!key) continue;
+
+        const liveItem = liveArray.find(l => l.id === key || l.alias === key);
+        if (!liveItem) {
+          // Item was deleted from live
+          hasChanges = true;
+          break;
+        }
+
+        // Compare content
+        const backupYaml = yaml.dump(backupItem);
+        const liveYaml = yaml.dump(liveItem);
+        if (backupYaml !== liveYaml) {
+          hasChanges = true;
+          break;
+        }
+      }
+    } catch (err) {
+      // If we can't read automations, continue to check scripts
+      console.log('[check-snapshot-changes] Could not compare automations:', err.message);
+    }
+
+    // If already found changes, skip scripts check
+    if (!hasChanges) {
+      try {
+        const backupScriptsFile = path.join(backupPath, 'scripts.yaml');
+        const liveScriptsFile = path.join(configPath, 'scripts.yaml');
+
+        const [backupScriptsRaw, liveScriptsRaw] = await Promise.all([
+          loadYamlWithCache(backupScriptsFile).catch(() => ({})),
+          loadYamlWithCache(liveScriptsFile).catch(() => ({}))
+        ]);
+
+        // Scripts are stored as objects, not arrays
+        const backupScripts = (backupScriptsRaw && typeof backupScriptsRaw === 'object' && !Array.isArray(backupScriptsRaw))
+          ? backupScriptsRaw : {};
+        const liveScripts = (liveScriptsRaw && typeof liveScriptsRaw === 'object' && !Array.isArray(liveScriptsRaw))
+          ? liveScriptsRaw : {};
+
+        for (const scriptId of Object.keys(backupScripts)) {
+          const backupScript = backupScripts[scriptId];
+          const liveScript = liveScripts[scriptId];
+
+          if (!liveScript) {
+            // Script was deleted from live
+            hasChanges = true;
+            break;
+          }
+
+          // Compare content
+          const backupYaml = yaml.dump(backupScript);
+          const liveYaml = yaml.dump(liveScript);
+          if (backupYaml !== liveYaml) {
+            hasChanges = true;
+            break;
+          }
+        }
+      } catch (err) {
+        console.log('[check-snapshot-changes] Could not compare scripts:', err.message);
+      }
+    }
+
+    res.json({ hasChanges });
+  } catch (error) {
+    console.error('[check-snapshot-changes] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get backup automations
 app.post('/api/get-backup-automations', async (req, res) => {
   try {
