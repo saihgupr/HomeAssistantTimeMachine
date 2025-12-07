@@ -7,6 +7,7 @@ const jsyaml = require('js-yaml');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
 const https = require('https');
+const readline = require('readline');
 
 const version = '2.0.1';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
@@ -77,6 +78,60 @@ const DATA_DIR = (() => {
 })();
 
 console.log('[data-dir] Using persistent data directory:', DATA_DIR);
+
+// Set up stdin listener for hassio.addon_stdin service
+// This allows triggering backups from Home Assistant automations/scripts
+// Must be at top level to catch stdin before server starts
+const setupStdinListener = () => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false
+  });
+
+  // Ensure stdin is flowing
+  process.stdin.resume();
+
+  console.log('[stdin] Listener initialized, waiting for commands (backup, backup_now)...');
+
+  rl.on('line', async (line) => {
+    const command = line.trim().toLowerCase();
+    console.log(`[stdin] Received command: "${command}"`);
+
+    switch (command) {
+      case 'backup':
+      case 'backup_now':
+        try {
+          console.log('[stdin] Triggering backup...');
+          const options = await getAddonOptions();
+          const backupPath = await performBackup(
+            options.liveConfigPath || '/config',
+            options.backupFolderPath || '/media/timemachine',
+            'stdin-service'
+          );
+          console.log(`[stdin] Backup completed successfully: ${backupPath}`);
+        } catch (error) {
+          console.error('[stdin] Backup failed:', error.message);
+        }
+        break;
+      default:
+        if (command) {
+          console.log(`[stdin] Unknown command: "${command}". Available: backup, backup_now`);
+        }
+    }
+  });
+
+  rl.on('close', () => {
+    console.log('[stdin] Input stream closed');
+  });
+
+  rl.on('error', (err) => {
+    console.error('[stdin] Error:', err.message);
+  });
+};
+
+// Initialize stdin listener
+setupStdinListener();
 
 // Log ingress configuration immediately
 console.log('[INIT] INGRESS_ENTRY env var:', process.env.INGRESS_ENTRY || '(not set)');

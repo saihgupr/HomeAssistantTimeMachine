@@ -1,5 +1,5 @@
 name: Home Assistant Time Machine Beta
-version: 2.1.0
+version: 2.1.1
 slug: homeassistant-time-machine-beta
 description: Browse and restore Home Assistant configuration backups
 url: https://github.com/saihgupr/HomeAssistantTimeMachineBeta
@@ -17,6 +17,7 @@ homeassistant_api: true
 hassio_role: default
 ingress: true
 ingress_port: 54000
+stdin: true
 panel_icon: mdi:history
 panel_title: Time Machine
 map: [config:rw, backup:rw, media:rw, share:rw, ssl:rw, addons:rw]

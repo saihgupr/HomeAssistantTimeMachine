@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# Install git and other dependencies
-RUN apk add --no-cache git
+# Install git, curl and other dependencies
+RUN apk add --no-cache git curl
 
 # Create app directory
 WORKDIR /app
@@ -13,7 +13,7 @@ RUN npm install
 # Copy the rest of the application
 COPY . .
 
-# Make run script executable
+# Make scripts executable
 RUN chmod +x run.sh
 
 # Expose the port
