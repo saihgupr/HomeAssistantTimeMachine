@@ -1,12 +1,14 @@
-# v2.1
+# v2.2
 
 ## Changelog
 
 ## New Features
+- **Show Changed Only:** New toggle in settings to filter snapshots, showing only backups with changes compared to your current live configuration.
 - **Automation Service Call:** Trigger backups from automations/scripts using `hassio.addon_stdin` service with `input: backup`.
-- Multi-language Support: Added full support for Spanish, German, French, Dutch, and Italian.
-- Docker Images: Automated Docker image builds are now available on GitHub Container Registry (GHCR).
-- Docker Compose: Added compose.yml file for simplified Docker deployment with a single command.
+
+# v2.1
+
+## New Features
 
 ## Improvements
 - Restore Logic: Restoring automations and scripts now preserves their original position instead of moving them to the bottom.

@@ -4,21 +4,8 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
-*   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service — perfect for custom backup schedules or event-driven backups.
 *   **Show Changed Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
-*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
-*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
-*   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
-*   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
-*   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
-*   **Backup Now Button:** Trigger an immediate backup of your Home Assistant configuration directly from the UI with a single click. This utilizes a new API for programmatic backups, shared with the scheduled backup feature.
-*   **Max Backups:** Set a limit on how many backups are kept.
-*   **Authentication:** Secure access with Home Assistant authentication integration, automatically proxying through the Supervisor when available.
-*   **Docker Container Installation:** Simplified installation process with a dedicated Docker container option, providing more flexibility for users without the Home Assistant add-on store.
-*   **Optimized Size & Performance:** The add-on is now 4X smaller and uses 6X less memory, making it faster to download and run.  
-*   **Dark/Light Mode:** Choose between dark and light themes in the configuration.
-*   **Flexible Backup Locations:** Backups can now be stored in `/share` `/backup` `/config` or `/media`. Folders are created automatically, and remote share backups are supported.
-*   **REST API:** Comprehensive API for managing backups, restores, and configurations.
+*   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service — perfect for custom backup schedules or event-driven backups.
 
 ## Screenshots
 
@@ -37,6 +24,19 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Reload Home Assistant:** Reload automations or scripts in Home Assistant directly from the UI after a restore.
 *   **Scheduled Backups:** Configure automatic backups of your Home Assistant configuration directly from the UI.
 *   **Service Call Support:** Trigger backups from automations or scripts using the `hassio.addon_stdin` service.
+*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
+*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
+*   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
+*   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
+*   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
+*   **Backup Now Button:** Trigger an immediate backup of your Home Assistant configuration directly from the UI with a single click.
+*   **Max Backups:** Set a limit on how many backups are kept.
+*   **Authentication:** Secure access with Home Assistant authentication integration, automatically proxying through the Supervisor when available.
+*   **Docker Container Installation:** Simplified installation process with a dedicated Docker container option, providing more flexibility for users without the Home Assistant add-on store.
+*   **Optimized Size & Performance:** The add-on is now 4X smaller and uses 6X less memory, making it faster to download and run.
+*   **Dark/Light Mode:** Choose between dark and light themes in the configuration.
+*   **Flexible Backup Locations:** Backups can now be stored in `/share` `/backup` `/config` or `/media`. Folders are created automatically, and remote share backups are supported.
+*   **REST API:** Comprehensive API for managing backups, restores, and configurations.
 
 ## Installation
 
