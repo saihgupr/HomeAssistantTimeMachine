@@ -1989,6 +1989,11 @@
         tab.classList.add('active');
         currentMode = newMode;
 
+        // Clear backup selection when switching tabs
+        currentBackupPath = null;
+        currentBackupName = null;
+        currentBackupMtime = null;
+
         // Reset items state
         allItems = [];
         liveItemsMap = {};
@@ -2002,8 +2007,10 @@
         // Update search placeholder
         updatePlaceholders();
 
-        // Update title
+        // Update title and clear subtitle (no backup selected yet)
         document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${newMode}`);
+        document.getElementById('itemsSubtitle').textContent = '';
+        document.getElementById('itemsList').innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.selectBackup')}</p>`;
 
         if (currentBackupPath && (currentMode === 'automations' || currentMode === 'scripts')) {
           loadBackupItems();
