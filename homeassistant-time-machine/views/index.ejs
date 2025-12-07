@@ -1259,7 +1259,7 @@
           lovelaceFiles.push({ name: fileName, status });
           lovelaceFileStatuses[fileName] = status;
         }
-        renderLovelaceFiles(lovelaceFiles);
+        applyFilters(); // Use applyFilters to apply showOnlyChanges filtering
       } catch (error) {
         console.error('[loadLovelaceFiles] Error:', error);
         itemsList.innerHTML = `<p class="error">${applyTextStyle('Error loading Lovelace files: ' + error.message, 'error')}</p>`;
@@ -1589,7 +1589,7 @@
           esphomeFiles.push({ name: fileName, status });
           esphomeFileStatuses[fileName] = status;
         }
-        renderEsphomeFiles(esphomeFiles);
+        applyFilters(); // Use applyFilters to apply showOnlyChanges filtering
       } catch (error) {
         console.error('[loadEsphomeFiles] Error:', error);
         itemsList.innerHTML = `<p class="${esphomeFeatureEnabled ? 'error' : 'empty-state'}">${esphomeFeatureEnabled ? applyTextStyle('Error loading ESPHome files: ' + error.message, 'error') : getEsphomeDisabledMessage()}</p>`;
@@ -1783,7 +1783,7 @@
           packagesFiles.push({ name: fileName, status });
           packagesFileStatuses[fileName] = status;
         }
-        renderPackagesFiles(packagesFiles);
+        applyFilters(); // Use applyFilters to apply showOnlyChanges filtering
       } catch (error) {
         console.error('[loadPackagesFiles] Error:', error);
         itemsList.innerHTML = `<p class="${packagesFeatureEnabled ? 'error' : 'empty-state'}">${packagesFeatureEnabled ? applyTextStyle('Error loading Packages files: ' + error.message, 'error') : getPackagesDisabledMessage()}</p>`;
