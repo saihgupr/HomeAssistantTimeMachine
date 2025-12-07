@@ -932,6 +932,14 @@
 
     // Apply filters (search and sort)
     function applyFilters() {
+      // If no backup is selected, show empty state
+      if (!currentBackupPath) {
+        const modeLabel = getStyledText(`ui.buttons.${currentMode}`) || currentMode;
+        const emptyMessage = getStyledText('ui.itemsList.selectBackup', { mode: modeLabel });
+        document.getElementById('itemsList').innerHTML = `<p class="empty-state">${emptyMessage}</p>`;
+        return;
+      }
+
       const searchTerm = document.getElementById('searchBox').value.toLowerCase();
       const sortOrder = document.getElementById('sortSelect').value;
 
@@ -2009,7 +2017,7 @@
 
         // Update title and clear subtitle (no backup selected yet)
         document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${newMode}`);
-        document.getElementById('itemsSubtitle').textContent = '';
+        document.getElementById('itemsSubtitle').textContent = getStyledText('ui.itemsList.noBackupSelected');
         document.getElementById('itemsList').innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.selectBackup')}</p>`;
 
         if (currentBackupPath && (currentMode === 'automations' || currentMode === 'scripts')) {
