@@ -853,7 +853,7 @@ async function checkAutomationsChanges(backupPath, configPath) {
     const backupArray = Array.isArray(backupData) ? backupData : [];
     const liveArray = Array.isArray(liveData) ? liveData : [];
 
-    // Check for deleted or modified items
+    // Only check for deleted or modified items (not new items, since UI only shows backup items)
     for (const backupItem of backupArray) {
       const key = backupItem.id || backupItem.alias;
       if (!key) continue;
@@ -862,13 +862,6 @@ async function checkAutomationsChanges(backupPath, configPath) {
       if (!liveItem) return true; // Deleted
 
       if (jsyaml.dump(backupItem) !== jsyaml.dump(liveItem)) return true; // Modified
-    }
-
-    // Check for NEW items
-    for (const liveItem of liveArray) {
-      const key = liveItem.id || liveItem.alias;
-      if (!key) continue;
-      if (!backupArray.find(b => b.id === key || b.alias === key)) return true; // Added
     }
 
     return false;
