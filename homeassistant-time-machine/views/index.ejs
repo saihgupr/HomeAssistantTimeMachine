@@ -723,6 +723,7 @@
           return `
             <button 
               class="list-item" 
+              data-path="${backup.path}"
               onclick="selectBackup('${backup.path}', '${backup.folderName}', '${backup.mtime}')"
               style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor};"
             >
@@ -791,6 +792,7 @@
 
       const button = document.createElement('button');
       button.className = 'list-item';
+      button.dataset.path = backup.path; // Add data attribute for selection detection
       button.onclick = () => selectBackup(backup.path, backup.folderName, backup.mtime);
       button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor};`;
       button.innerHTML = `
@@ -816,13 +818,7 @@
       // Update selection styling inline (don't reload the entire list)
       document.querySelectorAll('#backupList .list-item, #backupListContainer .list-item').forEach(btn => {
         const isLightMode = currentTheme === 'light';
-        const isSelected = btn.getAttribute('onclick')?.includes(backupPath) ||
-          btn.dataset?.path === backupPath ||
-          btn.onclick?.toString().includes(backupPath);
-
-        // Check if this button corresponds to the selected backup
-        const buttonPath = btn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
-        const selected = buttonPath === backupPath;
+        const selected = btn.dataset.path === backupPath;
 
         if (selected) {
           btn.style.backgroundColor = '#007AFC';
@@ -973,7 +969,17 @@
         allItems = [];
       }
 
-      const filtered = allItems.filter(item => normalizeLabel(item).includes(searchTerm));
+      let filtered = allItems.filter(item => normalizeLabel(item).includes(searchTerm));
+
+      // If showOnlyChanges is enabled, also filter to show only changed/deleted items
+      if (showOnlyChanges) {
+        filtered = filtered.filter(item => {
+          const key = item.id || item.alias || '';
+          const status = itemStatuses[key];
+          return status === 'changed' || status === 'deleted';
+        });
+      }
+
       sortItems(filtered);
       renderItems(filtered);
     }
