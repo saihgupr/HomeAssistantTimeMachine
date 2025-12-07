@@ -4,6 +4,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
+*   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service — perfect for custom backup schedules or event-driven backups.
 *   **Show Changed Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
 *   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
 *   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
@@ -35,6 +36,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Safety first:** It automatically creates a backup of your YAML files in your backups folder before restoring anything.
 *   **Reload Home Assistant:** Reload automations or scripts in Home Assistant directly from the UI after a restore.
 *   **Scheduled Backups:** Configure automatic backups of your Home Assistant configuration directly from the UI.
+*   **Service Call Support:** Trigger backups from automations or scripts using the `hassio.addon_stdin` service.
 
 ## Installation
 
@@ -162,6 +164,19 @@ After starting the container, access the web interface at `http://localhost:5400
     *   In the web UI, go to the settings menu.
     *   **Live Home Assistant Folder Path:** Set to `/config` (this is the mounted volume).
     *   **Backup Folder Path:** Set to `/media/timemachine` (this is the mounted volume).
+
+### Triggering Backups from Automations
+
+You can trigger a backup from Home Assistant automations or scripts using the `hassio.addon_stdin` service:
+
+```yaml
+service: hassio.addon_stdin
+data:
+  addon: homeassistant-time-machine-beta
+  input: backup
+```
+
+> **Note:** Replace `homeassistant-time-machine-beta` with your addon's slug if different.
 
 ## Backup to Remote Share
 

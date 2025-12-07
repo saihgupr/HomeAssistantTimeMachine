@@ -4,6 +4,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
+*   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service — perfect for custom backup schedules or event-driven backups.
 *   **Show Changed Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
 *   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
 *   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
