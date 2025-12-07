@@ -752,7 +752,7 @@
           const checkResponse = await fetch(url('/api/check-snapshot-changes'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ backupPath: backup.path, liveConfigPath })
+            body: JSON.stringify({ backupPath: backup.path, liveConfigPath, mode: currentMode })
           });
           const checkData = await checkResponse.json();
 
@@ -1951,6 +1951,11 @@
         allItems = [];
         liveItemsMap = {};
         itemStatuses = {};
+
+        // Reload backups if filter is enabled (since filter is mode-specific)
+        if (showOnlyChanges) {
+          loadBackups();
+        }
 
         // Update search placeholder
         updatePlaceholders();

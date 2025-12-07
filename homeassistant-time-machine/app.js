@@ -768,14 +768,14 @@ app.post('/api/scan-backups', async (req, res) => {
 // Check if a snapshot has any changes compared to live config
 app.post('/api/check-snapshot-changes', async (req, res) => {
   try {
-    const { backupPath, liveConfigPath } = req.body;
+    const { backupPath, liveConfigPath, mode } = req.body;
     const configPath = liveConfigPath || '/config';
 
     if (!backupPath) {
       return res.status(400).json({ error: 'backupPath is required' });
     }
 
-    const hasChanges = await checkSnapshotHasChanges(backupPath, configPath);
+    const hasChanges = await checkSnapshotHasChanges(backupPath, configPath, mode || 'automations');
     res.json({ hasChanges });
   } catch (error) {
     console.error('[check-snapshot-changes] Error:', error);
@@ -820,81 +820,200 @@ app.post('/api/check-snapshots-batch', async (req, res) => {
   }
 });
 
-// Helper function to check if a single snapshot has changes
-async function checkSnapshotHasChanges(backupPath, configPath) {
-  let hasChanges = false;
+// Helper function to check if a single snapshot has changes (mode-aware)
+async function checkSnapshotHasChanges(backupPath, configPath, mode) {
+  // Check only the relevant files based on mode
+  if (mode === 'automations') {
+    return await checkAutomationsChanges(backupPath, configPath);
+  } else if (mode === 'scripts') {
+    return await checkScriptsChanges(backupPath, configPath);
+  } else if (mode === 'lovelace') {
+    return await checkLovelaceChanges(backupPath, configPath);
+  } else if (mode === 'esphome') {
+    return await checkEsphomeChanges(backupPath, configPath);
+  } else if (mode === 'packages') {
+    return await checkPackagesChanges(backupPath, configPath);
+  }
 
-  // Check automations.yaml
+  // Default: check automations
+  return await checkAutomationsChanges(backupPath, configPath);
+}
+
+// Check automations.yaml for changes
+async function checkAutomationsChanges(backupPath, configPath) {
   try {
-    const backupAutomationsFile = path.join(backupPath, 'automations.yaml');
-    const liveAutomationsFile = path.join(configPath, 'automations.yaml');
+    const backupFile = path.join(backupPath, 'automations.yaml');
+    const liveFile = path.join(configPath, 'automations.yaml');
 
-    const [backupAutomations, liveAutomations] = await Promise.all([
-      loadYamlWithCache(backupAutomationsFile).catch(() => []),
-      loadYamlWithCache(liveAutomationsFile).catch(() => [])
+    const [backupData, liveData] = await Promise.all([
+      loadYamlWithCache(backupFile).catch(() => []),
+      loadYamlWithCache(liveFile).catch(() => [])
     ]);
 
-    const backupArray = Array.isArray(backupAutomations) ? backupAutomations : [];
-    const liveArray = Array.isArray(liveAutomations) ? liveAutomations : [];
+    const backupArray = Array.isArray(backupData) ? backupData : [];
+    const liveArray = Array.isArray(liveData) ? liveData : [];
 
+    // Check for deleted or modified items
     for (const backupItem of backupArray) {
       const key = backupItem.id || backupItem.alias;
       if (!key) continue;
 
       const liveItem = liveArray.find(l => l.id === key || l.alias === key);
-      if (!liveItem) {
-        hasChanges = true;
-        break;
-      }
+      if (!liveItem) return true; // Deleted
 
-      const backupYaml = yaml.dump(backupItem);
-      const liveYaml = yaml.dump(liveItem);
-      if (backupYaml !== liveYaml) {
-        hasChanges = true;
-        break;
-      }
+      if (jsyaml.dump(backupItem) !== jsyaml.dump(liveItem)) return true; // Modified
     }
+
+    // Check for NEW items
+    for (const liveItem of liveArray) {
+      const key = liveItem.id || liveItem.alias;
+      if (!key) continue;
+      if (!backupArray.find(b => b.id === key || b.alias === key)) return true; // Added
+    }
+
+    return false;
   } catch (err) {
-    // Continue to check scripts
+    return false;
   }
+}
 
-  if (!hasChanges) {
-    try {
-      const backupScriptsFile = path.join(backupPath, 'scripts.yaml');
-      const liveScriptsFile = path.join(configPath, 'scripts.yaml');
+// Check scripts.yaml for changes
+async function checkScriptsChanges(backupPath, configPath) {
+  try {
+    const backupFile = path.join(backupPath, 'scripts.yaml');
+    const liveFile = path.join(configPath, 'scripts.yaml');
 
-      const [backupScriptsRaw, liveScriptsRaw] = await Promise.all([
-        loadYamlWithCache(backupScriptsFile).catch(() => ({})),
-        loadYamlWithCache(liveScriptsFile).catch(() => ({}))
-      ]);
+    const [backupRaw, liveRaw] = await Promise.all([
+      loadYamlWithCache(backupFile).catch(() => ({})),
+      loadYamlWithCache(liveFile).catch(() => ({}))
+    ]);
 
-      const backupScripts = (backupScriptsRaw && typeof backupScriptsRaw === 'object' && !Array.isArray(backupScriptsRaw))
-        ? backupScriptsRaw : {};
-      const liveScripts = (liveScriptsRaw && typeof liveScriptsRaw === 'object' && !Array.isArray(liveScriptsRaw))
-        ? liveScriptsRaw : {};
+    const backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
+    const liveScripts = (liveRaw && typeof liveRaw === 'object' && !Array.isArray(liveRaw)) ? liveRaw : {};
 
-      for (const scriptId of Object.keys(backupScripts)) {
-        const backupScript = backupScripts[scriptId];
-        const liveScript = liveScripts[scriptId];
-
-        if (!liveScript) {
-          hasChanges = true;
-          break;
-        }
-
-        const backupYaml = yaml.dump(backupScript);
-        const liveYaml = yaml.dump(liveScript);
-        if (backupYaml !== liveYaml) {
-          hasChanges = true;
-          break;
-        }
-      }
-    } catch (err) {
-      // Ignore
+    // Check for deleted or modified scripts
+    for (const scriptId of Object.keys(backupScripts)) {
+      if (!liveScripts[scriptId]) return true; // Deleted
+      if (jsyaml.dump(backupScripts[scriptId]) !== jsyaml.dump(liveScripts[scriptId])) return true; // Modified
     }
-  }
 
-  return hasChanges;
+    // Check for NEW scripts
+    for (const scriptId of Object.keys(liveScripts)) {
+      if (!backupScripts[scriptId]) return true; // Added
+    }
+
+    return false;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Check lovelace files for changes
+async function checkLovelaceChanges(backupPath, configPath) {
+  try {
+    // Lovelace files are in .storage directory
+    const backupStorageDir = path.join(backupPath, '.storage');
+    const liveStorageDir = path.join(configPath, '.storage');
+
+    // Get list of lovelace files from backup
+    const backupFiles = await fs.readdir(backupStorageDir).catch(() => []);
+    const lovelaceFiles = backupFiles.filter(f => f.startsWith('lovelace'));
+
+    for (const file of lovelaceFiles) {
+      const backupFile = path.join(backupStorageDir, file);
+      const liveFile = path.join(liveStorageDir, file);
+
+      try {
+        const [backupContent, liveContent] = await Promise.all([
+          fs.readFile(backupFile, 'utf-8').catch(() => null),
+          fs.readFile(liveFile, 'utf-8').catch(() => null)
+        ]);
+
+        if (backupContent === null && liveContent !== null) return true; // Added
+        if (backupContent !== null && liveContent === null) return true; // Deleted
+        if (backupContent !== liveContent) return true; // Modified
+      } catch (err) {
+        // Continue checking other files
+      }
+    }
+
+    // Also check for NEW lovelace files in live
+    const liveFiles = await fs.readdir(liveStorageDir).catch(() => []);
+    const liveLovelaceFiles = liveFiles.filter(f => f.startsWith('lovelace'));
+    for (const file of liveLovelaceFiles) {
+      if (!lovelaceFiles.includes(file)) return true; // New file added
+    }
+
+    return false;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Check esphome files for changes
+async function checkEsphomeChanges(backupPath, configPath) {
+  try {
+    const backupEsphomeDir = path.join(backupPath, 'esphome');
+    const liveEsphomeDir = path.join(configPath, 'esphome');
+
+    const backupFiles = await fs.readdir(backupEsphomeDir).catch(() => []);
+    const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+
+    for (const file of yamlFiles) {
+      const backupFile = path.join(backupEsphomeDir, file);
+      const liveFile = path.join(liveEsphomeDir, file);
+
+      try {
+        const [backupContent, liveContent] = await Promise.all([
+          fs.readFile(backupFile, 'utf-8').catch(() => null),
+          fs.readFile(liveFile, 'utf-8').catch(() => null)
+        ]);
+
+        if (backupContent === null && liveContent !== null) return true;
+        if (backupContent !== null && liveContent === null) return true;
+        if (backupContent !== liveContent) return true;
+      } catch (err) {
+        // Continue
+      }
+    }
+
+    return false;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Check packages files for changes
+async function checkPackagesChanges(backupPath, configPath) {
+  try {
+    const backupPackagesDir = path.join(backupPath, 'packages');
+    const livePackagesDir = path.join(configPath, 'packages');
+
+    const backupFiles = await fs.readdir(backupPackagesDir).catch(() => []);
+    const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+
+    for (const file of yamlFiles) {
+      const backupFile = path.join(backupPackagesDir, file);
+      const liveFile = path.join(livePackagesDir, file);
+
+      try {
+        const [backupContent, liveContent] = await Promise.all([
+          fs.readFile(backupFile, 'utf-8').catch(() => null),
+          fs.readFile(liveFile, 'utf-8').catch(() => null)
+        ]);
+
+        if (backupContent === null && liveContent !== null) return true;
+        if (backupContent !== null && liveContent === null) return true;
+        if (backupContent !== liveContent) return true;
+      } catch (err) {
+        // Continue
+      }
+    }
+
+    return false;
+  } catch (err) {
+    return false;
+  }
 }
 
 // Get backup automations
