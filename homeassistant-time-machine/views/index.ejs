@@ -740,9 +740,9 @@
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
       const filteredBackups = [];
 
-      // Start with empty container and placeholder space (maintains line height)
+      // Start with loading message and placeholder space
       backupCount.innerHTML = '&nbsp;';
-      backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
+      backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"><p class="loading">${getStyledText('ui.backupList.loading')}</p></div>`;
       const container = document.getElementById('backupListContainer');
 
       // Check each backup sequentially, add to list as found
@@ -758,12 +758,20 @@
           const checkData = await checkResponse.json();
 
           if (checkData.hasChanges) {
+            // Clear loading text on first item
+            if (filteredBackups.length === 0) {
+              container.innerHTML = '';
+            }
             filteredBackups.push(backup);
             // Add this backup to the visible list immediately
             appendBackupToList(backup, container);
           }
         } catch (error) {
           console.error('[loadBackupsWithChangesFilter] Error checking backup:', backup.path, error);
+          // Clear loading text on first item
+          if (filteredBackups.length === 0) {
+            container.innerHTML = '';
+          }
           // On error, include the backup to be safe
           filteredBackups.push(backup);
           appendBackupToList(backup, container);
