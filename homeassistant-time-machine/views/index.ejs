@@ -734,21 +734,19 @@
         }).join('') + `</div>`;
     }
 
-    // Load backups with changes filter (sequential check)
+    // Load backups with changes filter (sequential check with progressive rendering)
     async function loadBackupsWithChangesFilter(allBackups, backupList, backupCount) {
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
       const filteredBackups = [];
 
-      // Start with empty list and progress indicator
+      // Start with empty container - items will appear as found (no loading needed since first items appear fast)
+      backupCount.textContent = '';
       backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
       const container = document.getElementById('backupListContainer');
 
-      // Check each backup sequentially
+      // Check each backup sequentially, add to list as found
       for (let i = 0; i < allBackups.length; i++) {
         const backup = allBackups[i];
-
-        // Update progress
-        backupCount.textContent = getStyledText('ui.snapshotFilter.checking', { current: i + 1, total: allBackups.length });
 
         try {
           const checkResponse = await fetch(url('/api/check-snapshot-changes'), {
@@ -762,6 +760,8 @@
             filteredBackups.push(backup);
             // Add this backup to the visible list immediately
             appendBackupToList(backup, container);
+            // Update count as we find them
+            backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filteredBackups.length });
           }
         } catch (error) {
           console.error('[loadBackupsWithChangesFilter] Error checking backup:', backup.path, error);
@@ -771,7 +771,7 @@
         }
       }
 
-      // Update final count
+      // Final state
       if (filteredBackups.length === 0) {
         backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
         backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
@@ -780,7 +780,7 @@
       }
     }
 
-    // Append a single backup item to the list
+    // Append a single backup item to the list progressively
     function appendBackupToList(backup, container) {
       const isSelected = currentBackupPath === backup.path;
       const isLightMode = currentTheme === 'light';
@@ -802,6 +802,7 @@
     }
 
 
+
     // Select backup
     async function selectBackup(backupPath, folderName, mtime) {
       currentBackupPath = backupPath;
@@ -812,8 +813,28 @@
       document.getElementById('itemsTitle').textContent = getStyledText('ui.titles.items', { mode: getStyledText(`ui.buttons.${currentMode}`) });
       document.getElementById('itemsSubtitle').textContent = formatFolderName(folderName, currentBackupMtime);
 
-      // Reload backup list to update selection styling
-      await loadBackups();
+      // Update selection styling inline (don't reload the entire list)
+      document.querySelectorAll('#backupList .list-item, #backupListContainer .list-item').forEach(btn => {
+        const isLightMode = currentTheme === 'light';
+        const isSelected = btn.getAttribute('onclick')?.includes(backupPath) ||
+          btn.dataset?.path === backupPath ||
+          btn.onclick?.toString().includes(backupPath);
+
+        // Check if this button corresponds to the selected backup
+        const buttonPath = btn.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        const selected = buttonPath === backupPath;
+
+        if (selected) {
+          btn.style.backgroundColor = '#007AFC';
+          btn.style.color = 'white';
+          btn.style.boxShadow = 'none';
+        } else {
+          btn.style.backgroundColor = isLightMode ? 'white' : 'rgb(46, 46, 46)';
+          btn.style.color = isLightMode ? '#0f172a' : '#d1d5db';
+          btn.style.boxShadow = isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none';
+        }
+      });
+
 
       // Load items based on current mode
       if (currentMode === 'lovelace') {
