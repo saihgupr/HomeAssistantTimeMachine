@@ -740,8 +740,8 @@
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
       const filteredBackups = [];
 
-      // Start with empty container - items will appear as found (no loading needed since first items appear fast)
-      backupCount.textContent = '';
+      // Start with empty container and static loading message
+      backupCount.textContent = getStyledText('ui.snapshotFilter.loading');
       backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
       const container = document.getElementById('backupListContainer');
 
@@ -761,8 +761,6 @@
             filteredBackups.push(backup);
             // Add this backup to the visible list immediately
             appendBackupToList(backup, container);
-            // Update count as we find them
-            backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filteredBackups.length });
           }
         } catch (error) {
           console.error('[loadBackupsWithChangesFilter] Error checking backup:', backup.path, error);
@@ -944,21 +942,48 @@
       };
 
       if (currentMode === 'lovelace') {
-        const filtered = ensureArray(lovelaceFiles).filter(item => normalizeLabel(item).includes(searchTerm));
+        let filtered = ensureArray(lovelaceFiles).filter(item => normalizeLabel(item).includes(searchTerm));
+
+        // If showOnlyChanges is enabled, filter to show only changed/deleted files
+        if (showOnlyChanges) {
+          filtered = filtered.filter(item => {
+            const status = lovelaceFileStatuses[item.name];
+            return status === 'changed' || status === 'deleted';
+          });
+        }
+
         sortItems(filtered);
         renderLovelaceFiles(filtered);
         return;
       }
 
       if (currentMode === 'esphome') {
-        const filtered = ensureArray(esphomeFiles).filter(item => normalizeLabel(item).includes(searchTerm));
+        let filtered = ensureArray(esphomeFiles).filter(item => normalizeLabel(item).includes(searchTerm));
+
+        // If showOnlyChanges is enabled, filter to show only changed/deleted files
+        if (showOnlyChanges) {
+          filtered = filtered.filter(item => {
+            const status = esphomeFileStatuses[item.name];
+            return status === 'changed' || status === 'deleted';
+          });
+        }
+
         sortItems(filtered);
         renderEsphomeFiles(filtered);
         return;
       }
 
       if (currentMode === 'packages') {
-        const filtered = ensureArray(packagesFiles).filter(item => normalizeLabel(item).includes(searchTerm));
+        let filtered = ensureArray(packagesFiles).filter(item => normalizeLabel(item).includes(searchTerm));
+
+        // If showOnlyChanges is enabled, filter to show only changed/deleted files
+        if (showOnlyChanges) {
+          filtered = filtered.filter(item => {
+            const status = packagesFileStatuses[item.name];
+            return status === 'changed' || status === 'deleted';
+          });
+        }
+
         sortItems(filtered);
         renderPackagesFiles(filtered);
         return;

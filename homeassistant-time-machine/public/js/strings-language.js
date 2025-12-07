@@ -883,6 +883,14 @@ window.STRINGS = {
         fr: "{count} instantanés avec modifications",
         nl: "{count} snapshots met wijzigingen",
         it: "{count} istantanee con modifiche"
+      },
+      loading: {
+        en: "Loading snapshots with changes...",
+        es: "Cargando instantáneas con cambios...",
+        de: "Lade Snapshots mit Änderungen...",
+        fr: "Chargement des instantanés avec modifications...",
+        nl: "Snapshots met wijzigingen laden...",
+        it: "Caricamento istantanee con modifiche..."
       }
     }
   }
