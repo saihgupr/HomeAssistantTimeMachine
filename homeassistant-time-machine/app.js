@@ -185,8 +185,9 @@ const resolveSupervisorToken = () => {
   return null;
 };
 
-// Cache for parsed YAML files
+// Cache for parsed YAML files (with size limit to prevent memory bloat)
 const yamlCache = new Map();
+const YAML_CACHE_MAX_SIZE = 100; // Limit cache entries to prevent memory issues
 
 async function loadYamlWithCache(filePath) {
   try {
@@ -203,6 +204,12 @@ async function loadYamlWithCache(filePath) {
     const content = await fs.readFile(filePath, 'utf-8');
     const data = jsyaml.load(content);
 
+    // Evict oldest entries if cache is too large
+    if (yamlCache.size >= YAML_CACHE_MAX_SIZE) {
+      const firstKey = yamlCache.keys().next().value;
+      yamlCache.delete(firstKey);
+    }
+
     yamlCache.set(filePath, {
       mtime,
       data
@@ -215,6 +222,19 @@ async function loadYamlWithCache(filePath) {
     }
     throw error;
   }
+}
+
+// Clear cache entries for backup paths (to free memory after filtering)
+function clearBackupCacheEntries() {
+  const keysToDelete = [];
+  for (const key of yamlCache.keys()) {
+    // Keep live config cache, clear backup entries
+    if (!key.includes('/config/')) {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach(key => yamlCache.delete(key));
+  console.log(`[cache] Cleared ${keysToDelete.length} backup cache entries`);
 }
 
 const YAML_EXTENSIONS = new Set(['.yaml', '.yml']);
@@ -781,6 +801,12 @@ app.post('/api/check-snapshot-changes', async (req, res) => {
     console.error('[check-snapshot-changes] Error:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Clear cache after filtering to free memory
+app.post('/api/clear-cache', (req, res) => {
+  clearBackupCacheEntries();
+  res.json({ success: true, message: 'Cache cleared' });
 });
 
 // Batch check multiple snapshots for changes (more efficient)

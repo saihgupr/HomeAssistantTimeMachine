@@ -777,6 +777,9 @@
       } else {
         backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filteredBackups.length });
       }
+
+      // Clear server cache to free memory after filtering
+      fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
     }
 
     // Append a single backup item to the list progressively
