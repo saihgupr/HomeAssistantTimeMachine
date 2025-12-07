@@ -95,7 +95,8 @@ const setupStdinListener = () => {
   console.log('[stdin] Listener initialized, waiting for commands (backup, backup_now)...');
 
   rl.on('line', async (line) => {
-    const command = line.trim().toLowerCase();
+    // Strip quotes - Home Assistant may send input with JSON encoding
+    const command = line.trim().toLowerCase().replace(/^["']+|["']+$/g, '');
     console.log(`[stdin] Received command: "${command}"`);
 
     switch (command) {
