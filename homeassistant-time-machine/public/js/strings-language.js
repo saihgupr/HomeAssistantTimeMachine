@@ -853,12 +853,12 @@ window.STRINGS = {
     },
     snapshotFilter: {
       showOnlyChanges: {
-        en: "Show only snapshots with changes",
-        es: "Mostrar solo instantáneas con cambios",
-        de: "Nur Snapshots mit Änderungen anzeigen",
-        fr: "Afficher uniquement les instantanés avec modifications",
-        nl: "Alleen snapshots met wijzigingen tonen",
-        it: "Mostra solo istantanee con modifiche"
+        en: "Show Changed Only",
+        es: "Mostrar solo cambios",
+        de: "Nur Geänderte anzeigen",
+        fr: "Afficher les modifiés seulement",
+        nl: "Alleen gewijzigd tonen",
+        it: "Mostra solo modificati"
       },
       checking: {
         en: "Checking {current} of {total}...",
