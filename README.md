@@ -208,9 +208,7 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 ## Alternative Options
 
-If you are looking for a different style of backup and version control, check out **Home Assistant Version Control**. It offers a different approach that you might prefer if you want more options.
-
-[Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/)
+If you are looking for a different style of backup and version control, check out [**Home Assistant Version Control**](https://github.com/saihgupr/HomeAssistantVersionControl/). It offers a different approach that you might prefer if you want more options.
 
 ## Support, Feedback & Contributing
 
