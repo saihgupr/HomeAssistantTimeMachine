@@ -208,7 +208,7 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 ## Alternative Options
 
-For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files. You can browse history, visualize diffs, and restore individual files or your entire configuration with a single click.
+For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files. You can browse history, visualize comparisons, and restore individual files or your entire configuration with a single click.
 
 ## Support, Feedback & Contributing
 
