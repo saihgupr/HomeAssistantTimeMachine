@@ -966,15 +966,10 @@ async function checkScriptsChanges(backupPath, configPath) {
     const backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
     const liveScripts = (liveRaw && typeof liveRaw === 'object' && !Array.isArray(liveRaw)) ? liveRaw : {};
 
-    // Check for deleted or modified scripts
+    // Only check for deleted or modified items (not new items, since UI only shows backup items)
     for (const scriptId of Object.keys(backupScripts)) {
       if (!liveScripts[scriptId]) return true; // Deleted
       if (jsyaml.dump(backupScripts[scriptId]) !== jsyaml.dump(liveScripts[scriptId])) return true; // Modified
-    }
-
-    // Check for NEW scripts
-    for (const scriptId of Object.keys(liveScripts)) {
-      if (!backupScripts[scriptId]) return true; // Added
     }
 
     return false;
