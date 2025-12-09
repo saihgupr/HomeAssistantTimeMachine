@@ -206,6 +206,12 @@ curl -X POST http://localhost:54000/api/scan-backups \
   -d '{"backupRootPath": "/media/timemachine"}'
 ```
 
+## Alternative Options
+
+If you are looking for a different style of backup and version control, check out **Home Assistant Version Control**. It offers a different approach that you might prefer if you want more options.
+
+[View Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/)
+
 ## Support, Feedback & Contributing
 
 - File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachineBeta/issues).
