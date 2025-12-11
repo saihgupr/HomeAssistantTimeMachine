@@ -1414,19 +1414,18 @@ body[data-theme='light'] h3 {
 /* Diff Viewer - Split Layout */
 .diff-viewer-shell {
   background: linear-gradient(135deg, rgba(22, 22, 22, 0.95) 0%, rgba(14, 14, 14, 0.92) 100%);
-  border-radius: 20px;
-  border: 1px solid rgba(231, 229, 228, 0.08);
-  box-shadow: 0 25px 60px -20px rgba(0, 0, 0, 0.8);
+  border-radius: 16px;
   overflow: hidden;
   font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', 'Monaco', monospace;
   font-size: 13px;
   line-height: 1.45;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 body[data-theme='light'] .diff-viewer-shell {
   background: #ffffff;
-  border: 1px solid rgba(203, 213, 225, 0.6);
-  box-shadow: 0 20px 40px -26px rgba(15, 23, 42, 0.18);
 }
 
 .diff-compare-banner {
@@ -1478,8 +1477,11 @@ body[data-theme='light'] .diff-compare-pill-accent {
 
 .diff-viewer-split {
   background: rgba(18, 18, 18, 0.95);
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 16px 16px;
   overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 body[data-theme='light'] .diff-viewer-split {
@@ -1489,22 +1491,20 @@ body[data-theme='light'] .diff-viewer-split {
 .diff-hunks {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px 20px 18px;
+  gap: 0;
+  padding: 0;
+  flex: 1;
 }
 
 .diff-hunk {
   background: rgba(26, 26, 26, 0.9);
-  border: 1px solid rgba(231, 229, 228, 0.08);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
-  backdrop-filter: blur(10px);
+  flex: 1;
 }
 
 body[data-theme='light'] .diff-hunk {
   background: #ffffff;
-  border: 1px solid rgba(203, 213, 225, 0.5);
-  box-shadow: 0 16px 30px -24px rgba(15, 23, 42, 0.18);
 }
 
 .diff-hunk-content {
