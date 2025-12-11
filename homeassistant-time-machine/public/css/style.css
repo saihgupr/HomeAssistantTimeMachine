@@ -2536,3 +2536,82 @@ input::placeholder {
 .settings-card>*:last-child {
   margin-bottom: 0;
 }
+
+/* Word-level diff highlighting */
+.diff-word-added,
+.diff-word-removed {
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Palette 1: Original */
+[data-diff-palette="1"] .diff-word-removed {
+  background-color: rgb(160, 40, 50);
+}
+
+[data-diff-palette="1"] .diff-word-added {
+  background-color: rgb(40, 90, 65);
+}
+
+/* Palette 2: Rose & Emerald */
+[data-diff-palette="2"] .diff-word-removed {
+  background-color: rgba(233, 30, 99, 0.35);
+}
+
+[data-diff-palette="2"] .diff-word-added {
+  background-color: rgba(0, 191, 165, 0.35);
+}
+
+/* Palette 3: Sunset & Ocean */
+[data-diff-palette="3"] .diff-word-removed {
+  background-color: rgba(255, 87, 34, 0.35);
+}
+
+[data-diff-palette="3"] .diff-word-added {
+  background-color: rgba(0, 172, 193, 0.35);
+}
+
+/* Palette 4: Berry & Lime */
+[data-diff-palette="4"] .diff-word-removed {
+  background-color: rgba(156, 39, 176, 0.35);
+}
+
+[data-diff-palette="4"] .diff-word-added {
+  background-color: rgba(118, 255, 3, 0.30);
+}
+
+/* Palette 5: Salmon & Seafoam */
+[data-diff-palette="5"] .diff-word-removed {
+  background-color: rgba(250, 128, 114, 0.4);
+}
+
+[data-diff-palette="5"] .diff-word-added {
+  background-color: rgba(32, 178, 170, 0.4);
+}
+
+/* Palette 6: Ruby & Jade */
+[data-diff-palette="6"] .diff-word-removed {
+  background-color: rgba(198, 40, 40, 0.4);
+}
+
+[data-diff-palette="6"] .diff-word-added {
+  background-color: rgba(46, 125, 50, 0.4);
+}
+
+/* Palette 7: Peach & Aqua */
+[data-diff-palette="7"] .diff-word-removed {
+  background-color: rgba(255, 171, 145, 0.45);
+}
+
+[data-diff-palette="7"] .diff-word-added {
+  background-color: rgba(77, 208, 225, 0.4);
+}
+
+/* Palette 8: Magenta & Cyan */
+[data-diff-palette="8"] .diff-word-removed {
+  background-color: rgba(255, 64, 129, 0.35);
+}
+
+[data-diff-palette="8"] .diff-word-added {
+  background-color: rgba(0, 229, 255, 0.3);
+}

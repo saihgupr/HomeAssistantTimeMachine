@@ -2782,13 +2782,37 @@
 
           const maxRows = Math.max(removed.length, added.length);
           for (let i = 0; i < maxRows; i++) {
+            // Check for word-level diffs if we have both removed and added lines
+            let leftText = removed[i] ? escapeHtml(removed[i].text) : '';
+            let rightText = added[i] ? escapeHtml(added[i].text) : '';
+
+            // Perform word diff if we have content on both sides
+            if (removed[i] && added[i]) {
+              const wordDiff = Diff.diffWords(removed[i].text, added[i].text);
+              leftText = '';
+              rightText = '';
+
+              wordDiff.forEach(part => {
+                const escapedPart = escapeHtml(part.value);
+                if (part.removed) {
+                  leftText += `<span class="diff-word-removed">${escapedPart}</span>`;
+                } else if (part.added) {
+                  rightText += `<span class="diff-word-added">${escapedPart}</span>`;
+                } else {
+                  leftText += escapedPart;
+                  rightText += escapedPart;
+                }
+              });
+            }
+
             rows.push(renderSplitRow(
               removed[i]
                 ? {
                   type: 'removed',
-                  text: removed[i].text,
+                  text: leftText, // Now contains HTML
                   lineNumber: removed[i].oldLine,
-                  marker: '-'
+                  marker: '-',
+                  isHtml: true
                 }
                 : {
                   type: 'empty',
@@ -2799,9 +2823,10 @@
               added[i]
                 ? {
                   type: 'added',
-                  text: added[i].text,
+                  text: rightText, // Now contains HTML
                   lineNumber: added[i].newLine,
-                  marker: '+'
+                  marker: '+',
+                  isHtml: true
                 }
                 : {
                   type: 'empty',
@@ -2885,11 +2910,15 @@
       const lineNum = line.lineNumber || '';
       const lineClass = `diff-line diff-line-${line.type}`;
 
+      // If line.isHtml is true, line.text is already escaped HTML with spans.
+      // Otherwise, we need to escape it here.
+      const contentHtml = line.isHtml ? line.text : escapeHtml(line.text);
+
       return `
         <div class="${lineClass} diff-line-${position}">
           <span class="diff-line-marker">${marker}</span>
           <span class="diff-line-num">${lineNum}</span>
-          <pre class="diff-line-text"><code>${escapeHtml(line.text)}</code></pre>
+          <pre class="diff-line-text"><code>${contentHtml}</code></pre>
         </div>
       `;
     }
