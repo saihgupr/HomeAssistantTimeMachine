@@ -1680,10 +1680,10 @@ app.post('/api/validate-path', async (req, res) => {
   }
 });
 
-// Helper function to get the latest backup path for smart backup mode
-async function getLatestBackupPath(backupRoot) {
+// Helper function to get all backup paths in reverse chronological order
+async function getAllBackupPaths(backupRoot) {
+  const allBackups = [];
   try {
-    // Scan for all backup directories
     const years = await fs.readdir(backupRoot);
     const yearDirs = years.filter(y => /^\d{4}$/.test(y));
     yearDirs.sort().reverse();
@@ -1697,38 +1697,52 @@ async function getLatestBackupPath(backupRoot) {
       for (const month of monthDirs) {
         const monthPath = path.join(yearPath, month);
         const backups = await fs.readdir(monthPath);
-        // Filter for valid backup folder format: YYYY-MM-DD-HHMMSS
         const backupDirs = backups.filter(b => /^\d{4}-\d{2}-\d{2}-\d{6}$/.test(b));
         backupDirs.sort().reverse();
 
-        if (backupDirs.length > 0) {
-          return path.join(monthPath, backupDirs[0]);
+        for (const backup of backupDirs) {
+          allBackups.push(path.join(monthPath, backup));
         }
       }
     }
-    return null; // No previous backup exists
+    return allBackups;
   } catch (err) {
-    console.log('[smart-backup] No previous backups found:', err.message);
-    return null;
+    console.log('[smart-backup] Error getting backup paths:', err.message);
+    return [];
   }
 }
 
-// Helper function to check if a file has changed compared to a backup version
-async function hasFileChanged(sourceFile, backupFile) {
+// Helper function to find the most recent version of a file by walking the backup chain
+async function findFileInBackupChain(backupPaths, relativeFilePath) {
+  for (const backupPath of backupPaths) {
+    const filePath = path.join(backupPath, relativeFilePath);
+    try {
+      await fs.access(filePath);
+      return filePath; // Found the file
+    } catch (err) {
+      // File doesn't exist in this backup, continue to older backup
+    }
+  }
+  return null; // File not found in any backup
+}
+
+// Helper function to check if a file has changed compared to the backup chain
+async function hasFileChanged(sourceFile, backupPaths, relativeFilePath) {
   try {
-    const [sourceContent, backupContent] = await Promise.all([
-      fs.readFile(sourceFile, 'utf-8'),
-      fs.readFile(backupFile, 'utf-8').catch(() => null)
-    ]);
+    const sourceContent = await fs.readFile(sourceFile, 'utf-8');
 
-    // If backup doesn't exist, file is "new" (changed)
-    if (backupContent === null) return true;
+    // Find the most recent backed-up version of this file
+    const backupFilePath = await findFileInBackupChain(backupPaths, relativeFilePath);
 
-    // Compare content
+    if (!backupFilePath) {
+      // File doesn't exist in any backup, it's "new"
+      return true;
+    }
+
+    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
     return sourceContent !== backupContent;
   } catch (err) {
     // If source can't be read, skip it
-    return false;
   }
 }
 
@@ -1812,14 +1826,14 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   const backupPath = path.join(backupRoot, YYYY, MM, timestamp);
 
-  // Get latest backup path for smart backup comparison BEFORE creating new directory
-  let latestBackupPath = null;
+  // Get all backup paths for smart backup comparison BEFORE creating new directory
+  let allBackupPaths = [];
   if (smartBackupEnabled) {
-    latestBackupPath = await getLatestBackupPath(backupRoot);
-    if (latestBackupPath) {
-      console.log(`[backup-${source}] Smart backup: comparing against ${latestBackupPath}`);
+    allBackupPaths = await getAllBackupPaths(backupRoot);
+    if (allBackupPaths.length > 0) {
+      console.log(`[backup-${source}] Smart backup: found ${allBackupPaths.length} previous backups to compare against`);
     } else {
-      console.log(`[backup-${source}] Smart backup: no previous backup found, performing full backup`);
+      console.log(`[backup-${source}] Smart backup: no previous backups found, performing full backup`);
     }
   }
 
@@ -1849,9 +1863,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
     try {
       // Smart backup mode: only copy if file has changed
-      if (smartBackupEnabled && latestBackupPath) {
-        const previousBackupFile = path.join(latestBackupPath, file);
-        const changed = await hasFileChanged(sourcePath, previousBackupFile);
+      if (smartBackupEnabled && allBackupPaths.length > 0) {
+        const changed = await hasFileChanged(sourcePath, allBackupPaths, file);
         if (!changed) {
           skippedYamlCount++;
           continue; // Skip unchanged files
@@ -1883,9 +1896,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       const destPath = path.join(backupStoragePath, file);
       try {
         // Smart backup mode: only copy if file has changed
-        if (smartBackupEnabled && latestBackupPath) {
-          const previousBackupFile = path.join(latestBackupPath, '.storage', file);
-          const changed = await hasFileChanged(sourcePath, previousBackupFile);
+        if (smartBackupEnabled && allBackupPaths.length > 0) {
+          const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('.storage', file));
           if (!changed) {
             skippedLovelaceCount++;
             continue;
@@ -1930,9 +1942,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         const destPath = path.join(backupEsphomePath, relativePath);
         try {
           // Smart backup mode: only copy if file has changed
-          if (smartBackupEnabled && latestBackupPath) {
-            const previousBackupFile = path.join(latestBackupPath, 'esphome', relativePath);
-            const changed = await hasFileChanged(sourcePath, previousBackupFile);
+          if (smartBackupEnabled && allBackupPaths.length > 0) {
+            const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('esphome', relativePath));
             if (!changed) {
               skippedEsphomeCount++;
               continue;
@@ -1972,9 +1983,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         const destPath = path.join(backupPackagesPath, relativePath);
         try {
           // Smart backup mode: only copy if file has changed
-          if (smartBackupEnabled && latestBackupPath) {
-            const previousBackupFile = path.join(latestBackupPath, 'packages', relativePath);
-            const changed = await hasFileChanged(sourcePath, previousBackupFile);
+          if (smartBackupEnabled && allBackupPaths.length > 0) {
+            const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('packages', relativePath));
             if (!changed) {
               skippedPackagesCount++;
               continue;
