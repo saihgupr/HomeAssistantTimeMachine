@@ -1959,7 +1959,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   const manifest = {
     version: 1,
     generatedAt: new Date().toISOString(),
-    smartBackup: smartBackupEnabled,
     files: {
       root: [],
       storage: [],
