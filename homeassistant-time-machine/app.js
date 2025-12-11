@@ -1811,6 +1811,18 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   const timestamp = `${YYYY}-${MM}-${DD}-${HH}${mm}${ss}`;
 
   const backupPath = path.join(backupRoot, YYYY, MM, timestamp);
+
+  // Get latest backup path for smart backup comparison BEFORE creating new directory
+  let latestBackupPath = null;
+  if (smartBackupEnabled) {
+    latestBackupPath = await getLatestBackupPath(backupRoot);
+    if (latestBackupPath) {
+      console.log(`[backup-${source}] Smart backup: comparing against ${latestBackupPath}`);
+    } else {
+      console.log(`[backup-${source}] Smart backup: no previous backup found, performing full backup`);
+    }
+  }
+
   console.log(`[backup-${source}] Creating directory:`, backupPath);
 
   try {
@@ -1822,17 +1834,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     mkdirError.code = 'BACKUP_DIR_CREATE_FAILED';
     mkdirError.meta = { path: backupPath, parent: backupRoot };
     throw mkdirError;
-  }
-
-  // Get latest backup path for smart backup comparison
-  let latestBackupPath = null;
-  if (smartBackupEnabled) {
-    latestBackupPath = await getLatestBackupPath(backupRoot);
-    if (latestBackupPath) {
-      console.log(`[backup-${source}] Smart backup: comparing against ${latestBackupPath}`);
-    } else {
-      console.log(`[backup-${source}] Smart backup: no previous backup found, performing full backup`);
-    }
   }
 
   // Copy YAML files

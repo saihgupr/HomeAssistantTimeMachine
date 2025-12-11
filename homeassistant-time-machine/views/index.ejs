@@ -2376,7 +2376,8 @@
           body: JSON.stringify({
             liveConfigPath: document.getElementById('liveConfigPath').value || '/config',
             backupFolderPath: document.getElementById('backupFolderPath').value || '/backup',
-            timezone
+            timezone,
+            smartBackupEnabled: document.getElementById('smartBackupEnabled')?.checked || false
           })
         });
 
