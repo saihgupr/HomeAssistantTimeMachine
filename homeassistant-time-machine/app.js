@@ -579,6 +579,7 @@ app.get('/api/app-settings', async (req, res) => {
         theme: options.theme || savedSettings.theme || baseResponse.theme || 'dark',
         esphomeEnabled: options.esphome ?? finalEsphomeEnabled,
         packagesEnabled: finalPackagesEnabled,
+        smartBackupEnabled: savedSettings.smartBackupEnabled ?? false,
       };
 
       global.dockerSettings = { ...global.dockerSettings, ...mergedSettings };
@@ -590,6 +591,7 @@ app.get('/api/app-settings', async (req, res) => {
         liveConfigPath: mergedSettings.liveConfigPath,
         theme: mergedSettings.theme,
         esphomeEnabled: mergedSettings.esphomeEnabled,
+        smartBackupEnabled: mergedSettings.smartBackupEnabled,
       };
       debugLog('[app-settings] Addon mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
       debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -613,6 +615,7 @@ app.get('/api/app-settings', async (req, res) => {
       language: dockerSettings.language || 'en',
       esphomeEnabled: finalEsphomeEnabled,
       packagesEnabled: dockerSettings.packagesEnabled ?? false,
+      smartBackupEnabled: dockerSettings.smartBackupEnabled ?? false,
     };
     debugLog('[app-settings] Docker mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
     debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -626,7 +629,7 @@ app.get('/api/app-settings', async (req, res) => {
 // Save Docker app settings
 app.post('/api/app-settings', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language } = req.body;
+    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled } = req.body;
 
     const existingSettings = await loadDockerSettings();
     const settings = {
@@ -636,6 +639,7 @@ app.post('/api/app-settings', async (req, res) => {
       language: language || existingSettings.language || 'en',
       esphomeEnabled: typeof esphomeEnabled === 'boolean' ? esphomeEnabled : existingSettings.esphomeEnabled ?? false,
       packagesEnabled: typeof packagesEnabled === 'boolean' ? packagesEnabled : existingSettings.packagesEnabled ?? false,
+      smartBackupEnabled: typeof smartBackupEnabled === 'boolean' ? smartBackupEnabled : existingSettings.smartBackupEnabled ?? false,
     };
 
     await saveDockerSettings(settings);
@@ -684,6 +688,7 @@ async function loadDockerSettings() {
     language: 'en',
     esphomeEnabled: false,
     packagesEnabled: false,
+    smartBackupEnabled: false,
     ...cachedSettings
   };
 
@@ -733,7 +738,8 @@ async function saveDockerSettings(settings) {
     theme: settings.theme || 'dark',
     language: settings.language || 'en',
     esphomeEnabled: settings.esphomeEnabled ?? false,
-    packagesEnabled: settings.packagesEnabled ?? false
+    packagesEnabled: settings.packagesEnabled ?? false,
+    smartBackupEnabled: settings.smartBackupEnabled ?? false
   };
 
   // Save to file
@@ -1572,11 +1578,11 @@ app.get('/api/schedule-backup', async (req, res) => {
 // Set schedule
 app.post('/api/schedule-backup', async (req, res) => {
   try {
-    const { id, cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount } = req.body;
+    const { id, cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, smartBackupEnabled } = req.body;
 
     const jobs = await loadScheduledJobs();
     jobs.jobs = jobs.jobs || {};
-    jobs.jobs[id] = { cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount };
+    jobs.jobs[id] = { cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, smartBackupEnabled };
     console.log('[scheduler] New schedule saved:', jobs.jobs[id]);
 
     // Clean structure: only save { jobs: {...} }
@@ -1608,7 +1614,8 @@ app.post('/api/schedule-backup', async (req, res) => {
                 backupFolderPath: effectiveBackupPath,
                 maxBackupsEnabled: jobConfig.maxBackupsEnabled,
                 maxBackupsCount: jobConfig.maxBackupsCount,
-                timezone: jobConfig.timezone
+                timezone: jobConfig.timezone,
+                smartBackupEnabled: jobConfig.smartBackupEnabled
               })
             });
             const result = await response.json();
@@ -1673,8 +1680,60 @@ app.post('/api/validate-path', async (req, res) => {
   }
 });
 
+// Helper function to get the latest backup path for smart backup mode
+async function getLatestBackupPath(backupRoot) {
+  try {
+    // Scan for all backup directories
+    const years = await fs.readdir(backupRoot);
+    const yearDirs = years.filter(y => /^\d{4}$/.test(y));
+    yearDirs.sort().reverse();
+
+    for (const year of yearDirs) {
+      const yearPath = path.join(backupRoot, year);
+      const months = await fs.readdir(yearPath);
+      const monthDirs = months.filter(m => /^\d{2}$/.test(m));
+      monthDirs.sort().reverse();
+
+      for (const month of monthDirs) {
+        const monthPath = path.join(yearPath, month);
+        const backups = await fs.readdir(monthPath);
+        // Filter for valid backup folder format: YYYY-MM-DD-HHMMSS
+        const backupDirs = backups.filter(b => /^\d{4}-\d{2}-\d{2}-\d{6}$/.test(b));
+        backupDirs.sort().reverse();
+
+        if (backupDirs.length > 0) {
+          return path.join(monthPath, backupDirs[0]);
+        }
+      }
+    }
+    return null; // No previous backup exists
+  } catch (err) {
+    console.log('[smart-backup] No previous backups found:', err.message);
+    return null;
+  }
+}
+
+// Helper function to check if a file has changed compared to a backup version
+async function hasFileChanged(sourceFile, backupFile) {
+  try {
+    const [sourceContent, backupContent] = await Promise.all([
+      fs.readFile(sourceFile, 'utf-8'),
+      fs.readFile(backupFile, 'utf-8').catch(() => null)
+    ]);
+
+    // If backup doesn't exist, file is "new" (changed)
+    if (backupContent === null) return true;
+
+    // Compare content
+    return sourceContent !== backupContent;
+  } catch (err) {
+    // If source can't be read, skip it
+    return false;
+  }
+}
+
 // Reusable backup function
-async function performBackup(liveConfigPath, backupFolderPath, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null) {
+async function performBackup(liveConfigPath, backupFolderPath, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null, smartBackupEnabled = false) {
   const configPath = liveConfigPath || '/config';
   const backupRoot = backupFolderPath || '/media/timemachine';
 
@@ -1682,6 +1741,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   console.log(`[backup-${source}] Config path:`, configPath);
   console.log(`[backup-${source}] Backup root:`, backupRoot);
   console.log(`[backup-${source}] Max backups enabled:`, maxBackupsEnabled, 'count:', maxBackupsCount);
+  console.log(`[backup-${source}] Smart backup enabled:`, smartBackupEnabled);
 
   try {
     // Check if backup root exists and is writable
@@ -1764,23 +1824,46 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     throw mkdirError;
   }
 
+  // Get latest backup path for smart backup comparison
+  let latestBackupPath = null;
+  if (smartBackupEnabled) {
+    latestBackupPath = await getLatestBackupPath(backupRoot);
+    if (latestBackupPath) {
+      console.log(`[backup-${source}] Smart backup: comparing against ${latestBackupPath}`);
+    } else {
+      console.log(`[backup-${source}] Smart backup: no previous backup found, performing full backup`);
+    }
+  }
+
   // Copy YAML files
   const files = await fs.readdir(configPath);
   const yamlFiles = files.filter(file => file.endsWith('.yaml') || file.endsWith('.yml'));
-  console.log(`[backup-${source}] Found ${yamlFiles.length} YAML files to copy.`);
+  console.log(`[backup-${source}] Found ${yamlFiles.length} YAML files to check.`);
 
   let copiedYamlCount = 0;
+  let skippedYamlCount = 0;
   for (const file of yamlFiles) {
     const sourcePath = path.join(configPath, file);
     const destPath = path.join(backupPath, file);
+
     try {
+      // Smart backup mode: only copy if file has changed
+      if (smartBackupEnabled && latestBackupPath) {
+        const previousBackupFile = path.join(latestBackupPath, file);
+        const changed = await hasFileChanged(sourcePath, previousBackupFile);
+        if (!changed) {
+          skippedYamlCount++;
+          continue; // Skip unchanged files
+        }
+      }
+
       await fs.copyFile(sourcePath, destPath);
       copiedYamlCount++;
     } catch (err) {
       console.error(`[backup-${source}] Error copying ${file}:`, err.message);
     }
   }
-  console.log(`[backup-${source}] Copied ${copiedYamlCount} of ${yamlFiles.length} YAML files.`);
+  console.log(`[backup-${source}] Copied ${copiedYamlCount} YAML files${smartBackupEnabled ? `, skipped ${skippedYamlCount} unchanged` : ''}.`);
 
   // Backup Lovelace files
   const storagePath = path.join(configPath, '.storage');
@@ -1790,13 +1873,24 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   try {
     const storageFiles = await fs.readdir(storagePath);
     const lovelaceFiles = storageFiles.filter(file => file.startsWith('lovelace'));
-    console.log(`[backup-${source}] Found ${lovelaceFiles.length} Lovelace files to copy.`);
+    console.log(`[backup-${source}] Found ${lovelaceFiles.length} Lovelace files to check.`);
 
     let copiedLovelaceCount = 0;
+    let skippedLovelaceCount = 0;
     for (const file of lovelaceFiles) {
       const sourcePath = path.join(storagePath, file);
       const destPath = path.join(backupStoragePath, file);
       try {
+        // Smart backup mode: only copy if file has changed
+        if (smartBackupEnabled && latestBackupPath) {
+          const previousBackupFile = path.join(latestBackupPath, '.storage', file);
+          const changed = await hasFileChanged(sourcePath, previousBackupFile);
+          if (!changed) {
+            skippedLovelaceCount++;
+            continue;
+          }
+        }
+
         await fs.copyFile(sourcePath, destPath);
         copiedLovelaceCount++;
       } catch (err) {
@@ -1805,7 +1899,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         }
       }
     }
-    console.log(`[backup-${source}] Copied ${copiedLovelaceCount} of ${lovelaceFiles.length} Lovelace files.`);
+    console.log(`[backup-${source}] Copied ${copiedLovelaceCount} Lovelace files${smartBackupEnabled ? `, skipped ${skippedLovelaceCount} unchanged` : ''}.`);
   } catch (err) {
     console.error(`[backup-${source}] Error reading .storage directory:`, err.message);
   }
@@ -1824,10 +1918,21 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       console.log(`[backup-${source}] Found ${esphomeYamlFiles.length} ESPHome YAML files to copy.`);
 
       let copiedEsphomeCount = 0;
+      let skippedEsphomeCount = 0;
       for (const relativePath of esphomeYamlFiles) {
         const sourcePath = path.join(esphomePath, relativePath);
         const destPath = path.join(backupEsphomePath, relativePath);
         try {
+          // Smart backup mode: only copy if file has changed
+          if (smartBackupEnabled && latestBackupPath) {
+            const previousBackupFile = path.join(latestBackupPath, 'esphome', relativePath);
+            const changed = await hasFileChanged(sourcePath, previousBackupFile);
+            if (!changed) {
+              skippedEsphomeCount++;
+              continue;
+            }
+          }
+
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
           copiedEsphomeCount++;
@@ -1837,7 +1942,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
           }
         }
       }
-      console.log(`[backup-${source}] Copied ${copiedEsphomeCount} of ${esphomeYamlFiles.length} ESPHome YAML files.`);
+      console.log(`[backup-${source}] Copied ${copiedEsphomeCount} ESPHome files${smartBackupEnabled ? `, skipped ${skippedEsphomeCount} unchanged` : ''}.`);
     } catch (err) {
       console.error(`[backup-${source}] Error reading esphome directory:`, err.message);
     }
@@ -1856,10 +1961,21 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       console.log(`[backup-${source}] Found ${packagesYamlFiles.length} Packages YAML files to copy.`);
 
       let copiedPackagesCount = 0;
+      let skippedPackagesCount = 0;
       for (const relativePath of packagesYamlFiles) {
         const sourcePath = path.join(packagesPath, relativePath);
         const destPath = path.join(backupPackagesPath, relativePath);
         try {
+          // Smart backup mode: only copy if file has changed
+          if (smartBackupEnabled && latestBackupPath) {
+            const previousBackupFile = path.join(latestBackupPath, 'packages', relativePath);
+            const changed = await hasFileChanged(sourcePath, previousBackupFile);
+            if (!changed) {
+              skippedPackagesCount++;
+              continue;
+            }
+          }
+
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
           copiedPackagesCount++;
@@ -1869,7 +1985,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
           }
         }
       }
-      console.log(`[backup-${source}] Copied ${copiedPackagesCount} of ${packagesYamlFiles.length} Packages YAML files.`);
+      console.log(`[backup-${source}] Copied ${copiedPackagesCount} Packages files${smartBackupEnabled ? `, skipped ${skippedPackagesCount} unchanged` : ''}.`);
     } catch (err) {
       console.error(`[backup-${source}] Error reading packages directory:`, err.message);
     }
@@ -1934,8 +2050,8 @@ async function cleanupOldBackups(backupRoot, maxBackupsCount) {
 // Backup now
 app.post('/api/backup-now', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, timezone } = req.body;
-    const backupPath = await performBackup(liveConfigPath, backupFolderPath, 'manual', maxBackupsEnabled, maxBackupsCount, timezone);
+    const { liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled } = req.body;
+    const backupPath = await performBackup(liveConfigPath, backupFolderPath, 'manual', maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled);
     res.json({ success: true, path: backupPath, message: `Backup created successfully at ${backupPath}` });
   } catch (error) {
     console.error('[backup-now] Error:', error);

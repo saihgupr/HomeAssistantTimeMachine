@@ -191,7 +191,20 @@
           </div>
         </div>
 
+        <div id="smartBackupSection" style="display: none; margin: 0 !important; padding-top: 0 !important;">
+          <div class="form-group toggle-group" style="margin-bottom: 0;">
+            <label id="smartBackupLabel">Only Backup Changes</label>
+            <label class="toggle">
+              <input type="checkbox" id="smartBackupEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <p id="smartBackupHint" class="settings-hint" style="margin-top: 4px; font-size: 12px; color: #9ca3af;">
+            Backups only include files that changed since the last backup.</p>
+        </div>
+
         <div class="settings-actions">
+
           <button type="button" id="cancelSettings" class="btn-secondary">Cancel</button>
           <button type="submit" class="btn-primary">Save</button>
         </div>
@@ -2260,6 +2273,7 @@
       const scheduleDay = document.getElementById('scheduleDay').value;
       const maxBackupsEnabled = document.getElementById('maxBackupsEnabled').checked;
       const maxBackupsCount = parseInt(document.getElementById('maxBackupsCount').value) || 10;
+      const smartBackupEnabled = document.getElementById('smartBackupEnabled').checked;
 
       const cronExpression = scheduleToCron(scheduleFrequency, scheduleTime, scheduleDay);
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -2276,7 +2290,8 @@
           backupFolderPath,
           maxBackupsEnabled,
           maxBackupsCount,
-          scheduleDay
+          scheduleDay,
+          smartBackupEnabled
         })
       });
 
@@ -2401,11 +2416,13 @@
       const isEnabled = e.target.checked;
       document.getElementById('scheduleOptions').style.display = isEnabled ? 'block' : 'none';
       document.getElementById('maxBackupsSection').style.display = isEnabled ? 'block' : 'none';
+      document.getElementById('smartBackupSection').style.display = isEnabled ? 'block' : 'none';
 
-      // If schedule is disabled, also disable max backups
+      // If schedule is disabled, also disable max backups and smart backup
       if (!isEnabled) {
         document.getElementById('maxBackupsEnabled').checked = false;
         document.getElementById('maxBackupsOptions').style.display = 'none';
+        document.getElementById('smartBackupEnabled').checked = false;
       }
     });
 
@@ -2436,6 +2453,7 @@
           document.getElementById('scheduleEnabled').checked = isEnabled;
           document.getElementById('scheduleOptions').style.display = isEnabled ? 'block' : 'none';
           document.getElementById('maxBackupsSection').style.display = isEnabled ? 'block' : 'none';
+          document.getElementById('smartBackupSection').style.display = isEnabled ? 'block' : 'none';
 
           const { frequency, time, day } = cronToSchedule(job.cronExpression);
           document.getElementById('scheduleFrequency').value = frequency;
@@ -2454,6 +2472,9 @@
           document.getElementById('maxBackupsEnabled').checked = job.maxBackupsEnabled || false;
           document.getElementById('maxBackupsOptions').style.display = (job.maxBackupsEnabled) ? 'block' : 'none';
           document.getElementById('maxBackupsCount').value = job.maxBackupsCount || 10;
+
+          // Load smart backup settings
+          document.getElementById('smartBackupEnabled').checked = job.smartBackupEnabled || false;
         }
       } catch (error) {
         console.error('[loadScheduleSettings] Error:', error);

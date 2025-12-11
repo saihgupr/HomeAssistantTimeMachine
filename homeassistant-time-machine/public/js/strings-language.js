@@ -497,6 +497,22 @@ window.STRINGS = {
         fr: "Hebdomadaire",
         nl: "Wekelijks",
         it: "Settimanale"
+      },
+      smartBackupLabel: {
+        en: "Only Backup Changes",
+        es: "Solo respaldar cambios",
+        de: "Nur Änderungen sichern",
+        fr: "Sauvegarder uniquement les modifications",
+        nl: "Alleen wijzigingen back-uppen",
+        it: "Esegui backup solo delle modifiche"
+      },
+      smartBackupHint: {
+        en: "Backups only include files that changed since the last backup.",
+        es: "Las copias de seguridad solo incluyen archivos que cambiaron desde la última copia.",
+        de: "Backups enthalten nur Dateien, die seit dem letzten Backup geändert wurden.",
+        fr: "Les sauvegardes n'incluent que les fichiers modifiés depuis la dernière sauvegarde.",
+        nl: "Back-ups bevatten alleen bestanden die sinds de laatste back-up zijn gewijzigd.",
+        it: "I backup includono solo i file modificati dall'ultimo backup."
       }
     },
     connectionTest: {
