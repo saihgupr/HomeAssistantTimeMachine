@@ -877,7 +877,7 @@ window.STRINGS = {
     },
     snapshotFilter: {
       showOnlyChanges: {
-        en: "Show Changed Only",
+        en: "Show Changes Only",
         es: "Mostrar solo cambios",
         de: "Nur Geänderte anzeigen",
         fr: "Afficher les modifiés seulement",

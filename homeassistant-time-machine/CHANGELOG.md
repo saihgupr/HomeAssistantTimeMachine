@@ -3,7 +3,7 @@
 ## Changelog
 
 ## New Features
-- **Show Changed Only:** New toggle in settings to filter snapshots, showing only backups with changes compared to your current live configuration.
+- **Show Changes Only:** New toggle in settings to filter snapshots, showing only backups with changes compared to your current live configuration.
 - **Automation Service Call:** Trigger backups from automations/scripts using `hassio.addon_stdin` service with `input: backup`.
 
 # v2.1
