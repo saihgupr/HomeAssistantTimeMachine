@@ -6,7 +6,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 *   **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
 *   **Show Changes Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
-*   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the header bar. Your preference is saved automatically!
+*   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 *   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
 
 ## Screenshots
@@ -175,42 +175,6 @@ data:
 
 > **Note:** Replace `homeassistant-time-machine-beta` with your addon's slug if different.
 
-## Smart Backup
-
-Smart Backup is an incremental backup mode that only saves files that have actually changed since the last backup. This dramatically reduces storage usage while still allowing you to browse and restore any file from any snapshot.
-
-### How It Works
-
-1. **Change Detection:** When a backup runs, Smart Backup compares each file against previous backups. Only files with actual content changes are copied to the new backup folder.
-
-2. **Chain Resolution:** When you browse a backup in the UI, the system automatically resolves files through the backup chain. If `automations.yaml` wasn't copied to a specific backup (because it didn't change), the UI finds and displays the version from the most recent backup where it was modified.
-
-3. **Manifest Tracking:** Each backup includes a `.backup_manifest.json` file that records exactly which files were copied:
-   ```json
-   {
-     "version": 1,
-     "generatedAt": "2025-12-11T18:35:49.969Z",
-     "files": {
-       "root": ["automations.yaml"],
-       "storage": [],
-       "esphome": [],
-       "packages": []
-     }
-   }
-   ```
-
-4. **Tab-Filtered Browsing:** The snapshot list in the left panel is filtered based on the current tab. For example, when viewing the Automations tab, only backups that contain changes to `automations.yaml` are shown. This makes it easy to find exactly when a specific file was modified.
-
-### Benefits
-
-- **Storage Savings:** A typical smart backup might only be a few KB instead of MB, since unchanged files aren't duplicated.
-- **Empty Backup Prevention:** If nothing has changed since the last backup, no backup folder is created at all.
-- **Focused History:** Each tab shows only relevant backups, making it easier to track changes to specific configuration areas.
-
-### Enabling Smart Backup
-
-Enable Smart Backup in Settings. Once enabled, all new backups will use incremental mode. Existing full backups remain fully browsable and are included when the UI resolves file chains.
-
 ## Backup to Remote Share
 
 To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
@@ -243,6 +207,10 @@ curl -X POST http://localhost:54000/api/scan-backups \
   -H "Content-Type: application/json" \
   -d '{"backupRootPath": "/media/timemachine"}'
 ```
+
+## Alternative Options
+
+For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files. You can browse history, visualize comparisons, and restore individual files or your entire configuration with a single click.
 
 ## Support, Feedback & Contributing
 
