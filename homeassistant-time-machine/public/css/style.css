@@ -14,7 +14,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   overflow-y: auto;
-  position: relative; /* For absolute positioning of children */
+  position: relative;
+  /* For absolute positioning of children */
 }
 
 body[data-theme='light'] {
@@ -313,8 +314,8 @@ body[data-theme='light'] .empty-state-icon__svg {
 
 .search-input:focus {
   outline: none;
-  border-color: rgba(0,122,255, 0.3);
-  box-shadow: 0 0 0 3px rgba(0,122,255, 0.1);
+  border-color: rgba(0, 122, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .search-input::placeholder {
@@ -376,15 +377,21 @@ body[data-theme='light'] .select:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 0; /* Allow list to shrink below content width */
+  min-width: 0;
+  /* Allow list to shrink below content width */
 }
 
-#itemsList, ul, li {
+#itemsList,
+ul,
+li {
   list-style: none;
 }
 
 .list-item {
-  padding: 12px 16px;
+  /* height: 50px; removed to allow content to dictate height, but min-height matches badge text */
+  min-height: 48px;
+  padding: 0 16px;
+  /* Remove vertical padding, rely on height/flex */
   border-radius: 12px;
   cursor: pointer;
   background-color: rgb(56, 56, 56);
@@ -396,13 +403,15 @@ body[data-theme='light'] .select:hover {
   align-items: center;
   justify-content: space-between;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 0; /* Allow item to shrink below content width */
+  min-width: 0;
+  /* Allow item to shrink below content width */
 }
 
 body[data-theme='light'] .list-item {
   background: #ffffff;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  color: #475569; /* Matching the tab text color */
+  color: #475569;
+  /* Matching the tab text color */
   box-shadow: 0 12px 26px -20px rgba(15, 23, 42, 0.22);
 }
 
@@ -438,22 +447,26 @@ body[data-theme='light'] .list-item.active {
   align-items: center;
   gap: 12px;
   flex: 1;
-  min-width: 0; /* Allow content to shrink */
-  overflow: hidden; /* Hide overflow */
+  min-width: 0;
+  /* Allow content to shrink */
+  overflow: hidden;
+  /* Hide overflow */
 }
 
-.item-content > span {
+.item-content>span {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0; /* Allow text to truncate */
+  min-width: 0;
+  /* Allow text to truncate */
 }
 
 .item-badges {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0; /* Prevent badges from shrinking */
+  flex-shrink: 0;
+  /* Prevent badges from shrinking */
   margin-left: 12px;
 }
 
@@ -468,7 +481,7 @@ body[data-theme='light'] .list-item.active {
 }
 
 .badge {
-  padding: 2px 10px;
+  padding: 5px 14px;
   font-size: 12px;
   font-weight: 500;
   border-radius: 9999px;
@@ -539,7 +552,9 @@ body[data-theme='light'] .list-item.active .chevron {
   color: #f8fafc;
 }
 
-.loading, .empty-state, .error {
+.loading,
+.empty-state,
+.error {
   text-align: center;
   color: #A2A2A2;
   padding: 48px 24px;
@@ -588,7 +603,8 @@ body[data-theme='light'] .backup-status-success {
   background: rgba(34, 197, 94, 0.12);
 }
 
-.btn-primary, .btn-secondary {
+.btn-primary,
+.btn-secondary {
   padding: 14px 28px;
   border-radius: 12px;
   font-weight: 500;
@@ -694,8 +710,10 @@ body[data-theme='light'] .modal-dialog {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   overflow-y: auto;
   max-height: calc(90vh - 40px);
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -709,8 +727,10 @@ body[data-theme='light'] .settings-card {
   background-color: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(148, 163, 184, 0.25);
   box-shadow: 0 25px 55px -18px rgba(15, 23, 42, 0.28);
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 .settings-header {
@@ -1013,8 +1033,8 @@ body[data-theme='light'] .form-group select {
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: rgba(0,122,255, 0.3);
-  box-shadow: 0 0 0 3px rgba(0,122,255, 0.1);
+  border-color: rgba(0, 122, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .form-group select {
@@ -1177,6 +1197,7 @@ body[data-theme='light'] .settings-divider {
   position: relative;
   right: 4px;
 }
+
 #maxBackupsCount {
   -webkit-appearance: textfield;
   -moz-appearance: textfield;
@@ -1235,11 +1256,11 @@ body[data-theme='light'] .settings-divider {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.toggle input:checked + .toggle-slider {
+.toggle input:checked+.toggle-slider {
   background: #007AFF;
 }
 
-.toggle input:checked + .toggle-slider:before {
+.toggle input:checked+.toggle-slider:before {
   transform: translateX(22px);
 }
 
@@ -1295,7 +1316,7 @@ body[data-theme='light'] .notification.error {
 }
 
 .notification.info {
-  background: rgba(0,122,255, 0.95);
+  background: rgba(0, 122, 255, 0.95);
 }
 
 body[data-theme='light'] .notification.info {
@@ -1361,6 +1382,7 @@ body[data-theme='light'] .diff-state-banner-changed {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1626,7 +1648,7 @@ body[data-theme='light'] .diff-line {
 body[data-theme='light'] .diff-line-context {
   background: white;
   color: rgba(71, 85, 105, 0.75);
-} 
+}
 
 .diff-row:nth-child(even) .diff-line-added {
   background: rgba(16, 185, 129, 0.25);
@@ -1943,22 +1965,22 @@ body[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
 
 /* Selection styling */
 ::selection {
-  background: rgba(0,122,255, 0.3);
+  background: rgba(0, 122, 255, 0.3);
   color: #F9F9F9;
 }
 
 body[data-theme='light'] ::selection {
-  background: rgba(0,122,255, 0.2);
+  background: rgba(0, 122, 255, 0.2);
   color: #0f172a;
 }
 
 ::-moz-selection {
-  background: rgba(0,122,255, 0.3);
+  background: rgba(0, 122, 255, 0.3);
   color: #F9F9F9;
 }
 
 body[data-theme='light'] ::-moz-selection {
-  background: rgba(0,122,255, 0.2);
+  background: rgba(0, 122, 255, 0.2);
   color: #0f172a;
 }
 
@@ -2010,7 +2032,8 @@ body[data-theme='light'] .diff-header {
 /* Standalone grid for the diff viewer */
 .diff-banners-grid--standalone {
   margin: 0 18px 16px 18px;
-  border-radius: 0 8px 8px 0; /* Match banner corners */
+  border-radius: 0 8px 8px 0;
+  /* Match banner corners */
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
   width: calc(100% - 36px);
@@ -2061,10 +2084,14 @@ body[data-theme='light'] .diff-state-banner-current {
 }
 
 .diff-state-banner-changed {
-  border-radius: 0 8px 8px 0; /* Square left corners, rounded right corners */
-  position: relative; /* For z-index handling */
-  z-index: 1; /* Ensure it sits above the shell */
-  overflow: hidden; /* Prevent content from showing in corners */
+  border-radius: 0 8px 8px 0;
+  /* Square left corners, rounded right corners */
+  position: relative;
+  /* For z-index handling */
+  z-index: 1;
+  /* Ensure it sits above the shell */
+  overflow: hidden;
+  /* Prevent content from showing in corners */
 }
 
 .diff-state-banner-empty {
@@ -2132,7 +2159,7 @@ body[data-theme='light'] .modal-footer--diff .btn-primary {
   .list {
     padding: 8px 4px;
   }
-  
+
   .list-item {
     padding: 10px 12px;
     border-radius: 10px;
@@ -2145,17 +2172,17 @@ body[data-theme='light'] .modal-footer--diff .btn-primary {
   .item-content {
     gap: 8px;
   }
-  
+
   .badge {
     padding: 4px 8px;
     font-size: 12px;
   }
-  
+
   .item-badges {
     gap: 6px;
     margin-left: 8px;
   }
-  
+
   /* Make badges stack vertically on very small screens */
   @media (max-width: 400px) {
     .item-badges {
@@ -2208,11 +2235,13 @@ body[data-theme='light'] .code-viewer {
 }
 
 body[data-theme='light'] .file-icon-container {
-  background-color: #f3f4f6; /* Light grey background for light theme */
+  background-color: #f3f4f6;
+  /* Light grey background for light theme */
 }
 
 body[data-theme='light'] .file-icon {
-  color: #9ca3af; /* Slightly darker grey than background in light mode */
+  color: #9ca3af;
+  /* Slightly darker grey than background in light mode */
 }
 
 .empty-state-message {
@@ -2233,6 +2262,7 @@ input::placeholder {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -2252,10 +2282,13 @@ input::placeholder {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.5;
     transform: scale(1.2);
@@ -2263,10 +2296,10 @@ input::placeholder {
 }
 
 /* Ensure 21px vertical spacing between all elements in settings card */
-.settings-card > * {
+.settings-card>* {
   margin-bottom: 21px;
 }
 
-.settings-card > *:last-child {
+.settings-card>*:last-child {
   margin-bottom: 0;
 }

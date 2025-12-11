@@ -1099,7 +1099,7 @@ app.post('/api/get-backup-automations', async (req, res) => {
 
     // Check manifest for existence
     try {
-      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
       if (manifest.files && manifest.files.root && !manifest.files.root.includes('automations.yaml')) {
@@ -1125,7 +1125,7 @@ app.post('/api/get-backup-scripts', async (req, res) => {
 
     // Check manifest for existence
     try {
-      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
       if (manifest.files && manifest.files.root && !manifest.files.root.includes('scripts.yaml')) {
@@ -2092,7 +2092,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   // Write Manifest
   try {
-    await fs.writeFile(path.join(backupPath, 'backup_manifest.json'), JSON.stringify(manifest, null, 2));
+    await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
   } catch (err) {
     console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
   }
@@ -2174,7 +2174,7 @@ app.post('/api/get-backup-lovelace', async (req, res) => {
 
     // Check manifest
     try {
-      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
       if (manifest.files && manifest.files.storage) {
@@ -2305,7 +2305,7 @@ app.post('/api/get-backup-esphome', async (req, res) => {
 
     // Check manifest
     try {
-      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
       if (manifest.files && manifest.files.esphome) {
@@ -2406,7 +2406,7 @@ app.post('/api/get-backup-packages', async (req, res) => {
 
     // Check manifest
     try {
-      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
       if (manifest.files && manifest.files.packages) {
