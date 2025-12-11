@@ -2090,11 +2090,13 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     console.log(`[backup-${source}] Skipping Packages backups (feature disabled).`);
   }
 
-  // Write Manifest
-  try {
-    await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
-  } catch (err) {
-    console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
+  // Write Manifest only if smart backup is enabled
+  if (smartBackupEnabled) {
+    try {
+      await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
+    } catch (err) {
+      console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
+    }
   }
 
   console.log(`[backup-${source}] Backup completed successfully at:`, backupPath);
