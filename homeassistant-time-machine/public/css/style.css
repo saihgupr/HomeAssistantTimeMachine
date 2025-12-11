@@ -2268,7 +2268,8 @@ input::placeholder {
   }
 }
 
-.list-item {
+/* Animation only applied to backup list, not items list */
+#backupList .list-item {
   animation: fadeIn 0.3s ease-out;
 }
 

@@ -878,7 +878,7 @@
 
       if (isLoading) {
         if (hasContent) {
-          itemsList.style.opacity = '0.5';
+          // Keep existing content visible, just disable interaction
           itemsList.style.pointerEvents = 'none';
         } else {
           // If empty, show loading text
@@ -888,10 +888,8 @@
           else if (mode === 'packages') loadingText = getStyledText('ui.packages.loading') || 'Loading Packages files...';
 
           itemsList.innerHTML = `<p class="loading">${loadingText}</p>`;
-          itemsList.style.opacity = '1';
         }
       } else {
-        itemsList.style.opacity = '1';
         itemsList.style.pointerEvents = 'auto';
       }
     }
