@@ -1650,40 +1650,24 @@ body[data-theme='light'] .diff-line-context {
   color: rgba(71, 85, 105, 0.75);
 }
 
-.diff-row:nth-child(even) .diff-line-added {
-  background: rgba(34, 197, 94, 0.22);
-}
-
-body[data-theme='light'] .diff-row:nth-child(even) .diff-line-added {
-  background: rgba(34, 197, 94, 0.22);
-}
-
 .diff-line-added {
-  background: rgba(34, 197, 94, 0.18);
-  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.15);
+  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.5);
 }
 
 body[data-theme='light'] .diff-line-added {
-  background: rgba(34, 197, 94, 0.18);
-  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.15);
+  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.5);
 }
 
 .diff-line-removed {
-  background: rgba(220, 53, 69, 0.25);
-  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.5);
+  background: rgba(239, 68, 68, 0.18);
+  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.5);
 }
 
 body[data-theme='light'] .diff-line-removed {
-  background: rgba(220, 53, 69, 0.25);
-  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.5);
-}
-
-.diff-row:nth-child(even) .diff-line-removed {
-  background: rgba(220, 53, 69, 0.35);
-}
-
-body[data-theme='light'] .diff-row:nth-child(even) .diff-line-removed {
-  background: rgba(220, 53, 69, 0.35);
+  background: rgba(239, 68, 68, 0.18);
+  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.5);
 }
 
 .diff-line-removed .diff-line-marker {
