@@ -1529,6 +1529,9 @@
 
       const modalBody = document.getElementById('diffModalBody');
 
+      // Apply saved palette preference
+      setDiffPalette(currentPalette);
+
       // Hide close button for all states
       document.getElementById('closeDiff').style.display = 'none';
 
@@ -1755,6 +1758,9 @@
 
       const modalBody = document.getElementById('diffModalBody');
 
+      // Apply saved palette preference
+      setDiffPalette(currentPalette);
+
       // Hide close button for all states
       document.getElementById('closeDiff').style.display = 'none';
 
@@ -1952,6 +1958,9 @@
       document.getElementById('diffTitle').textContent = selectedPackagesFile.name;
 
       const modalBody = document.getElementById('diffModalBody');
+
+      // Apply saved palette preference
+      setDiffPalette(currentPalette);
 
       // Hide close button for all states
       document.getElementById('closeDiff').style.display = 'none';
@@ -2902,23 +2911,35 @@
     }
 
     // Set diff color palette
+    const TOTAL_PALETTES = 8;
+    let currentPalette = parseInt(localStorage.getItem('diffPalette')) || 1;
+
     function setDiffPalette(paletteNum) {
+      currentPalette = paletteNum;
       const modalBody = document.getElementById('diffModalBody');
       if (modalBody) {
         modalBody.setAttribute('data-diff-palette', paletteNum);
       }
-      // Update active button state
-      document.querySelectorAll('.diff-palette-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.palette === String(paletteNum));
-      });
       // Save preference
       localStorage.setItem('diffPalette', paletteNum);
     }
 
-    // Apply saved palette on load
+    function cycleDiffPalette() {
+      currentPalette = (currentPalette % TOTAL_PALETTES) + 1;
+      setDiffPalette(currentPalette);
+    }
+
+    // Add click handler to banner headers for cycling palettes
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.diff-banners-grid')) {
+        cycleDiffPalette();
+      }
+    });
+
+    // Apply saved palette on modal open
     const savedPalette = localStorage.getItem('diffPalette');
     if (savedPalette) {
-      setTimeout(() => setDiffPalette(parseInt(savedPalette)), 100);
+      currentPalette = parseInt(savedPalette);
     }
 
     function escapeHtml(text) {

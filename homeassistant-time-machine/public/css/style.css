@@ -1411,19 +1411,19 @@ body[data-theme='light'] h3 {
   color: #0f172a;
 }
 
-/* Diff Color Palette Selector */
+/* Diff Color Palette Selector - hidden, cycles via header click */
 .diff-palette-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(30, 30, 30, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: none;
 }
 
 body[data-theme='light'] .diff-palette-bar {
-  background: #f1f5f9;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  display: none;
+}
+
+/* Make banner clickable for palette cycling */
+.diff-banners-grid {
+  cursor: pointer;
+  user-select: none;
 }
 
 .diff-palette-label {
@@ -1539,19 +1539,19 @@ body[data-theme='light'] .diff-palette-label {
 
 /* Palette color overrides when applied */
 [data-diff-palette="1"] .diff-line-removed {
-  background: rgba(111, 23, 35, 0.35);
+  background: rgb(111, 23, 35);
 }
 
 [data-diff-palette="1"] .diff-line-added {
-  background: rgba(24, 57, 41, 0.35);
+  background: rgb(24, 57, 41);
 }
 
 [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
-  color: rgb(180, 80, 90);
+  color: rgb(220, 120, 130);
 }
 
 [data-diff-palette="1"] .diff-line-added .diff-line-marker {
-  color: rgb(80, 160, 110);
+  color: rgb(100, 200, 130);
 }
 
 [data-diff-palette="2"] .diff-line-removed {
