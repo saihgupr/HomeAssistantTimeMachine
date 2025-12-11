@@ -1962,14 +1962,13 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   const storagePath = path.join(configPath, '.storage');
   const backupStoragePath = path.join(backupPath, '.storage');
   let storageDirectoryCreated = false;
+  let copiedLovelaceCount = 0;
+  let skippedLovelaceCount = 0;
 
   try {
     const storageFiles = await fs.readdir(storagePath);
     const lovelaceFiles = storageFiles.filter(file => file.startsWith('lovelace'));
     console.log(`[backup-${source}] Found ${lovelaceFiles.length} Lovelace files to check.`);
-
-    let copiedLovelaceCount = 0;
-    let skippedLovelaceCount = 0;
     for (const file of lovelaceFiles) {
       manifest.files.storage.push(file);
       const sourcePath = path.join(storagePath, file);
@@ -2005,6 +2004,10 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   const esphomeEnabled = await isEsphomeEnabled();
   const packagesEnabled = await isPackagesEnabled();
+  let copiedEsphomeCount = 0;
+  let skippedEsphomeCount = 0;
+  let copiedPackagesCount = 0;
+  let skippedPackagesCount = 0;
 
   if (esphomeEnabled) {
     // Backup ESPHome files
@@ -2014,9 +2017,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     try {
       const esphomeYamlFiles = await listYamlFilesRecursive(esphomePath);
       console.log(`[backup-${source}] Found ${esphomeYamlFiles.length} ESPHome YAML files to copy.`);
-
-      let copiedEsphomeCount = 0;
-      let skippedEsphomeCount = 0;
       for (const relativePath of esphomeYamlFiles) {
         manifest.files.esphome.push(relativePath);
         const sourcePath = path.join(esphomePath, relativePath);
@@ -2056,9 +2056,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     try {
       const packagesYamlFiles = await listYamlFilesRecursive(packagesPath);
       console.log(`[backup-${source}] Found ${packagesYamlFiles.length} Packages YAML files to copy.`);
-
-      let copiedPackagesCount = 0;
-      let skippedPackagesCount = 0;
       for (const relativePath of packagesYamlFiles) {
         manifest.files.packages.push(relativePath);
         const sourcePath = path.join(packagesPath, relativePath);
@@ -2088,6 +2085,42 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     }
   } else {
     console.log(`[backup-${source}] Skipping Packages backups (feature disabled).`);
+  }
+
+  // In smart backup mode, check if any files were actually copied
+  // If not, delete the empty backup folder and return early
+  if (smartBackupEnabled && allBackupPaths.length > 0) {
+    const totalCopied = copiedYamlCount + copiedLovelaceCount + copiedEsphomeCount + copiedPackagesCount;
+    if (totalCopied === 0) {
+      console.log(`[backup-${source}] No files changed since last backup. Removing empty backup folder.`);
+      try {
+        await fs.rm(backupPath, { recursive: true, force: true });
+
+        // Also clean up empty parent directories (MM and YYYY) if they're now empty
+        const monthPath = path.dirname(backupPath);
+        const yearPath = path.dirname(monthPath);
+
+        try {
+          const monthContents = await fs.readdir(monthPath);
+          if (monthContents.length === 0) {
+            await fs.rmdir(monthPath);
+            console.log(`[backup-${source}] Removed empty month directory: ${monthPath}`);
+
+            // Check if year directory is also empty now
+            const yearContents = await fs.readdir(yearPath);
+            if (yearContents.length === 0) {
+              await fs.rmdir(yearPath);
+              console.log(`[backup-${source}] Removed empty year directory: ${yearPath}`);
+            }
+          }
+        } catch (cleanupErr) {
+          // Ignore errors cleaning up parent directories
+        }
+      } catch (rmErr) {
+        console.error(`[backup-${source}] Failed to remove empty backup folder:`, rmErr.message);
+      }
+      return null; // Indicate no backup was created
+    }
   }
 
   // Write Manifest only if smart backup is enabled
@@ -2158,6 +2191,12 @@ app.post('/api/backup-now', async (req, res) => {
   try {
     const { liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled } = req.body;
     const backupPath = await performBackup(liveConfigPath, backupFolderPath, 'manual', maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled);
+
+    // null means no changes detected in smart backup mode
+    if (backupPath === null) {
+      return res.json({ success: true, noChanges: true, message: 'No changes detected since last backup.' });
+    }
+
     res.json({ success: true, path: backupPath, message: `Backup created successfully at ${backupPath}` });
   } catch (error) {
     console.error('[backup-now] Error:', error);

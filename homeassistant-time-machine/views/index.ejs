@@ -2446,6 +2446,13 @@
           return;
         }
 
+        // Handle "no changes detected" response from smart backup
+        if (data.noChanges) {
+          backupStatus.textContent = getStyledText('ui.backupNow.noChanges') || 'No changes detected since last backup.';
+          backupStatus.className = 'settings-inline-text status-success';
+          return;
+        }
+
         const successPath = data.path || backupFolderPath;
         backupStatus.textContent = getStyledText('ui.backupNow.successWithPath', { path: successPath });
         backupStatus.className = 'settings-inline-text status-success';

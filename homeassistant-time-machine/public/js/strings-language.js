@@ -615,6 +615,14 @@ window.STRINGS = {
         fr: "Sauvegarde stockée à {path}.",
         nl: "Back-up opgeslagen op {path}.",
         it: "Backup salvato in {path}."
+      },
+      noChanges: {
+        en: "No changes detected since last backup.",
+        es: "No se detectaron cambios desde la última copia.",
+        de: "Keine Änderungen seit dem letzten Backup.",
+        fr: "Aucune modification depuis la dernière sauvegarde.",
+        nl: "Geen wijzigingen sinds de laatste back-up.",
+        it: "Nessuna modifica rilevata dall'ultimo backup."
       }
     },
     diffViewer: {
