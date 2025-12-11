@@ -84,6 +84,7 @@ body[data-theme='light'] .header h1 {
   font-size: 14px;
   color: #A2A2A2;
   font-weight: 400;
+  margin-top: -4px;
 }
 
 body[data-theme='light'] .version {
