@@ -1869,7 +1869,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   // Backup Lovelace files
   const storagePath = path.join(configPath, '.storage');
   const backupStoragePath = path.join(backupPath, '.storage');
-  await fs.mkdir(backupStoragePath, { recursive: true });
+  let storageDirectoryCreated = false;
 
   try {
     const storageFiles = await fs.readdir(storagePath);
@@ -1890,6 +1890,12 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
             skippedLovelaceCount++;
             continue;
           }
+        }
+
+        // Create directory only when first file needs to be copied
+        if (!storageDirectoryCreated) {
+          await fs.mkdir(backupStoragePath, { recursive: true });
+          storageDirectoryCreated = true;
         }
 
         await fs.copyFile(sourcePath, destPath);
@@ -1914,7 +1920,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     const backupEsphomePath = path.join(backupPath, 'esphome');
 
     try {
-      await fs.mkdir(backupEsphomePath, { recursive: true });
       const esphomeYamlFiles = await listYamlFilesRecursive(esphomePath);
       console.log(`[backup-${source}] Found ${esphomeYamlFiles.length} ESPHome YAML files to copy.`);
 
@@ -1957,7 +1962,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     const backupPackagesPath = path.join(backupPath, 'packages');
 
     try {
-      await fs.mkdir(backupPackagesPath, { recursive: true });
       const packagesYamlFiles = await listYamlFilesRecursive(packagesPath);
       console.log(`[backup-${source}] Found ${packagesYamlFiles.length} Packages YAML files to copy.`);
 
