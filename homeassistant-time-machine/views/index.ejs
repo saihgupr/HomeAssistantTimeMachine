@@ -694,7 +694,7 @@
         const response = await fetch(url('/api/scan-backups'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ backupRootPath })
+          body: JSON.stringify({ backupRootPath, mode: currentMode })
         });
         const data = await response.json();
         console.log('[loadBackups] Scan response data:', data);
@@ -2060,10 +2060,8 @@
         liveItemsMap = {};
         itemStatuses = {};
 
-        // Reload backups if filter is enabled (since filter is mode-specific)
-        if (showOnlyChanges) {
-          loadBackups();
-        }
+        // Always reload backups when switching tabs (filtering is mode-specific)
+        loadBackups();
 
         // Update search placeholder
         updatePlaceholders();

@@ -821,17 +821,68 @@ app.post('/api/scan-backups', async (req, res) => {
   try {
     // Accept backupRootPath from request body or use default
     const backupRootPath = req.body?.backupRootPath || '/media/timemachine';
-    console.log('[scan-backups] Scanning backup directory:', backupRootPath);
+    const mode = req.body?.mode; // Optional mode filter: automations, scripts, lovelace, esphome, packages
+    console.log('[scan-backups] Scanning backup directory:', backupRootPath, mode ? `for mode: ${mode}` : '');
 
     // Basic security check
     if (backupRootPath.includes('..')) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
-    const backups = await getBackupDirs(backupRootPath);
+    let backups = await getBackupDirs(backupRootPath);
 
     // Sort descending to show newest first
     backups.sort((a, b) => b.folderName.localeCompare(a.folderName));
+
+    // If mode is specified, filter backups to only include those with relevant files
+    if (mode) {
+      const filteredBackups = [];
+      for (const backup of backups) {
+        try {
+          const manifestPath = path.join(backup.path, '.backup_manifest.json');
+          const manifestData = await fs.readFile(manifestPath, 'utf8');
+          const manifest = JSON.parse(manifestData);
+
+          let hasRelevantFiles = false;
+
+          switch (mode) {
+            case 'automations':
+              // Check if automations.yaml is in root files
+              hasRelevantFiles = manifest.files?.root?.includes('automations.yaml') ?? false;
+              break;
+            case 'scripts':
+              // Check if scripts.yaml is in root files
+              hasRelevantFiles = manifest.files?.root?.includes('scripts.yaml') ?? false;
+              break;
+            case 'lovelace':
+              // Check if any lovelace files are in storage
+              hasRelevantFiles = (manifest.files?.storage?.some(f => f.startsWith('lovelace'))) ?? false;
+              break;
+            case 'esphome':
+              // Check if any esphome files exist
+              hasRelevantFiles = (manifest.files?.esphome?.length > 0) ?? false;
+              break;
+            case 'packages':
+              // Check if any packages files exist
+              hasRelevantFiles = (manifest.files?.packages?.length > 0) ?? false;
+              break;
+            default:
+              // Unknown mode, include the backup
+              hasRelevantFiles = true;
+          }
+
+          if (hasRelevantFiles) {
+            filteredBackups.push(backup);
+          }
+        } catch (manifestErr) {
+          // No manifest or error reading it - this is an old-style full backup
+          // Include it to be safe (assume it has all files)
+          filteredBackups.push(backup);
+        }
+      }
+      backups = filteredBackups;
+      console.log('[scan-backups] Filtered to', backups.length, 'backups with', mode, 'files');
+    }
 
     console.log('[scan-backups] Found backups:', backups.length);
     res.json({ backups });
@@ -1936,7 +1987,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   let copiedYamlCount = 0;
   let skippedYamlCount = 0;
   for (const file of yamlFiles) {
-    manifest.files.root.push(file);
     const sourcePath = path.join(configPath, file);
     const destPath = path.join(backupPath, file);
 
@@ -1951,6 +2001,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       }
 
       await fs.copyFile(sourcePath, destPath);
+      manifest.files.root.push(file); // Only add to manifest if file was actually copied
       copiedYamlCount++;
     } catch (err) {
       console.error(`[backup-${source}] Error copying ${file}:`, err.message);
@@ -1970,7 +2021,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     const lovelaceFiles = storageFiles.filter(file => file.startsWith('lovelace'));
     console.log(`[backup-${source}] Found ${lovelaceFiles.length} Lovelace files to check.`);
     for (const file of lovelaceFiles) {
-      manifest.files.storage.push(file);
       const sourcePath = path.join(storagePath, file);
       const destPath = path.join(backupStoragePath, file);
       try {
@@ -1990,6 +2040,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         }
 
         await fs.copyFile(sourcePath, destPath);
+        manifest.files.storage.push(file); // Only add to manifest if file was actually copied
         copiedLovelaceCount++;
       } catch (err) {
         if (err.code !== 'ENOENT') {
@@ -2018,7 +2069,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       const esphomeYamlFiles = await listYamlFilesRecursive(esphomePath);
       console.log(`[backup-${source}] Found ${esphomeYamlFiles.length} ESPHome YAML files to copy.`);
       for (const relativePath of esphomeYamlFiles) {
-        manifest.files.esphome.push(relativePath);
         const sourcePath = path.join(esphomePath, relativePath);
         const destPath = path.join(backupEsphomePath, relativePath);
         try {
@@ -2033,6 +2083,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
+          manifest.files.esphome.push(relativePath); // Only add to manifest if file was actually copied
           copiedEsphomeCount++;
         } catch (err) {
           if (err.code !== 'ENOENT') {
@@ -2057,7 +2108,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       const packagesYamlFiles = await listYamlFilesRecursive(packagesPath);
       console.log(`[backup-${source}] Found ${packagesYamlFiles.length} Packages YAML files to copy.`);
       for (const relativePath of packagesYamlFiles) {
-        manifest.files.packages.push(relativePath);
         const sourcePath = path.join(packagesPath, relativePath);
         const destPath = path.join(backupPackagesPath, relativePath);
         try {
@@ -2072,6 +2122,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
+          manifest.files.packages.push(relativePath); // Only add to manifest if file was actually copied
           copiedPackagesCount++;
         } catch (err) {
           if (err.code !== 'ENOENT') {
