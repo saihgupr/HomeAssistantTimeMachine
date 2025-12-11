@@ -468,7 +468,7 @@ body[data-theme='light'] .list-item.active {
 }
 
 .badge {
-  padding: 5px 14px;
+  padding: 2px 10px;
   font-size: 12px;
   font-weight: 500;
   border-radius: 9999px;

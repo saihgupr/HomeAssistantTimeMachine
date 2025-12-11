@@ -1096,7 +1096,20 @@ async function checkPackagesChanges(backupPath, configPath) {
 app.post('/api/get-backup-automations', async (req, res) => {
   try {
     const { backupPath } = req.body;
-    const automationsFile = path.join(backupPath, 'automations.yaml');
+
+    // Check manifest for existence
+    try {
+      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      if (manifest.files && manifest.files.root && !manifest.files.root.includes('automations.yaml')) {
+        return res.json({ automations: [] });
+      }
+    } catch (e) {
+      // Manifest missing -> assume old full backup -> proceed to resolve
+    }
+
+    const automationsFile = await resolveFileInBackupChain(backupPath, 'automations.yaml');
     const automations = await loadYamlWithCache(automationsFile) || [];
     res.json({ automations });
   } catch (error) {
@@ -1109,7 +1122,20 @@ app.post('/api/get-backup-automations', async (req, res) => {
 app.post('/api/get-backup-scripts', async (req, res) => {
   try {
     const { backupPath } = req.body;
-    const scriptsFile = path.join(backupPath, 'scripts.yaml');
+
+    // Check manifest for existence
+    try {
+      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      if (manifest.files && manifest.files.root && !manifest.files.root.includes('scripts.yaml')) {
+        return res.json({ scripts: [] });
+      }
+    } catch (e) {
+      // Manifest missing -> assume old full backup -> proceed to resolve
+    }
+
+    const scriptsFile = await resolveFileInBackupChain(backupPath, 'scripts.yaml');
     const scriptsObject = await loadYamlWithCache(scriptsFile);
 
     // Scripts are stored as a dictionary/object, not an array
@@ -1746,6 +1772,46 @@ async function hasFileChanged(sourceFile, backupPaths, relativeFilePath) {
   }
 }
 
+// Helper function to find the correct version of a file in the backup chain, starting from a specific backup.
+async function resolveFileInBackupChain(targetBackupPath, relativeFilePath) {
+  try {
+    // Determine backup root by going up 3 levels (backup -> MM -> YYYY -> root)
+    let rootPath = targetBackupPath;
+    for (let i = 0; i < 3; i++) rootPath = path.dirname(rootPath);
+
+    const allBackups = await getAllBackupPaths(rootPath);
+    const targetBase = path.basename(targetBackupPath);
+
+    // Find index of the target backup in the sorted list (newest first)
+    // Note: backup folder names are timestamps, so they are unique
+    const startIndex = allBackups.findIndex(p => path.basename(p) === targetBase);
+
+    if (startIndex === -1) {
+      // Fallback: just check the target path if not in list
+      return path.join(targetBackupPath, relativeFilePath);
+    }
+
+    // Iterate from startIndex onwards (covering target and older backups)
+    for (let i = startIndex; i < allBackups.length; i++) {
+      const potentialPath = path.join(allBackups[i], relativeFilePath);
+      try {
+        await fs.access(potentialPath);
+        return potentialPath; // Found it!
+      } catch (e) {
+        // Not here, continue to older backup
+      }
+    }
+
+    // If not found in history, return the path in target backup (let caller handle ENOENT)
+    return path.join(targetBackupPath, relativeFilePath);
+
+  } catch (err) {
+    console.error('[resolveFileInBackupChain] Error:', err);
+    // Fallback
+    return path.join(targetBackupPath, relativeFilePath);
+  }
+}
+
 // Reusable backup function
 async function performBackup(liveConfigPath, backupFolderPath, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null, smartBackupEnabled = false) {
   const configPath = liveConfigPath || '/config';
@@ -1839,6 +1905,18 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   console.log(`[backup-${source}] Creating directory:`, backupPath);
 
+  const manifest = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    smartBackup: smartBackupEnabled,
+    files: {
+      root: [],
+      storage: [],
+      esphome: [],
+      packages: []
+    }
+  };
+
   try {
     await fs.mkdir(backupPath, { recursive: true });
     console.log(`[backup-${source}] Directory created successfully`);
@@ -1858,6 +1936,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   let copiedYamlCount = 0;
   let skippedYamlCount = 0;
   for (const file of yamlFiles) {
+    manifest.files.root.push(file);
     const sourcePath = path.join(configPath, file);
     const destPath = path.join(backupPath, file);
 
@@ -1892,6 +1971,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     let copiedLovelaceCount = 0;
     let skippedLovelaceCount = 0;
     for (const file of lovelaceFiles) {
+      manifest.files.storage.push(file);
       const sourcePath = path.join(storagePath, file);
       const destPath = path.join(backupStoragePath, file);
       try {
@@ -1938,6 +2018,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       let copiedEsphomeCount = 0;
       let skippedEsphomeCount = 0;
       for (const relativePath of esphomeYamlFiles) {
+        manifest.files.esphome.push(relativePath);
         const sourcePath = path.join(esphomePath, relativePath);
         const destPath = path.join(backupEsphomePath, relativePath);
         try {
@@ -1979,6 +2060,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       let copiedPackagesCount = 0;
       let skippedPackagesCount = 0;
       for (const relativePath of packagesYamlFiles) {
+        manifest.files.packages.push(relativePath);
         const sourcePath = path.join(packagesPath, relativePath);
         const destPath = path.join(backupPackagesPath, relativePath);
         try {
@@ -2006,6 +2088,13 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     }
   } else {
     console.log(`[backup-${source}] Skipping Packages backups (feature disabled).`);
+  }
+
+  // Write Manifest
+  try {
+    await fs.writeFile(path.join(backupPath, 'backup_manifest.json'), JSON.stringify(manifest, null, 2));
+  } catch (err) {
+    console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
   }
 
   console.log(`[backup-${source}] Backup completed successfully at:`, backupPath);
@@ -2082,8 +2171,24 @@ app.post('/api/backup-now', async (req, res) => {
 app.post('/api/get-backup-lovelace', async (req, res) => {
   try {
     const { backupPath } = req.body;
-    const lovelaceDir = path.join(backupPath, '.storage');
 
+    // Check manifest
+    try {
+      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      if (manifest.files && manifest.files.storage) {
+        // Use manifest list (already relative to .storage if it was just filenames)
+        // Wait, logic in performBackup: manifest.files.storage.push(file) where file is just filename
+        // Filter for 'lovelace' prefix
+        const lovelaceFiles = manifest.files.storage.filter(f => f.startsWith('lovelace'));
+        return res.json({ lovelaceFiles });
+      }
+    } catch (e) {
+      // Fallback to directory scan
+    }
+
+    const lovelaceDir = path.join(backupPath, '.storage');
     const files = await fs.readdir(lovelaceDir);
     const lovelaceFiles = files.filter(f => f.startsWith('lovelace'));
 
@@ -2097,9 +2202,11 @@ app.post('/api/get-backup-lovelace', async (req, res) => {
 app.post('/api/get-backup-lovelace-file', async (req, res) => {
   try {
     const { backupPath, fileName } = req.body;
-    const filePath = path.join(backupPath, '.storage', fileName);
 
-    console.log(`[get-backup-lovelace-file] Request for file: ${fileName} in backup: ${backupPath}`);
+    // Use chain resolution
+    const filePath = await resolveFileInBackupChain(backupPath, path.join('.storage', fileName));
+
+    console.log(`[get-backup-lovelace-file] Request for file: ${fileName} in backup: ${backupPath} -> Resolved: ${filePath}`);
 
     res.sendFile(filePath, (err) => {
       if (err) {
@@ -2195,6 +2302,19 @@ app.post('/api/get-backup-esphome', async (req, res) => {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
     const { backupPath } = req.body;
+
+    // Check manifest
+    try {
+      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      if (manifest.files && manifest.files.esphome) {
+        return res.json({ esphomeFiles: manifest.files.esphome });
+      }
+    } catch (e) {
+      // Fallback
+    }
+
     const esphomeDir = path.join(backupPath, 'esphome');
     const esphomeFiles = await listYamlFilesRecursive(esphomeDir);
     res.json({ esphomeFiles });
@@ -2210,8 +2330,11 @@ app.post('/api/get-backup-esphome-file', async (req, res) => {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
     const { backupPath, fileName } = req.body;
-    const esphomeDir = path.join(backupPath, 'esphome');
-    const filePath = resolveWithinDirectory(esphomeDir, fileName);
+
+    // Use chain resolution
+    // fileName is relative to esphome directory, so join 'esphome'
+    const filePath = await resolveFileInBackupChain(backupPath, path.join('esphome', fileName));
+
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
   } catch (error) {
@@ -2280,6 +2403,19 @@ app.post('/api/get-backup-packages', async (req, res) => {
       return res.status(404).json({ error: 'Packages feature disabled' });
     }
     const { backupPath } = req.body;
+
+    // Check manifest
+    try {
+      const manifestPath = path.join(backupPath, 'backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      if (manifest.files && manifest.files.packages) {
+        return res.json({ packagesFiles: manifest.files.packages });
+      }
+    } catch (e) {
+      // Fallback
+    }
+
     const packagesDir = path.join(backupPath, 'packages');
 
     try {
@@ -2309,8 +2445,10 @@ app.post('/api/get-backup-packages-file', async (req, res) => {
       return res.status(404).json({ error: 'Packages feature disabled' });
     }
     const { backupPath, fileName } = req.body;
-    const packagesDir = path.join(backupPath, 'packages');
-    const filePath = resolveWithinDirectory(packagesDir, fileName);
+
+    // Use chain resolution
+    const filePath = await resolveFileInBackupChain(backupPath, path.join('packages', fileName));
+
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
   } catch (error) {

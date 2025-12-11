@@ -102,6 +102,18 @@
           <p id="backupStatus" class="settings-inline-text"></p>
         </div>
 
+        <div id="smartBackupSection"
+          style="margin: 0 !important; padding-top: 0 !important; margin-bottom: 16px !important;">
+          <div class="form-group toggle-group" style="margin-bottom: 0;">
+            <label id="smartBackupLabel">Only Backup Changes</label>
+            <label class="toggle">
+              <input type="checkbox" id="smartBackupEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+
         <div class="form-group toggle-group" style="margin-bottom: 16px;">
           <label id="showOnlyChangesLabel">Show only snapshots with changes</label>
           <label class="toggle">
@@ -191,17 +203,6 @@
           </div>
         </div>
 
-        <div id="smartBackupSection" style="display: none; margin: 0 !important; padding-top: 0 !important;">
-          <div class="form-group toggle-group" style="margin-bottom: 0;">
-            <label id="smartBackupLabel">Only Backup Changes</label>
-            <label class="toggle">
-              <input type="checkbox" id="smartBackupEnabled">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <p id="smartBackupHint" class="settings-hint" style="margin-top: 4px; font-size: 12px; color: #9ca3af;">
-            Backups only include files that changed since the last backup.</p>
-        </div>
 
         <div class="settings-actions">
 
@@ -864,12 +865,42 @@
       }
     }
 
+    // Helper to handle loading state without flashing
+    function setListLoading(isLoading, mode) {
+      const itemsList = document.getElementById('itemsList');
+      if (!itemsList) return;
+
+      const hasContent = itemsList.children.length > 0 &&
+        !itemsList.querySelector('.loading') &&
+        !itemsList.querySelector('.empty-state') &&
+        !itemsList.querySelector('.error') &&
+        !itemsList.querySelector('.file-icon-container'); // initial state
+
+      if (isLoading) {
+        if (hasContent) {
+          itemsList.style.opacity = '0.5';
+          itemsList.style.pointerEvents = 'none';
+        } else {
+          // If empty, show loading text
+          let loadingText = getStyledText('ui.itemsList.loading', { mode: mode }) || `Loading ${mode}...`;
+          if (mode === 'lovelace') loadingText = getStyledText('ui.lovelace.loading') || 'Loading Lovelace files...';
+          else if (mode === 'esphome') loadingText = getStyledText('ui.esphome.loading') || 'Loading ESPHome files...';
+          else if (mode === 'packages') loadingText = getStyledText('ui.packages.loading') || 'Loading Packages files...';
+
+          itemsList.innerHTML = `<p class="loading">${loadingText}</p>`;
+          itemsList.style.opacity = '1';
+        }
+      } else {
+        itemsList.style.opacity = '1';
+        itemsList.style.pointerEvents = 'auto';
+      }
+    }
+
     // Load backup items
     async function loadBackupItems() {
       if (!currentBackupPath || currentMode === 'lovelace') return;
 
-      const itemsList = document.getElementById('itemsList');
-      itemsList.innerHTML = `<p class="loading">${getStyledText('ui.itemsList.loading', { mode: currentMode })}</p>`;
+      setListLoading(true, currentMode);
 
       try {
         const endpoint = currentMode === 'automations'
@@ -886,7 +917,7 @@
         allItems = data.automations || data.scripts || [];
 
         if (allItems.length === 0) {
-          itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noItems', { mode: currentMode })}</p>`;
+          document.getElementById('itemsList').innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noItems', { mode: currentMode })}</p>`;
           return;
         }
 
@@ -901,7 +932,9 @@
         allItems = [];
         liveItemsMap = {};
         itemStatuses = {};
-        itemsList.innerHTML = `<p class="error">${applyTextStyle(`Error loading ${currentMode}: ${error.message}`, 'error')}</p>`;
+        document.getElementById('itemsList').innerHTML = `<p class="error">${applyTextStyle(`Error loading ${currentMode}: ${error.message}`, 'error')}</p>`;
+      } finally {
+        setListLoading(false, currentMode);
       }
     }
 
@@ -1248,8 +1281,9 @@
     // Load Lovelace files
     async function loadLovelaceFiles() {
       if (!currentBackupPath) return;
-      const itemsList = document.getElementById('itemsList');
-      itemsList.innerHTML = `<p class="loading">${getStyledText('ui.lovelace.loading')}</p>`;
+
+      setListLoading(true, 'lovelace');
+
       try {
         const response = await fetch(url('/api/get-backup-lovelace'), {
           method: 'POST',
@@ -1292,7 +1326,9 @@
         applyFilters(); // Use applyFilters to apply showOnlyChanges filtering
       } catch (error) {
         console.error('[loadLovelaceFiles] Error:', error);
-        itemsList.innerHTML = `<p class="error">${applyTextStyle('Error loading Lovelace files: ' + error.message, 'error')}</p>`;
+        document.getElementById('itemsList').innerHTML = `<p class="error">${applyTextStyle('Error loading Lovelace files: ' + error.message, 'error')}</p>`;
+      } finally {
+        setListLoading(false, 'lovelace');
       }
     }
 
@@ -1575,7 +1611,9 @@
         itemsList.innerHTML = `<p class="empty-state">${getEsphomeDisabledMessage()}</p>`;
         return;
       }
-      itemsList.innerHTML = `<p class="loading">${getStyledText('ui.esphome.loading')}</p>`;
+
+      setListLoading(true, 'esphome');
+
       try {
         const response = await fetch(url('/api/get-backup-esphome'), {
           method: 'POST',
@@ -1623,6 +1661,8 @@
       } catch (error) {
         console.error('[loadEsphomeFiles] Error:', error);
         itemsList.innerHTML = `<p class="${esphomeFeatureEnabled ? 'error' : 'empty-state'}">${esphomeFeatureEnabled ? applyTextStyle('Error loading ESPHome files: ' + error.message, 'error') : getEsphomeDisabledMessage()}</p>`;
+      } finally {
+        setListLoading(false, 'esphome');
       }
     }
 
@@ -1769,7 +1809,9 @@
         itemsList.innerHTML = `<p class="empty-state">${getPackagesDisabledMessage()}</p>`;
         return;
       }
-      itemsList.innerHTML = `<p class="loading">${getStyledText('ui.packages.loading')}</p>`;
+
+      setListLoading(true, 'packages');
+
       try {
         const response = await fetch(url('/api/get-backup-packages'), {
           method: 'POST',
@@ -1817,6 +1859,8 @@
       } catch (error) {
         console.error('[loadPackagesFiles] Error:', error);
         itemsList.innerHTML = `<p class="${packagesFeatureEnabled ? 'error' : 'empty-state'}">${packagesFeatureEnabled ? applyTextStyle('Error loading Packages files: ' + error.message, 'error') : getPackagesDisabledMessage()}</p>`;
+      } finally {
+        setListLoading(false, 'packages');
       }
     }
 
@@ -2417,13 +2461,11 @@
       const isEnabled = e.target.checked;
       document.getElementById('scheduleOptions').style.display = isEnabled ? 'block' : 'none';
       document.getElementById('maxBackupsSection').style.display = isEnabled ? 'block' : 'none';
-      document.getElementById('smartBackupSection').style.display = isEnabled ? 'block' : 'none';
 
       // If schedule is disabled, also disable max backups and smart backup
       if (!isEnabled) {
         document.getElementById('maxBackupsEnabled').checked = false;
         document.getElementById('maxBackupsOptions').style.display = 'none';
-        document.getElementById('smartBackupEnabled').checked = false;
       }
     });
 
@@ -2454,7 +2496,6 @@
           document.getElementById('scheduleEnabled').checked = isEnabled;
           document.getElementById('scheduleOptions').style.display = isEnabled ? 'block' : 'none';
           document.getElementById('maxBackupsSection').style.display = isEnabled ? 'block' : 'none';
-          document.getElementById('smartBackupSection').style.display = isEnabled ? 'block' : 'none';
 
           const { frequency, time, day } = cronToSchedule(job.cronExpression);
           document.getElementById('scheduleFrequency').value = frequency;
