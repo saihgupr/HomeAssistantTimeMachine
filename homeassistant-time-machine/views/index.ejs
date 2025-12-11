@@ -1492,6 +1492,17 @@
           ${bannerText ? `<div class="diff-state-banner diff-state-banner-changed diff-state-banner--header"><span class="diff-state-label">${escapeHtml(bannerText)}</span></div>` : '<div class="diff-state-banner diff-state-banner-empty diff-state-banner--header"></div>'}
         </div>
         <div class="diff-viewer-shell">
+          <div class="diff-palette-bar">
+            <span class="diff-palette-label">Theme:</span>
+            <div class="diff-palette-btn active" data-palette="1" onclick="setDiffPalette(1)" title="Coral & Mint"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="2" onclick="setDiffPalette(2)" title="Rose & Emerald"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="3" onclick="setDiffPalette(3)" title="Sunset & Ocean"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="4" onclick="setDiffPalette(4)" title="Berry & Lime"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="5" onclick="setDiffPalette(5)" title="Salmon & Seafoam"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="6" onclick="setDiffPalette(6)" title="Ruby & Jade"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="7" onclick="setDiffPalette(7)" title="Peach & Aqua"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="8" onclick="setDiffPalette(8)" title="Magenta & Cyan"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+          </div>
           <div class="diff-viewer-split">
             <div class="diff-hunks">
               ${hunks.map((hunk, index) => renderSplitHunk(hunk, index)).join('')}
@@ -2670,6 +2681,17 @@
           ${bannerText ? `<div class="diff-state-banner diff-state-banner-changed diff-state-banner--header"><span class="diff-state-label">${escapeHtml(bannerText)}</span></div>` : '<div class="diff-state-banner diff-state-banner-empty diff-state-banner--header"></div>'}
         </div>
         <div class="diff-viewer-shell">
+          <div class="diff-palette-bar">
+            <span class="diff-palette-label">Theme:</span>
+            <div class="diff-palette-btn active" data-palette="1" onclick="setDiffPalette(1)" title="Coral & Mint"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="2" onclick="setDiffPalette(2)" title="Rose & Emerald"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="3" onclick="setDiffPalette(3)" title="Sunset & Ocean"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="4" onclick="setDiffPalette(4)" title="Berry & Lime"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="5" onclick="setDiffPalette(5)" title="Salmon & Seafoam"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="6" onclick="setDiffPalette(6)" title="Ruby & Jade"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="7" onclick="setDiffPalette(7)" title="Peach & Aqua"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+            <div class="diff-palette-btn" data-palette="8" onclick="setDiffPalette(8)" title="Magenta & Cyan"><div class="diff-palette-btn-left"></div><div class="diff-palette-btn-right"></div></div>
+          </div>
           <div class="diff-viewer-split">
             <div class="diff-hunks">
               ${hunks.map((hunk, index) => renderSplitHunk(hunk, index)).join('')}
@@ -2877,6 +2899,26 @@
         button.textContent = button.dataset.hideLabel || 'Hide context';
         button.setAttribute('aria-expanded', 'true');
       }
+    }
+
+    // Set diff color palette
+    function setDiffPalette(paletteNum) {
+      const modalBody = document.getElementById('diffModalBody');
+      if (modalBody) {
+        modalBody.setAttribute('data-diff-palette', paletteNum);
+      }
+      // Update active button state
+      document.querySelectorAll('.diff-palette-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.palette === String(paletteNum));
+      });
+      // Save preference
+      localStorage.setItem('diffPalette', paletteNum);
+    }
+
+    // Apply saved palette on load
+    const savedPalette = localStorage.getItem('diffPalette');
+    if (savedPalette) {
+      setTimeout(() => setDiffPalette(parseInt(savedPalette)), 100);
     }
 
     function escapeHtml(text) {

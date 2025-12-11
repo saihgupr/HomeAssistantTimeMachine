@@ -1411,6 +1411,261 @@ body[data-theme='light'] h3 {
   color: #0f172a;
 }
 
+/* Diff Color Palette Selector */
+.diff-palette-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(30, 30, 30, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme='light'] .diff-palette-bar {
+  background: #f1f5f9;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.diff-palette-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+
+body[data-theme='light'] .diff-palette-label {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.diff-palette-btn {
+  display: flex;
+  width: 32px;
+  height: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.diff-palette-btn:hover {
+  transform: scale(1.1);
+}
+
+.diff-palette-btn.active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+.diff-palette-btn-left,
+.diff-palette-btn-right {
+  width: 50%;
+  height: 100%;
+}
+
+/* Palette 1: Coral & Mint */
+.diff-palette-btn[data-palette="1"] .diff-palette-btn-left {
+  background: rgba(255, 107, 107, 0.5);
+}
+
+.diff-palette-btn[data-palette="1"] .diff-palette-btn-right {
+  background: rgba(78, 205, 196, 0.5);
+}
+
+/* Palette 2: Rose & Emerald */
+.diff-palette-btn[data-palette="2"] .diff-palette-btn-left {
+  background: rgba(233, 30, 99, 0.4);
+}
+
+.diff-palette-btn[data-palette="2"] .diff-palette-btn-right {
+  background: rgba(0, 191, 165, 0.4);
+}
+
+/* Palette 3: Sunset & Ocean */
+.diff-palette-btn[data-palette="3"] .diff-palette-btn-left {
+  background: rgba(255, 87, 34, 0.45);
+}
+
+.diff-palette-btn[data-palette="3"] .diff-palette-btn-right {
+  background: rgba(0, 172, 193, 0.45);
+}
+
+/* Palette 4: Berry & Lime */
+.diff-palette-btn[data-palette="4"] .diff-palette-btn-left {
+  background: rgba(156, 39, 176, 0.4);
+}
+
+.diff-palette-btn[data-palette="4"] .diff-palette-btn-right {
+  background: rgba(118, 255, 3, 0.35);
+}
+
+/* Palette 5: Salmon & Seafoam */
+.diff-palette-btn[data-palette="5"] .diff-palette-btn-left {
+  background: rgba(250, 128, 114, 0.5);
+}
+
+.diff-palette-btn[data-palette="5"] .diff-palette-btn-right {
+  background: rgba(32, 178, 170, 0.45);
+}
+
+/* Palette 6: Ruby & Jade */
+.diff-palette-btn[data-palette="6"] .diff-palette-btn-left {
+  background: rgba(198, 40, 40, 0.5);
+}
+
+.diff-palette-btn[data-palette="6"] .diff-palette-btn-right {
+  background: rgba(46, 125, 50, 0.5);
+}
+
+/* Palette 7: Peach & Aqua */
+.diff-palette-btn[data-palette="7"] .diff-palette-btn-left {
+  background: rgba(255, 171, 145, 0.55);
+}
+
+.diff-palette-btn[data-palette="7"] .diff-palette-btn-right {
+  background: rgba(77, 208, 225, 0.45);
+}
+
+/* Palette 8: Magenta & Cyan */
+.diff-palette-btn[data-palette="8"] .diff-palette-btn-left {
+  background: rgba(255, 64, 129, 0.4);
+}
+
+.diff-palette-btn[data-palette="8"] .diff-palette-btn-right {
+  background: rgba(0, 229, 255, 0.35);
+}
+
+/* Palette color overrides when applied */
+[data-diff-palette="1"] .diff-line-removed {
+  background: rgba(255, 107, 107, 0.2);
+}
+
+[data-diff-palette="1"] .diff-line-added {
+  background: rgba(78, 205, 196, 0.2);
+}
+
+[data-diff-palette="1"] .diff-line-removed .diff-line-marker {
+  color: #FF6B6B;
+}
+
+[data-diff-palette="1"] .diff-line-added .diff-line-marker {
+  color: #4ECDC4;
+}
+
+[data-diff-palette="2"] .diff-line-removed {
+  background: rgba(233, 30, 99, 0.18);
+}
+
+[data-diff-palette="2"] .diff-line-added {
+  background: rgba(0, 191, 165, 0.18);
+}
+
+[data-diff-palette="2"] .diff-line-removed .diff-line-marker {
+  color: #E91E63;
+}
+
+[data-diff-palette="2"] .diff-line-added .diff-line-marker {
+  color: #00BFA5;
+}
+
+[data-diff-palette="3"] .diff-line-removed {
+  background: rgba(255, 87, 34, 0.2);
+}
+
+[data-diff-palette="3"] .diff-line-added {
+  background: rgba(0, 172, 193, 0.2);
+}
+
+[data-diff-palette="3"] .diff-line-removed .diff-line-marker {
+  color: #FF5722;
+}
+
+[data-diff-palette="3"] .diff-line-added .diff-line-marker {
+  color: #00ACC1;
+}
+
+[data-diff-palette="4"] .diff-line-removed {
+  background: rgba(156, 39, 176, 0.18);
+}
+
+[data-diff-palette="4"] .diff-line-added {
+  background: rgba(118, 255, 3, 0.15);
+}
+
+[data-diff-palette="4"] .diff-line-removed .diff-line-marker {
+  color: #9C27B0;
+}
+
+[data-diff-palette="4"] .diff-line-added .diff-line-marker {
+  color: #76FF03;
+}
+
+[data-diff-palette="5"] .diff-line-removed {
+  background: rgba(250, 128, 114, 0.22);
+}
+
+[data-diff-palette="5"] .diff-line-added {
+  background: rgba(32, 178, 170, 0.2);
+}
+
+[data-diff-palette="5"] .diff-line-removed .diff-line-marker {
+  color: #FA8072;
+}
+
+[data-diff-palette="5"] .diff-line-added .diff-line-marker {
+  color: #20B2AA;
+}
+
+[data-diff-palette="6"] .diff-line-removed {
+  background: rgba(198, 40, 40, 0.22);
+}
+
+[data-diff-palette="6"] .diff-line-added {
+  background: rgba(46, 125, 50, 0.22);
+}
+
+[data-diff-palette="6"] .diff-line-removed .diff-line-marker {
+  color: #C62828;
+}
+
+[data-diff-palette="6"] .diff-line-added .diff-line-marker {
+  color: #2E7D32;
+}
+
+[data-diff-palette="7"] .diff-line-removed {
+  background: rgba(255, 171, 145, 0.28);
+}
+
+[data-diff-palette="7"] .diff-line-added {
+  background: rgba(77, 208, 225, 0.22);
+}
+
+[data-diff-palette="7"] .diff-line-removed .diff-line-marker {
+  color: #FFAB91;
+}
+
+[data-diff-palette="7"] .diff-line-added .diff-line-marker {
+  color: #4DD0E1;
+}
+
+[data-diff-palette="8"] .diff-line-removed {
+  background: rgba(255, 64, 129, 0.18);
+}
+
+[data-diff-palette="8"] .diff-line-added {
+  background: rgba(0, 229, 255, 0.15);
+}
+
+[data-diff-palette="8"] .diff-line-removed .diff-line-marker {
+  color: #FF4081;
+}
+
+[data-diff-palette="8"] .diff-line-added .diff-line-marker {
+  color: #00E5FF;
+}
+
 /* Diff Viewer - Split Layout */
 .diff-viewer-shell {
   background: linear-gradient(135deg, rgba(22, 22, 22, 0.95) 0%, rgba(14, 14, 14, 0.92) 100%);
@@ -1651,27 +1906,23 @@ body[data-theme='light'] .diff-line-context {
 }
 
 .diff-line-added {
-  background: rgba(34, 197, 94, 0.15);
-  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.5);
+  background: rgba(63, 185, 80, 0.12);
 }
 
 body[data-theme='light'] .diff-line-added {
-  background: rgba(34, 197, 94, 0.15);
-  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.5);
+  background: rgba(63, 185, 80, 0.18);
 }
 
 .diff-line-removed {
-  background: rgba(239, 68, 68, 0.18);
-  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.5);
+  background: rgba(248, 81, 73, 0.12);
 }
 
 body[data-theme='light'] .diff-line-removed {
-  background: rgba(239, 68, 68, 0.18);
-  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.5);
+  background: rgba(248, 81, 73, 0.18);
 }
 
 .diff-line-removed .diff-line-marker {
-  color: #f87171;
+  color: #f85149;
 }
 
 .diff-line-marker {
@@ -1692,11 +1943,11 @@ body[data-theme='light'] .diff-line-marker {
 }
 
 .diff-line-added .diff-line-marker {
-  color: #34d399;
+  color: #3fb950;
 }
 
 .diff-line-removed .diff-line-marker {
-  color: #f87171;
+  color: #f85149;
 }
 
 
