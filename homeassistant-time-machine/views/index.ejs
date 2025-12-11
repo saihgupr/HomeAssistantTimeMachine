@@ -689,6 +689,20 @@
 
     // Load backups
     async function loadBackups() {
+      const backupList = document.getElementById('backupList');
+      const backupCount = document.getElementById('backupCount');
+
+      // Don't clear existing content - keep it visible while loading
+      // Only show loading state if the list is currently empty
+      const hasExistingContent = backupList.children.length > 0 &&
+        !backupList.querySelector('.loading') &&
+        !backupList.querySelector('.empty-state');
+
+      if (!hasExistingContent) {
+        backupCount.innerHTML = '&nbsp;';
+        backupList.innerHTML = `<p class="loading">${getStyledText('ui.backupList.loading')}</p>`;
+      }
+
       try {
         const backupRootPath = haConfig?.backupFolderPath || '/media/timemachine';
         const response = await fetch(url('/api/scan-backups'), {
@@ -698,9 +712,6 @@
         });
         const data = await response.json();
         console.log('[loadBackups] Scan response data:', data);
-
-        const backupList = document.getElementById('backupList');
-        const backupCount = document.getElementById('backupCount');
 
         if (!data.backups || data.backups.length === 0) {
           backupCount.textContent = getStyledText('ui.backupList.noBackups');
@@ -2077,22 +2088,8 @@
         // Update title and clear subtitle (no backup selected yet)
         document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${newMode}`);
         document.getElementById('itemsSubtitle').textContent = getStyledText('ui.itemsList.noBackupSelected');
-        document.getElementById('itemsList').innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.selectBackup')}</p>`;
-
-        if (currentBackupPath && (currentMode === 'automations' || currentMode === 'scripts')) {
-          loadBackupItems();
-        } else if (currentMode === 'lovelace' && currentBackupPath) {
-          loadLovelaceFiles();
-        } else if (currentMode === 'esphome' && currentBackupPath) {
-          loadEsphomeFiles();
-        } else if (currentMode === 'packages' && currentBackupPath) {
-          loadPackagesFiles();
-        } else {
-          // Show empty state based on mode
-          const modeLabel = getStyledText(`ui.buttons.${currentMode}`) || currentMode;
-          const emptyMessage = getStyledText('ui.itemsList.selectBackup', { mode: modeLabel });
-          document.getElementById('itemsList').innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;"><div style="width: 64px; height: 64px; background-color: rgba(255, 255, 255, 0.05); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;"><svg style="width: 32px; height: 32px; color: #6b7280;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0112.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg></div><p style="color: #9ca3af;">${emptyMessage}</p></div>`;
-        }
+        // Note: Don't clear itemsList here - leave existing content visible until new content loads
+        // The list will be updated when user selects a backup from the newly loaded list
       });
     });
 

@@ -2268,10 +2268,7 @@ input::placeholder {
   }
 }
 
-/* Animation only applied to backup list, not items list */
-#backupList .list-item {
-  animation: fadeIn 0.3s ease-out;
-}
+/* No fadeIn animation on list items - prevents flash when switching tabs */
 
 /* Loading state */
 .loading {
