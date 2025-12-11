@@ -1206,6 +1206,7 @@
         `;
       }
 
+      setDiffPalette(currentPalette);
       document.getElementById('diffModal').style.display = 'flex';
     }
 
@@ -1530,7 +1531,7 @@
       const modalBody = document.getElementById('diffModalBody');
 
       // Apply saved palette preference
-      setDiffPalette(currentPalette);
+
 
       // Hide close button for all states
       document.getElementById('closeDiff').style.display = 'none';
@@ -1572,6 +1573,7 @@
         `;
       }
 
+      setDiffPalette(currentPalette);
       modal.style.display = 'flex';
     }
 
@@ -1759,7 +1761,7 @@
       const modalBody = document.getElementById('diffModalBody');
 
       // Apply saved palette preference
-      setDiffPalette(currentPalette);
+
 
       // Hide close button for all states
       document.getElementById('closeDiff').style.display = 'none';
@@ -1802,6 +1804,7 @@
         `;
       }
 
+      setDiffPalette(currentPalette);
       modal.style.display = 'flex';
     }
 
@@ -1960,7 +1963,7 @@
       const modalBody = document.getElementById('diffModalBody');
 
       // Apply saved palette preference
-      setDiffPalette(currentPalette);
+
 
       // Hide close button for all states
       document.getElementById('closeDiff').style.display = 'none';
@@ -2003,6 +2006,7 @@
         `;
       }
 
+      setDiffPalette(currentPalette);
       modal.style.display = 'flex';
     }
 
@@ -2949,6 +2953,17 @@
       if (modalBody) {
         modalBody.setAttribute('data-diff-palette', paletteNum);
       }
+
+      // Update UI buttons - remove active from all, add to current
+      document.querySelectorAll('.diff-palette-btn').forEach(btn => {
+        // Use loose equality or parseInt as dataset values are strings
+        if (parseInt(btn.dataset.palette) === paletteNum) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
       // Save preference
       localStorage.setItem('diffPalette', paletteNum);
     }
