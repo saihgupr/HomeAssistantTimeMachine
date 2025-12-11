@@ -2055,6 +2055,14 @@
         currentBackupName = null;
         currentBackupMtime = null;
 
+        // Immediately clear visual selection in backup list
+        document.querySelectorAll('#backupList .list-item').forEach(item => {
+          const isLightMode = currentTheme === 'light';
+          item.style.backgroundColor = isLightMode ? 'white' : 'rgb(46, 46, 46)';
+          item.style.color = isLightMode ? '#0f172a' : '#d1d5db';
+          item.style.boxShadow = isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none';
+        });
+
         // Reset items state
         allItems = [];
         liveItemsMap = {};
