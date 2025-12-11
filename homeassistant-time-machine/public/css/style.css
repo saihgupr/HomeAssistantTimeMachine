@@ -1651,7 +1651,7 @@ body[data-theme='light'] .diff-line-context {
 }
 
 .diff-row:nth-child(even) .diff-line-added {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(34, 197, 94, 0.22);
 }
 
 body[data-theme='light'] .diff-row:nth-child(even) .diff-line-added {
@@ -1659,8 +1659,8 @@ body[data-theme='light'] .diff-row:nth-child(even) .diff-line-added {
 }
 
 .diff-line-added {
-  background: rgba(16, 185, 129, 0.16);
-  box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.45);
+  background: rgba(34, 197, 94, 0.18);
+  box-shadow: inset 3px 0 0 rgba(34, 197, 94, 0.45);
 }
 
 body[data-theme='light'] .diff-line-added {
@@ -1669,17 +1669,17 @@ body[data-theme='light'] .diff-line-added {
 }
 
 .diff-line-removed {
-  background: rgba(220, 53, 69, 0.4);
-  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.7);
+  background: rgba(220, 53, 69, 0.25);
+  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.5);
 }
 
 body[data-theme='light'] .diff-line-removed {
   background: rgba(220, 53, 69, 0.25);
-  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.7);
+  box-shadow: inset 3px 0 0 rgba(220, 53, 69, 0.5);
 }
 
 .diff-row:nth-child(even) .diff-line-removed {
-  background: rgba(220, 53, 69, 0.5);
+  background: rgba(220, 53, 69, 0.35);
 }
 
 body[data-theme='light'] .diff-row:nth-child(even) .diff-line-removed {
