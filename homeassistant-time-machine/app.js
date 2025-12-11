@@ -557,6 +557,7 @@ app.get('/api/app-settings', async (req, res) => {
       theme: options.theme || 'dark',
       esphomeEnabled,
       packagesEnabled,
+      diffPalette: options.diffPalette || 1,
     };
     debugLog('[app-settings] Base response object created:', { esphomeEnabled: baseResponse.esphomeEnabled });
 
@@ -580,6 +581,7 @@ app.get('/api/app-settings', async (req, res) => {
         esphomeEnabled: options.esphome ?? finalEsphomeEnabled,
         packagesEnabled: finalPackagesEnabled,
         smartBackupEnabled: savedSettings.smartBackupEnabled ?? false,
+        diffPalette: savedSettings.diffPalette || 1,
       };
 
       global.dockerSettings = { ...global.dockerSettings, ...mergedSettings };
@@ -592,6 +594,7 @@ app.get('/api/app-settings', async (req, res) => {
         theme: mergedSettings.theme,
         esphomeEnabled: mergedSettings.esphomeEnabled,
         smartBackupEnabled: mergedSettings.smartBackupEnabled,
+        diffPalette: mergedSettings.diffPalette,
       };
       debugLog('[app-settings] Addon mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
       debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -616,6 +619,7 @@ app.get('/api/app-settings', async (req, res) => {
       esphomeEnabled: finalEsphomeEnabled,
       packagesEnabled: dockerSettings.packagesEnabled ?? false,
       smartBackupEnabled: dockerSettings.smartBackupEnabled ?? false,
+      diffPalette: dockerSettings.diffPalette || 1,
     };
     debugLog('[app-settings] Docker mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
     debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -629,7 +633,7 @@ app.get('/api/app-settings', async (req, res) => {
 // Save Docker app settings
 app.post('/api/app-settings', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled } = req.body;
+    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled, diffPalette } = req.body;
 
     const existingSettings = await loadDockerSettings();
     const settings = {
@@ -640,6 +644,7 @@ app.post('/api/app-settings', async (req, res) => {
       esphomeEnabled: typeof esphomeEnabled === 'boolean' ? esphomeEnabled : existingSettings.esphomeEnabled ?? false,
       packagesEnabled: typeof packagesEnabled === 'boolean' ? packagesEnabled : existingSettings.packagesEnabled ?? false,
       smartBackupEnabled: typeof smartBackupEnabled === 'boolean' ? smartBackupEnabled : existingSettings.smartBackupEnabled ?? false,
+      diffPalette: diffPalette || existingSettings.diffPalette || 1,
     };
 
     await saveDockerSettings(settings);
@@ -689,6 +694,7 @@ async function loadDockerSettings() {
     esphomeEnabled: false,
     packagesEnabled: false,
     smartBackupEnabled: false,
+    diffPalette: 1,
     ...cachedSettings
   };
 
@@ -739,7 +745,8 @@ async function saveDockerSettings(settings) {
     language: settings.language || 'en',
     esphomeEnabled: settings.esphomeEnabled ?? false,
     packagesEnabled: settings.packagesEnabled ?? false,
-    smartBackupEnabled: settings.smartBackupEnabled ?? false
+    smartBackupEnabled: settings.smartBackupEnabled ?? false,
+    diffPalette: settings.diffPalette || 1
   };
 
   // Save to file

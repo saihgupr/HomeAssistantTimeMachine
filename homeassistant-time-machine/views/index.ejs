@@ -537,6 +537,9 @@
           await waitForStrings();
           currentLanguage = document.body.dataset.language || 'en';
           applyTheme(haConfig?.theme);
+          if (haConfig?.diffPalette) {
+            setDiffPalette(parseInt(haConfig.diffPalette), false);
+          }
           esphomeFeatureEnabled = !!haConfig?.esphomeEnabled;
           updateEsphomeVisibility();
           packagesFeatureEnabled = !!haConfig?.packagesEnabled;
@@ -2945,9 +2948,9 @@
 
     // Set diff color palette
     const TOTAL_PALETTES = 8;
-    let currentPalette = parseInt(localStorage.getItem('diffPalette')) || 1;
+    let currentPalette = 1;
 
-    function setDiffPalette(paletteNum) {
+    function setDiffPalette(paletteNum, saveToServer = true) {
       currentPalette = paletteNum;
       const modalBody = document.getElementById('diffModalBody');
       if (modalBody) {
@@ -2964,8 +2967,14 @@
         }
       });
 
-      // Save preference
-      localStorage.setItem('diffPalette', paletteNum);
+      // Save preference to server
+      if (saveToServer) {
+        fetch(url('/api/app-settings'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ diffPalette: paletteNum })
+        }).catch(err => console.error('[setDiffPalette] Failed to save palette to server:', err));
+      }
     }
 
     function cycleDiffPalette() {
@@ -2979,12 +2988,6 @@
         cycleDiffPalette();
       }
     });
-
-    // Apply saved palette on modal open
-    const savedPalette = localStorage.getItem('diffPalette');
-    if (savedPalette) {
-      currentPalette = parseInt(savedPalette);
-    }
 
     function escapeHtml(text) {
       const div = document.createElement('div');
