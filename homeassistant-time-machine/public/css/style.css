@@ -1465,13 +1465,13 @@ body[data-theme='light'] .diff-palette-label {
   height: 100%;
 }
 
-/* Palette 1: Coral & Mint */
+/* Palette 1: Original */
 .diff-palette-btn[data-palette="1"] .diff-palette-btn-left {
-  background: rgba(255, 107, 107, 0.5);
+  background: rgba(111, 23, 35, 0.8);
 }
 
 .diff-palette-btn[data-palette="1"] .diff-palette-btn-right {
-  background: rgba(78, 205, 196, 0.5);
+  background: rgba(24, 57, 41, 0.8);
 }
 
 /* Palette 2: Rose & Emerald */
@@ -1539,19 +1539,19 @@ body[data-theme='light'] .diff-palette-label {
 
 /* Palette color overrides when applied */
 [data-diff-palette="1"] .diff-line-removed {
-  background: rgba(255, 107, 107, 0.2);
+  background: rgba(111, 23, 35, 0.35);
 }
 
 [data-diff-palette="1"] .diff-line-added {
-  background: rgba(78, 205, 196, 0.2);
+  background: rgba(24, 57, 41, 0.35);
 }
 
 [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
-  color: #FF6B6B;
+  color: rgb(180, 80, 90);
 }
 
 [data-diff-palette="1"] .diff-line-added .diff-line-marker {
-  color: #4ECDC4;
+  color: rgb(80, 160, 110);
 }
 
 [data-diff-palette="2"] .diff-line-removed {
