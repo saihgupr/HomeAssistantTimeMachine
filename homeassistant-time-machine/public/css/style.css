@@ -389,7 +389,7 @@ li {
 
 .list-item {
   /* height: 50px; removed to allow content to dictate height, but min-height matches badge text */
-  min-height: 48px;
+  min-height: 52px;
   padding: 0 16px;
   /* Remove vertical padding, rely on height/flex */
   border-radius: 12px;
