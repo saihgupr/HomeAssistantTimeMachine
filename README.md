@@ -6,8 +6,8 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 *   **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
 *   **Show Changes Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
-*   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 *   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
+*   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/1.png)
 ![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/2.png)
