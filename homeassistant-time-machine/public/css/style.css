@@ -415,6 +415,27 @@ body[data-theme='light'] .list-item {
   box-shadow: 0 12px 26px -20px rgba(15, 23, 42, 0.22);
 }
 
+/* Left panel (backup list) items - slightly darker for visual hierarchy */
+/* Default (Dark Mode) */
+#backupList .list-item {
+  background: rgba(48, 48, 48, 0.85);
+}
+
+#backupList .list-item:hover {
+  background: rgba(52, 52, 52, 0.95);
+}
+
+/* Light Mode Override for Left Panel */
+body[data-theme='light'] #backupList .list-item {
+  background: #f1f5f9;
+  /* Slate-100 - slightly darker than pure white */
+}
+
+body[data-theme='light'] #backupList .list-item:hover {
+  background: #e2e8f0;
+  /* Slate-200 */
+}
+
 .list-item:hover {
   background: rgba(56, 56, 56, 0.95);
   border-color: rgba(231, 229, 228, 0.15);
