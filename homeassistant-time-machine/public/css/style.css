@@ -1666,6 +1666,135 @@ body[data-theme='light'] .diff-palette-label {
   color: #00E5FF;
 }
 
+/* Light mode palette overrides - stronger colors for visibility */
+body[data-theme='light'] [data-diff-palette="1"] .diff-line-removed {
+  background: rgba(220, 38, 38, 0.15);
+}
+
+body[data-theme='light'] [data-diff-palette="1"] .diff-line-added {
+  background: rgba(22, 163, 74, 0.15);
+}
+
+body[data-theme='light'] [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
+  color: #dc2626;
+}
+
+body[data-theme='light'] [data-diff-palette="1"] .diff-line-added .diff-line-marker {
+  color: #16a34a;
+}
+
+body[data-theme='light'] [data-diff-palette="2"] .diff-line-removed {
+  background: rgba(233, 30, 99, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="2"] .diff-line-added {
+  background: rgba(0, 191, 165, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="2"] .diff-line-removed .diff-line-marker {
+  color: #c2185b;
+}
+
+body[data-theme='light'] [data-diff-palette="2"] .diff-line-added .diff-line-marker {
+  color: #00897b;
+}
+
+body[data-theme='light'] [data-diff-palette="3"] .diff-line-removed {
+  background: rgba(255, 87, 34, 0.2);
+}
+
+body[data-theme='light'] [data-diff-palette="3"] .diff-line-added {
+  background: rgba(0, 172, 193, 0.2);
+}
+
+body[data-theme='light'] [data-diff-palette="3"] .diff-line-removed .diff-line-marker {
+  color: #e64a19;
+}
+
+body[data-theme='light'] [data-diff-palette="3"] .diff-line-added .diff-line-marker {
+  color: #0097a7;
+}
+
+body[data-theme='light'] [data-diff-palette="4"] .diff-line-removed {
+  background: rgba(156, 39, 176, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="4"] .diff-line-added {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+body[data-theme='light'] [data-diff-palette="4"] .diff-line-removed .diff-line-marker {
+  color: #7b1fa2;
+}
+
+body[data-theme='light'] [data-diff-palette="4"] .diff-line-added .diff-line-marker {
+  color: #388e3c;
+}
+
+body[data-theme='light'] [data-diff-palette="5"] .diff-line-removed {
+  background: rgba(250, 128, 114, 0.25);
+}
+
+body[data-theme='light'] [data-diff-palette="5"] .diff-line-added {
+  background: rgba(32, 178, 170, 0.22);
+}
+
+body[data-theme='light'] [data-diff-palette="5"] .diff-line-removed .diff-line-marker {
+  color: #e57373;
+}
+
+body[data-theme='light'] [data-diff-palette="5"] .diff-line-added .diff-line-marker {
+  color: #26a69a;
+}
+
+body[data-theme='light'] [data-diff-palette="6"] .diff-line-removed {
+  background: rgba(198, 40, 40, 0.2);
+}
+
+body[data-theme='light'] [data-diff-palette="6"] .diff-line-added {
+  background: rgba(46, 125, 50, 0.2);
+}
+
+body[data-theme='light'] [data-diff-palette="6"] .diff-line-removed .diff-line-marker {
+  color: #c62828;
+}
+
+body[data-theme='light'] [data-diff-palette="6"] .diff-line-added .diff-line-marker {
+  color: #2e7d32;
+}
+
+body[data-theme='light'] [data-diff-palette="7"] .diff-line-removed {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="7"] .diff-line-added {
+  background: rgba(6, 182, 212, 0.2);
+}
+
+body[data-theme='light'] [data-diff-palette="7"] .diff-line-removed .diff-line-marker {
+  color: #ef4444;
+}
+
+body[data-theme='light'] [data-diff-palette="7"] .diff-line-added .diff-line-marker {
+  color: #0891b2;
+}
+
+body[data-theme='light'] [data-diff-palette="8"] .diff-line-removed {
+  background: rgba(236, 72, 153, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="8"] .diff-line-added {
+  background: rgba(6, 182, 212, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="8"] .diff-line-removed .diff-line-marker {
+  color: #db2777;
+}
+
+body[data-theme='light'] [data-diff-palette="8"] .diff-line-added .diff-line-marker {
+  color: #0891b2;
+}
+
 /* Diff Viewer - Split Layout */
 .diff-viewer-shell {
   background: linear-gradient(135deg, rgba(22, 22, 22, 0.95) 0%, rgba(14, 14, 14, 0.92) 100%);
