@@ -2553,6 +2553,14 @@ input::placeholder {
   background-color: rgb(40, 90, 65);
 }
 
+body[data-theme='light'] [data-diff-palette="1"] .diff-word-removed {
+  background-color: rgba(220, 38, 38, 0.25);
+}
+
+body[data-theme='light'] [data-diff-palette="1"] .diff-word-added {
+  background-color: rgba(22, 163, 74, 0.25);
+}
+
 /* Palette 2: Rose & Emerald */
 [data-diff-palette="2"] .diff-word-removed {
   background-color: rgba(233, 30, 99, 0.35);
@@ -2560,6 +2568,14 @@ input::placeholder {
 
 [data-diff-palette="2"] .diff-word-added {
   background-color: rgba(0, 191, 165, 0.35);
+}
+
+body[data-theme='light'] [data-diff-palette="2"] .diff-word-removed {
+  background-color: rgba(233, 30, 99, 0.25);
+}
+
+body[data-theme='light'] [data-diff-palette="2"] .diff-word-added {
+  background-color: rgba(0, 191, 165, 0.3);
 }
 
 /* Palette 3: Sunset & Ocean */
@@ -2571,6 +2587,14 @@ input::placeholder {
   background-color: rgba(0, 172, 193, 0.35);
 }
 
+body[data-theme='light'] [data-diff-palette="3"] .diff-word-removed {
+  background-color: rgba(255, 87, 34, 0.3);
+}
+
+body[data-theme='light'] [data-diff-palette="3"] .diff-word-added {
+  background-color: rgba(0, 172, 193, 0.3);
+}
+
 /* Palette 4: Berry & Lime */
 [data-diff-palette="4"] .diff-word-removed {
   background-color: rgba(156, 39, 176, 0.35);
@@ -2578,6 +2602,14 @@ input::placeholder {
 
 [data-diff-palette="4"] .diff-word-added {
   background-color: rgba(118, 255, 3, 0.30);
+}
+
+body[data-theme='light'] [data-diff-palette="4"] .diff-word-removed {
+  background-color: rgba(156, 39, 176, 0.25);
+}
+
+body[data-theme='light'] [data-diff-palette="4"] .diff-word-added {
+  background-color: rgba(76, 175, 80, 0.3);
 }
 
 /* Palette 5: Salmon & Seafoam */
@@ -2589,6 +2621,14 @@ input::placeholder {
   background-color: rgba(32, 178, 170, 0.4);
 }
 
+body[data-theme='light'] [data-diff-palette="5"] .diff-word-removed {
+  background-color: rgba(250, 128, 114, 0.35);
+}
+
+body[data-theme='light'] [data-diff-palette="5"] .diff-word-added {
+  background-color: rgba(32, 178, 170, 0.35);
+}
+
 /* Palette 6: Ruby & Jade */
 [data-diff-palette="6"] .diff-word-removed {
   background-color: rgba(198, 40, 40, 0.4);
@@ -2596,6 +2636,14 @@ input::placeholder {
 
 [data-diff-palette="6"] .diff-word-added {
   background-color: rgba(46, 125, 50, 0.4);
+}
+
+body[data-theme='light'] [data-diff-palette="6"] .diff-word-removed {
+  background-color: rgba(198, 40, 40, 0.3);
+}
+
+body[data-theme='light'] [data-diff-palette="6"] .diff-word-added {
+  background-color: rgba(46, 125, 50, 0.3);
 }
 
 /* Palette 7: Peach & Aqua */
@@ -2607,6 +2655,14 @@ input::placeholder {
   background-color: rgba(77, 208, 225, 0.4);
 }
 
+body[data-theme='light'] [data-diff-palette="7"] .diff-word-removed {
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
+body[data-theme='light'] [data-diff-palette="7"] .diff-word-added {
+  background-color: rgba(6, 182, 212, 0.3);
+}
+
 /* Palette 8: Magenta & Cyan */
 [data-diff-palette="8"] .diff-word-removed {
   background-color: rgba(255, 64, 129, 0.35);
@@ -2614,4 +2670,12 @@ input::placeholder {
 
 [data-diff-palette="8"] .diff-word-added {
   background-color: rgba(0, 229, 255, 0.3);
+}
+
+body[data-theme='light'] [data-diff-palette="8"] .diff-word-removed {
+  background-color: rgba(236, 72, 153, 0.3);
+}
+
+body[data-theme='light'] [data-diff-palette="8"] .diff-word-added {
+  background-color: rgba(6, 182, 212, 0.3);
 }
