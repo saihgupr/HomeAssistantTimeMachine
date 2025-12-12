@@ -1377,18 +1377,7 @@ body[data-theme='light'] .diff-state-banner-changed {
   border-color: rgba(191, 219, 254, 0.8);
 }
 
-/* Palette-aware diff header banners */
-[data-diff-palette="1"] .diff-state-banner-changed {
-  background-color: rgba(22, 163, 74, 0.18);
-  color: #4ade80;
-  border-color: rgba(22, 163, 74, 0.3);
-}
-
-body[data-theme='light'] [data-diff-palette="1"] .diff-state-banner-changed {
-  background-color: rgba(22, 163, 74, 0.12);
-  color: #16a34a;
-  border-color: rgba(22, 163, 74, 0.25);
-}
+/* Palette-aware diff header banners - palette 1 uses default blue */
 
 [data-diff-palette="2"] .diff-state-banner-changed {
   background-color: rgba(0, 191, 165, 0.18);
@@ -1635,12 +1624,21 @@ body[data-theme='light'] .diff-palette-label {
 }
 
 /* Palette color overrides when applied */
+/* Palette 1: Original solid alternating colors */
 [data-diff-palette="1"] .diff-line-removed {
   background: rgb(111, 23, 35);
 }
 
+[data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-removed {
+  background: rgb(92, 22, 32);
+}
+
 [data-diff-palette="1"] .diff-line-added {
   background: rgb(24, 57, 41);
+}
+
+[data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-added {
+  background: rgb(21, 42, 32);
 }
 
 [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
@@ -2615,16 +2613,7 @@ body[data-theme='light'] .modal-footer--diff .btn-primary {
   box-shadow: none;
 }
 
-/* Palette-aware Restore button */
-[data-diff-palette="1"] .modal-footer--diff .btn-primary {
-  background-color: rgb(22, 163, 74);
-  border-color: rgb(22, 163, 74);
-}
-
-[data-diff-palette="1"] .modal-footer--diff .btn-primary:hover {
-  background-color: rgb(21, 128, 61);
-  border-color: rgb(21, 128, 61);
-}
+/* Palette-aware Restore button - palette 1 uses default blue */
 
 [data-diff-palette="2"] .modal-footer--diff .btn-primary {
   background-color: #00897b;
