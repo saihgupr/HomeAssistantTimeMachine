@@ -181,7 +181,7 @@ To configure backups to a remote share, first set up network storage within Home
 
 ## API Endpoints
 
-- **POST /api/backup-now**: Trigger an immediate backup (requires `liveFolderPath` and `backupFolderPath`).
+- **POST /api/backup-now**: Trigger an immediate backup. Requires `liveFolderPath` and `backupFolderPath`. Optional parameters (`smartBackupEnabled`, `maxBackupsEnabled`, `maxBackupsCount`, `timezone`) fall back to saved settings when not provided.
 - **POST /api/restore-automation** / **POST /api/restore-script**: Restore a single automation or script after creating a safety backup.
 - **POST /api/restore-lovelace-file** / **POST /api/restore-esphome-file** / **POST /api/restore-packages-file**: Restore Lovelace, ESPHome, or package files with automatic pre-restore backups.
 - **POST /api/get-backup-* ** & **/api/get-live-* ** families: Fetch specific items from backups or the live config (automations, scripts, Lovelace, ESPHome, packages).
