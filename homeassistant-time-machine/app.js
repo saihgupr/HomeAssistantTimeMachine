@@ -648,7 +648,7 @@ app.get('/api/app-settings', async (req, res) => {
 // Save Docker app settings
 app.post('/api/app-settings', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled, diffPalette } = req.body;
+    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled, diffPalette, showOnlyChanges } = req.body;
 
     const existingSettings = await loadDockerSettings();
     const settings = {
@@ -660,6 +660,7 @@ app.post('/api/app-settings', async (req, res) => {
       packagesEnabled: typeof packagesEnabled === 'boolean' ? packagesEnabled : existingSettings.packagesEnabled ?? false,
       smartBackupEnabled: typeof smartBackupEnabled === 'boolean' ? smartBackupEnabled : existingSettings.smartBackupEnabled ?? false,
       diffPalette: diffPalette || existingSettings.diffPalette || 1,
+      showOnlyChanges: typeof showOnlyChanges === 'boolean' ? showOnlyChanges : existingSettings.showOnlyChanges ?? false,
     };
 
     await saveDockerSettings(settings);
@@ -710,6 +711,7 @@ async function loadDockerSettings() {
     packagesEnabled: false,
     smartBackupEnabled: false,
     diffPalette: 1,
+    showOnlyChanges: false,
     ...cachedSettings
   };
 
@@ -761,7 +763,8 @@ async function saveDockerSettings(settings) {
     esphomeEnabled: settings.esphomeEnabled ?? false,
     packagesEnabled: settings.packagesEnabled ?? false,
     smartBackupEnabled: settings.smartBackupEnabled ?? false,
-    diffPalette: settings.diffPalette || 1
+    diffPalette: settings.diffPalette || 1,
+    showOnlyChanges: settings.showOnlyChanges ?? false
   };
 
   // Save to file

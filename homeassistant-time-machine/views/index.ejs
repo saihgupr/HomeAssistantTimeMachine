@@ -308,7 +308,7 @@
     let currentTheme = document.body.dataset.theme || document.documentElement.dataset.theme || 'dark';
     let esphomeFeatureEnabled = document.body.dataset.esphomeEnabled === 'true';
     let packagesFeatureEnabled = document.body.dataset.packagesEnabled === 'true';
-    let showOnlyChanges = localStorage.getItem('showOnlyChanges') === 'true';
+    let showOnlyChanges = false; // Will be set from server in loadAppSettings()
 
     if (!document.body.dataset.theme) {
       document.body.dataset.theme = currentTheme;
@@ -540,6 +540,8 @@
           if (haConfig?.diffPalette) {
             setDiffPalette(parseInt(haConfig.diffPalette), false);
           }
+          // Load showOnlyChanges setting from server
+          showOnlyChanges = !!haConfig?.showOnlyChanges;
           esphomeFeatureEnabled = !!haConfig?.esphomeEnabled;
           updateEsphomeVisibility();
           packagesFeatureEnabled = !!haConfig?.packagesEnabled;
@@ -2387,9 +2389,18 @@
     });
 
     // Show only changes toggle handler
-    document.getElementById('showOnlyChangesEnabled').addEventListener('change', (e) => {
+    document.getElementById('showOnlyChangesEnabled').addEventListener('change', async (e) => {
       showOnlyChanges = e.target.checked;
-      localStorage.setItem('showOnlyChanges', showOnlyChanges);
+      // Save to server
+      try {
+        await fetch(url('/api/app-settings'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ showOnlyChanges })
+        });
+      } catch (error) {
+        console.error('[showOnlyChanges] Failed to save setting:', error);
+      }
       console.log('[showOnlyChanges] Changed to:', showOnlyChanges);
       // Reload backups with new filter setting
       loadBackups();
