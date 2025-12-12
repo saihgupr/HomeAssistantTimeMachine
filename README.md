@@ -9,8 +9,6 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 *   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
 
-## Screenshots
-
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/1.png)
 ![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/2.png)
 ![Screenshot 3](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/3.png)
