@@ -1,22 +1,16 @@
 # v2.2
 
-## Changelog
-
-## New Features
-- **Show Changes Only:** New toggle in settings to filter snapshots, showing only backups with changes compared to your current live configuration.
-- **Automation Service Call:** Trigger backups from automations/scripts using `hassio.addon_stdin` service with `input: backup`.
+- **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
+- **Show Changes Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
+- **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
+- **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
 
 # v2.1
 
-## New Features
-
-## Improvements
-- Restore Logic: Restoring automations and scripts now preserves their original position instead of moving them to the bottom.
-- Performance: Significant optimizations for faster load times and smoother operation.
+- **Restore Logic:** Restoring automations and scripts now preserves their original position instead of moving them to the bottom.
+- **Performance:** Significant optimizations for faster load times and smoother operation.
 
 # v2.0.2
-
-## Changelog
 
 - Minor tweaks and bug fixes.
 
