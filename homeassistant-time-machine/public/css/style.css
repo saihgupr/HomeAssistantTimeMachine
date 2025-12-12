@@ -2003,7 +2003,7 @@ body[data-theme='light'] .diff-row {
 }
 
 .diff-row:nth-child(even) {
-  background: rgba(20, 20, 20, 0.45);
+  background: rgba(35, 35, 40, 0.65);
 }
 
 body[data-theme='light'] .diff-row:nth-child(even) {
