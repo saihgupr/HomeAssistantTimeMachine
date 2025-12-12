@@ -2966,6 +2966,11 @@
       const modalBody = document.getElementById('diffModalBody');
       if (modalBody) {
         modalBody.setAttribute('data-diff-palette', paletteNum);
+        // Also set on parent modal-dialog so footer buttons get styled
+        const modalDialog = modalBody.closest('.modal-dialog');
+        if (modalDialog) {
+          modalDialog.setAttribute('data-diff-palette', paletteNum);
+        }
       }
 
       // Update UI buttons - remove active from all, add to current
