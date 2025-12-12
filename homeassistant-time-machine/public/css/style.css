@@ -1626,19 +1626,19 @@ body[data-theme='light'] .diff-palette-label {
 /* Palette color overrides when applied */
 /* Palette 1: Original solid alternating colors */
 [data-diff-palette="1"] .diff-line-removed {
-  background: rgb(71, 14, 24);
+  background: rgb(92, 22, 32);
 }
 
 [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-removed {
-  background: rgb(89, 13, 26);
+  background: rgb(111, 23, 35);
 }
 
 [data-diff-palette="1"] .diff-line-added {
-  background: rgb(18, 32, 24);
+  background: rgb(21, 42, 32);
 }
 
 [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-added {
-  background: rgb(21, 44, 30);
+  background: rgb(24, 57, 41);
 }
 
 [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
@@ -2011,6 +2011,11 @@ body[data-theme='light'] .diff-row {
 
 .diff-row:nth-child(even) {
   background: rgba(35, 35, 40, 0.65);
+}
+
+/* Palette 1 uses its own solid alternating colors, so disable general alternating */
+[data-diff-palette="1"] .diff-row:nth-child(even) {
+  background: transparent;
 }
 
 body[data-theme='light'] .diff-row:nth-child(even) {
@@ -2849,13 +2854,13 @@ input::placeholder {
   padding: 0 1px;
 }
 
-/* Palette 1: Original */
+/* Palette 1: Original - subtle word highlights */
 [data-diff-palette="1"] .diff-word-removed {
-  background-color: rgb(160, 40, 50);
+  background-color: rgba(180, 60, 70, 0.4);
 }
 
 [data-diff-palette="1"] .diff-word-added {
-  background-color: rgb(40, 90, 65);
+  background-color: rgba(60, 140, 90, 0.35);
 }
 
 body[data-theme='light'] [data-diff-palette="1"] .diff-word-removed {
