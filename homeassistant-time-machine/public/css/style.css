@@ -1626,19 +1626,19 @@ body[data-theme='light'] .diff-palette-label {
 /* Palette color overrides when applied */
 /* Palette 1: Original solid alternating colors */
 [data-diff-palette="1"] .diff-line-removed {
-  background: rgb(92, 22, 32);
+  background: rgb(71, 14, 24);
 }
 
 [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-removed {
-  background: rgb(111, 23, 35);
+  background: rgb(89, 13, 26);
 }
 
 [data-diff-palette="1"] .diff-line-added {
-  background: rgb(21, 42, 32);
+  background: rgb(18, 32, 24);
 }
 
 [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-added {
-  background: rgb(24, 57, 41);
+  background: rgb(21, 44, 30);
 }
 
 [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
@@ -1762,12 +1762,21 @@ body[data-theme='light'] .diff-palette-label {
 }
 
 /* Light mode palette overrides - stronger colors for visibility */
+/* Palette 1: Original colors with alternating for light mode */
 body[data-theme='light'] [data-diff-palette="1"] .diff-line-removed {
-  background: rgba(220, 38, 38, 0.15);
+  background: rgba(220, 38, 38, 0.18);
+}
+
+body[data-theme='light'] [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-removed {
+  background: rgba(220, 38, 38, 0.25);
 }
 
 body[data-theme='light'] [data-diff-palette="1"] .diff-line-added {
   background: rgba(22, 163, 74, 0.15);
+}
+
+body[data-theme='light'] [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-added {
+  background: rgba(22, 163, 74, 0.22);
 }
 
 body[data-theme='light'] [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
