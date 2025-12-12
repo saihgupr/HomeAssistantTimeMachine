@@ -105,12 +105,27 @@ const setupStdinListener = () => {
         try {
           console.log('[stdin] Triggering backup...');
           const options = await getAddonOptions();
+          // Load settings from docker-app-settings.json for paths
+          const settings = await loadDockerSettings();
+          // Load scheduled jobs to get smartBackupEnabled (saved via UI toggle)
+          const scheduledJobsData = await loadScheduledJobs();
+          const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+          const smartBackupEnabled = defaultJob.smartBackupEnabled ?? settings.smartBackupEnabled ?? false;
+          console.log(`[stdin] Smart backup mode: ${smartBackupEnabled}`);
           const backupPath = await performBackup(
-            options.liveConfigPath || '/config',
-            options.backupFolderPath || '/media/timemachine',
-            'stdin-service'
+            options.liveConfigPath || settings.liveConfigPath || '/config',
+            options.backupFolderPath || settings.backupFolderPath || '/media/timemachine',
+            'stdin-service',
+            defaultJob.maxBackupsEnabled ?? false,
+            defaultJob.maxBackupsCount ?? 100,
+            defaultJob.timezone ?? null,
+            smartBackupEnabled
           );
-          console.log(`[stdin] Backup completed successfully: ${backupPath}`);
+          if (backupPath === null) {
+            console.log('[stdin] No changes detected since last backup (smart backup mode)');
+          } else {
+            console.log(`[stdin] Backup completed successfully: ${backupPath}`);
+          }
         } catch (error) {
           console.error('[stdin] Backup failed:', error.message);
         }
