@@ -1626,19 +1626,19 @@ body[data-theme='light'] .diff-palette-label {
 /* Palette color overrides when applied */
 /* Palette 1: Original solid alternating colors */
 [data-diff-palette="1"] .diff-line-removed {
-  background: rgb(111, 23, 35);
-}
-
-[data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-removed {
   background: rgb(92, 22, 32);
 }
 
+[data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-removed {
+  background: rgb(111, 23, 35);
+}
+
 [data-diff-palette="1"] .diff-line-added {
-  background: rgb(24, 57, 41);
+  background: rgb(21, 42, 32);
 }
 
 [data-diff-palette="1"] .diff-row:nth-child(even) .diff-line-added {
-  background: rgb(21, 42, 32);
+  background: rgb(24, 57, 41);
 }
 
 [data-diff-palette="1"] .diff-line-removed .diff-line-marker {
