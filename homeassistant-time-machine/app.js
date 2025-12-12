@@ -597,6 +597,7 @@ app.get('/api/app-settings', async (req, res) => {
         packagesEnabled: finalPackagesEnabled,
         smartBackupEnabled: savedSettings.smartBackupEnabled ?? false,
         diffPalette: savedSettings.diffPalette || 1,
+        showOnlyChanges: savedSettings.showOnlyChanges ?? false,
       };
 
       global.dockerSettings = { ...global.dockerSettings, ...mergedSettings };
@@ -610,6 +611,7 @@ app.get('/api/app-settings', async (req, res) => {
         esphomeEnabled: mergedSettings.esphomeEnabled,
         smartBackupEnabled: mergedSettings.smartBackupEnabled,
         diffPalette: mergedSettings.diffPalette,
+        showOnlyChanges: mergedSettings.showOnlyChanges,
       };
       debugLog('[app-settings] Addon mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
       debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -635,6 +637,7 @@ app.get('/api/app-settings', async (req, res) => {
       packagesEnabled: dockerSettings.packagesEnabled ?? false,
       smartBackupEnabled: dockerSettings.smartBackupEnabled ?? false,
       diffPalette: dockerSettings.diffPalette || 1,
+      showOnlyChanges: dockerSettings.showOnlyChanges ?? false,
     };
     debugLog('[app-settings] Docker mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
     debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
