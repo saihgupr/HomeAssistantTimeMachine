@@ -2262,7 +2262,24 @@ async function cleanupOldBackups(backupRoot, maxBackupsCount) {
 app.post('/api/backup-now', async (req, res) => {
   try {
     const { liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled } = req.body;
-    const backupPath = await performBackup(liveConfigPath, backupFolderPath, 'manual', maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled);
+
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    let effectiveMaxBackupsEnabled = maxBackupsEnabled;
+    let effectiveMaxBackupsCount = maxBackupsCount;
+    let effectiveTimezone = timezone;
+
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+      effectiveMaxBackupsEnabled = maxBackupsEnabled ?? defaultJob.maxBackupsEnabled ?? false;
+      effectiveMaxBackupsCount = maxBackupsCount ?? defaultJob.maxBackupsCount ?? 100;
+      effectiveTimezone = timezone ?? defaultJob.timezone ?? null;
+      console.log(`[backup-now] Using saved settings - Smart backup: ${effectiveSmartBackup}`);
+    }
+
+    const backupPath = await performBackup(liveConfigPath, backupFolderPath, 'manual', effectiveMaxBackupsEnabled, effectiveMaxBackupsCount, effectiveTimezone, effectiveSmartBackup);
 
     // null means no changes detected in smart backup mode
     if (backupPath === null) {
