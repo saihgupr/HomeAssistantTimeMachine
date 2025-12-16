@@ -68,7 +68,7 @@ body[data-theme='dark'] .logo {
 }
 
 .header h1 {
-  font-size: clamp(20px, 2.8vh, 26px);
+  font-size: 26px;
   font-weight: 600;
   margin-bottom: clamp(2px, 0.5vh, 6px);
   color: #F9F9F9;
@@ -142,7 +142,7 @@ body[data-theme='light'] .tabs {
   padding: clamp(8px, 1.2vh, 12px) clamp(16px, 2vw, 28px);
   border-radius: 12px;
   font-weight: 500;
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: 14px;
   border: none;
   cursor: pointer;
   background-color: transparent;
@@ -208,7 +208,7 @@ body[data-theme='light'] .panel-header {
 }
 
 .panel-header h2 {
-  font-size: clamp(15px, 2vh, 19px);
+  font-size: 19px;
   font-weight: 600;
   margin-bottom: clamp(2px, 0.5vh, 6px);
   color: #F9F9F9;
@@ -256,7 +256,7 @@ body[data-theme='light'] #itemsSubtitle {
   border: 1px solid rgba(231, 229, 228, 0.1);
   border-radius: 14px;
   color: #E5E5E5;
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: 14px;
   transition: all 0.3s ease;
 }
 
@@ -923,7 +923,7 @@ body[data-theme='light'] .diff-column {
 }
 
 .diff-column h3 {
-  font-size: clamp(12px, 1.5vh, 14px);
+  font-size: 14px;
   font-weight: 500;
   padding: clamp(10px, 1.5vh, 16px) clamp(12px, 1.8vh, 20px);
   background: linear-gradient(135deg, rgba(35, 35, 35, 0.8) 0%, rgba(25, 25, 25, 0.6) 100%);
@@ -943,7 +943,7 @@ body[data-theme='light'] .diff-column h3 {
   background: #1e1e1e;
   color: #e0e0e0;
   font-family: 'Fira Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-  font-size: clamp(11px, 1.4vh, 13px);
+  font-size: 13px;
   line-height: 1.5;
   padding: clamp(10px, 2vh, 20px);
   overflow-x: auto;
@@ -970,7 +970,7 @@ body[data-theme='light'] .yaml-content {
   padding: clamp(10px, 2vh, 20px);
   margin: 0;
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: clamp(11px, 1.4vh, 13px);
+  font-size: 13px;
   line-height: 1.7;
   color: #D3D3D3;
   overflow-x: auto;
