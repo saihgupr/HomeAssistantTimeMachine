@@ -9,7 +9,7 @@ body {
   background-color: #171717;
   color: #ededed;
   height: 100vh;
-  padding: 24px;
+  padding: clamp(12px, 2.5vh, 24px);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
@@ -31,15 +31,15 @@ html.theme-transition-suppress * {
 .container {
   max-width: 1280px;
   margin: 0 auto;
-  padding-bottom: 24px;
+  padding-bottom: clamp(12px, 2.5vh, 24px);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 32px;
-  gap: 16px;
+  margin-bottom: clamp(16px, 3vh, 32px);
+  gap: clamp(8px, 1.5vh, 16px);
   flex-wrap: wrap;
 }
 
@@ -50,8 +50,8 @@ html.theme-transition-suppress * {
 }
 
 .logo {
-  width: 56px;
-  height: 56px;
+  width: clamp(40px, 6vh, 56px);
+  height: clamp(40px, 6vh, 56px);
   border-radius: 12px;
   background-color: transparent;
   box-shadow: none;
@@ -68,9 +68,9 @@ body[data-theme='dark'] .logo {
 }
 
 .header h1 {
-  font-size: 26px;
+  font-size: clamp(20px, 2.8vh, 26px);
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: clamp(2px, 0.5vh, 6px);
   color: #F9F9F9;
   letter-spacing: -0.02em;
 }
@@ -117,10 +117,10 @@ body[data-theme='light'] #heroSubtitle {
   display: flex;
   gap: 4px;
   background-color: #232323;
-  padding: 4px;
+  padding: clamp(2px, 0.5vh, 4px);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  margin-bottom: 24px;
+  margin-bottom: clamp(12px, 2.5vh, 24px);
   width: fit-content;
   max-width: 100%;
   overflow-x: auto;
@@ -139,16 +139,16 @@ body[data-theme='light'] .tabs {
 }
 
 .tab {
-  padding: 12px 28px;
+  padding: clamp(8px, 1.2vh, 12px) clamp(16px, 2vw, 28px);
   border-radius: 12px;
   font-weight: 500;
-  font-size: 14px;
+  font-size: clamp(12px, 1.5vh, 14px);
   border: none;
   cursor: pointer;
   background-color: transparent;
   color: #A2A2A2;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 44px;
+  height: clamp(36px, 5vh, 44px);
   flex: 0 0 auto;
   letter-spacing: -0.01em;
 }
@@ -169,8 +169,8 @@ body[data-theme='light'] .tab.active {
 .content {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 24px;
-  height: calc(100vh - 220px);
+  gap: clamp(12px, 2vh, 24px);
+  height: calc(100vh - clamp(140px, 22vh, 220px));
 }
 
 .panel {
@@ -190,7 +190,7 @@ body[data-theme='light'] .panel {
 }
 
 .panel-header {
-  padding: 24px;
+  padding: clamp(12px, 2.5vh, 24px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -202,15 +202,15 @@ body[data-theme='light'] .panel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 16px;
-  gap: 16px;
+  margin-bottom: clamp(8px, 1.5vh, 16px);
+  gap: clamp(8px, 1.5vh, 16px);
   flex-wrap: wrap;
 }
 
 .panel-header h2 {
-  font-size: 19px;
+  font-size: clamp(15px, 2vh, 19px);
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: clamp(2px, 0.5vh, 6px);
   color: #F9F9F9;
   letter-spacing: -0.02em;
 }
@@ -239,8 +239,8 @@ body[data-theme='light'] #itemsSubtitle {
 
 .controls {
   display: flex;
-  gap: 12px;
-  margin-top: 20px;
+  gap: clamp(8px, 1vh, 12px);
+  margin-top: clamp(10px, 2vh, 20px);
 }
 
 .search-wrapper {
@@ -250,13 +250,13 @@ body[data-theme='light'] #itemsSubtitle {
 
 .search-input {
   width: 100%;
-  padding: 14px 18px;
+  padding: clamp(10px, 1.5vh, 14px) 18px;
   padding-left: 48px;
   background-color: rgba(35, 35, 35, 0.6);
   border: 1px solid rgba(231, 229, 228, 0.1);
   border-radius: 14px;
   color: #E5E5E5;
-  font-size: 14px;
+  font-size: clamp(12px, 1.5vh, 14px);
   transition: all 0.3s ease;
 }
 
@@ -373,10 +373,10 @@ body[data-theme='light'] .select:hover {
 .list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: clamp(8px, 1.5vh, 16px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(4px, 0.8vh, 8px);
   min-width: 0;
   /* Allow list to shrink below content width */
 }
@@ -389,8 +389,8 @@ li {
 
 .list-item {
   /* height: 50px; removed to allow content to dictate height, but min-height matches badge text */
-  min-height: 52px;
-  padding: 0 16px;
+  min-height: clamp(40px, 5.5vh, 52px);
+  padding: 0 clamp(10px, 1.5vh, 16px);
   /* Remove vertical padding, rely on height/flex */
   border-radius: 12px;
   cursor: pointer;
@@ -843,8 +843,8 @@ body[data-theme='light'] .modal-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
+  margin-bottom: clamp(10px, 2vh, 20px);
+  padding-bottom: clamp(10px, 2vh, 20px);
   border-bottom: 1px solid rgba(231, 229, 228, 0.08);
 }
 
@@ -899,7 +899,7 @@ body[data-theme='light'] .status-deleted {
 .diff-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: clamp(10px, 2vh, 20px);
 }
 
 .diff-column {
@@ -923,9 +923,9 @@ body[data-theme='light'] .diff-column {
 }
 
 .diff-column h3 {
-  font-size: 14px;
+  font-size: clamp(12px, 1.5vh, 14px);
   font-weight: 500;
-  padding: 16px 20px;
+  padding: clamp(10px, 1.5vh, 16px) clamp(12px, 1.8vh, 20px);
   background: linear-gradient(135deg, rgba(35, 35, 35, 0.8) 0%, rgba(25, 25, 25, 0.6) 100%);
   border-bottom: 1px solid rgba(231, 229, 228, 0.08);
   margin: 0;
@@ -943,9 +943,9 @@ body[data-theme='light'] .diff-column h3 {
   background: #1e1e1e;
   color: #e0e0e0;
   font-family: 'Fira Code', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-  font-size: 13px;
+  font-size: clamp(11px, 1.4vh, 13px);
   line-height: 1.5;
-  padding: 20px;
+  padding: clamp(10px, 2vh, 20px);
   overflow-x: auto;
   white-space: pre;
   flex: 1;
@@ -967,10 +967,10 @@ body[data-theme='light'] .yaml-content {
 }
 
 .yaml-content {
-  padding: 20px;
+  padding: clamp(10px, 2vh, 20px);
   margin: 0;
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 13px;
+  font-size: clamp(11px, 1.4vh, 13px);
   line-height: 1.7;
   color: #D3D3D3;
   overflow-x: auto;
