@@ -9,11 +9,11 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
 *   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 
-![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/1.png)
-![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/2.png)
-![Screenshot 3](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/3.png)
-![Screenshot 4](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/4.png)
-![Screenshot 5](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/images/5.png)
+![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/5.png)
 
 ## Features
 
@@ -42,14 +42,14 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 1.  **Add Repository:**
     Click the button below to add the repository to your Home Assistant instance:
 
-    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/ha-addons)
+    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/DiggingForDinos/ha-addons)
 
     **Or manually add it:**
     - Navigate to **Settings** → **Add-ons** → **Add-on Store**
     - Click the three dots (⋮) in the top right corner and select **Repositories**
     - Add the repository URL:
       ```
-      https://github.com/saihgupr/ha-addons
+      https://github.com/DiggingForDinos/ha-addons
       ```
 
 2.  **Install the Add-on:**
@@ -63,7 +63,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachineBeta/main/compose.yaml
+   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
@@ -87,13 +87,13 @@ docker run -d \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
   --name ha-time-machine \
-  ghcr.io/saihgupr/homeassistanttimemachinebeta:latest
+  ghcr.io/diggingfordinos/homeassistanttimemachinebeta:latest
 ```
 
 **Option C: Build locally:**
 
 ```bash
-git clone https://github.com/saihgupr/HomeAssistantTimeMachineBeta.git
+git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta.git
 cd HomeAssistantTimeMachineBeta/homeassistant-time-machine
 docker build -t ha-time-machine .
 
@@ -209,11 +209,11 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 ## Alternative Options
 
-For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
+For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
 ## Support, Feedback & Contributing
 
-- File issues or feature requests at [GitHub Issues](https://github.com/saihgupr/HomeAssistantTimeMachineBeta/issues).
+- File issues or feature requests at [GitHub Issues](https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta/issues).
 - Share feedback on usability so we can keep refining backup workflows.
 
 **If you find this add-on helpful, please ⭐ star the repository!**
