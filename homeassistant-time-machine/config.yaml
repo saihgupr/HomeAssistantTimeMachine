@@ -3,7 +3,7 @@ version: 2.1.0
 slug: homeassistant-time-machine
 description: Browse and restore Home Assistant configuration backups
 url: https://github.com/saihgupr/HomeAssistantTimeMachine
-changelog: https://github.com/saihgupr/HomeAssistantTimeMachine/blob/main/homeassistant-time-machine/CHANGELOG.md
+changelog: https://github.com/DiggingForDinos/HomeAssistantTimeMachine/blob/main/homeassistant-time-machine/CHANGELOG.md
 arch:
   - amd64
   - aarch64
