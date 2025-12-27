@@ -3,7 +3,6 @@
   "version": "2.1.0",
   "description": "Home Assistant Time Machine - Browse and restore configuration snapshots",
   "main": "app.js",
-  "type": "module",
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
