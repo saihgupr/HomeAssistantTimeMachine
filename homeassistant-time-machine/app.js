@@ -1314,14 +1314,22 @@ app.post('/api/get-live-script', async (req, res) => {
 // Restore automation
 app.post('/api/restore-automation', async (req, res) => {
   try {
-    const { backupPath, automationIdentifier, timezone, liveConfigPath } = req.body;
+    const { backupPath, automationIdentifier, timezone, liveConfigPath, smartBackupEnabled } = req.body;
 
     if (!backupPath || !automationIdentifier) {
       return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
     }
 
-    // Perform a backup before restoring (unchanged)
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
+    // Perform a backup before restoring - respect Smart Backup setting
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+    }
+    console.log(`[restore-automation] smartBackupEnabled: ${effectiveSmartBackup}`);
+    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
     const liveFilePath = path.join(configPath, 'automations.yaml');
@@ -1390,14 +1398,21 @@ app.post('/api/restore-automation', async (req, res) => {
 // Restore script endpoint with text replacement
 app.post('/api/restore-script', async (req, res) => {
   try {
-    const { backupPath, automationIdentifier: scriptIdentifier, timezone, liveConfigPath } = req.body;
+    const { backupPath, automationIdentifier: scriptIdentifier, timezone, liveConfigPath, smartBackupEnabled } = req.body;
 
     if (!backupPath || !scriptIdentifier) {
       return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
     }
 
-    // Perform a backup before restoring (unchanged)
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
+    // Perform a backup before restoring - respect Smart Backup setting
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+    }
+    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
     const liveFilePath = path.join(configPath, 'scripts.yaml');
@@ -2388,7 +2403,7 @@ app.post('/api/get-live-lovelace-file', getLiveLovelaceFile);
 
 app.post('/api/restore-lovelace-file', async (req, res) => {
   try {
-    const { fileName, backupPath, content, timezone, liveConfigPath } = req.body;
+    const { fileName, backupPath, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
 
     if (!fileName) {
       return res.status(400).json({ error: 'fileName is required' });
@@ -2398,8 +2413,15 @@ app.post('/api/restore-lovelace-file', async (req, res) => {
       return res.status(400).json({ error: 'backupPath or content is required' });
     }
 
-    // Perform a backup before restoring
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
+    // Perform a backup before restoring - respect Smart Backup setting
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+    }
+    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
     const targetFilePath = path.join(configPath, '.storage', fileName);
@@ -2507,9 +2529,16 @@ app.post('/api/restore-esphome-file', async (req, res) => {
     if (!(await isEsphomeEnabled())) {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
-    const { fileName, content, timezone, liveConfigPath } = req.body;
-    // Perform a backup before restoring
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
+    const { fileName, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    // Perform a backup before restoring - respect Smart Backup setting
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+    }
+    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
     const esphomeDir = path.join(configPath, 'esphome');
@@ -2624,9 +2653,16 @@ app.post('/api/restore-packages-file', async (req, res) => {
     if (!(await isPackagesEnabled())) {
       return res.status(404).json({ error: 'Packages feature disabled' });
     }
-    const { fileName, content, timezone, liveConfigPath } = req.body;
-    // Perform a backup before restoring
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone);
+    const { fileName, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    // Perform a backup before restoring - respect Smart Backup setting
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+    }
+    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
     const packagesDir = path.join(configPath, 'packages');
