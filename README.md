@@ -167,7 +167,7 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ## Backup to Remote Share
 
-To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
+To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'timemachine' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/timemachine', which will direct backups to your remote share.
 
 ## API Endpoints
 
