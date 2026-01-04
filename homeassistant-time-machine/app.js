@@ -734,7 +734,7 @@ async function loadDockerSettings() {
       global.dockerSettings = settings;
 
 
-      console.log('Loaded settings from file:', settings);
+      debugLog('Loaded settings from file:', settings);
       return settings;
     } catch (err) {
       if (err.code === 'ENOENT') {
