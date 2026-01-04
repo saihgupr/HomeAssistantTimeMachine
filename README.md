@@ -210,6 +210,14 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
+## Press & Community
+
+Thank you to everyone who has written about or featured Home Assistant Time Machine!
+
+- 📰 [XDA Developers – "Home Assistant Time Machine tool is amazing"](https://www.xda-developers.com/home-assistant-time-machine-tool-is-amazing/)
+- 🎬 [mostlychris – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
+- 🎬 [Smart Home Junkie – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
+
 ## Support, Feedback & Contributing
 
 - File issues or feature requests at [GitHub Issues](https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta/issues).
