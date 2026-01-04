@@ -2206,16 +2206,21 @@
           haTokenField.style.backgroundColor = '#2d2d2d';
         } else {
           haUrlField.readOnly = true;
-          haUrlField.placeholder = managedBySupervisor
-            ? 'Automatically managed by Home Assistant'
-            : 'Configured via saved credentials';
+          const credentialsSource = haConfig.haCredentialsSource;
+          let placeholderText;
+          if (managedBySupervisor) {
+            placeholderText = 'Automatically managed by Home Assistant';
+          } else if (credentialsSource === 'env') {
+            placeholderText = 'Configured via environment variables';
+          } else {
+            placeholderText = 'Configured via saved credentials';
+          }
+          haUrlField.placeholder = placeholderText;
           haUrlField.style.color = '#9ca3af';
           haUrlField.style.backgroundColor = '#2d2d2d';
 
           haTokenField.readOnly = true;
-          haTokenField.placeholder = managedBySupervisor
-            ? 'Automatically managed by Home Assistant'
-            : 'Configured via saved credentials';
+          haTokenField.placeholder = placeholderText;
           haTokenField.style.color = '#9ca3af';
           haTokenField.style.backgroundColor = '#2d2d2d';
         }
