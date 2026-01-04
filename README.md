@@ -216,8 +216,7 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 - [XDA Developers – "Home Assistant Time Machine tool is amazing"](https://www.xda-developers.com/home-assistant-time-machine-tool-is-amazing/)
 - [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
-- [
-smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
+- [smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
 
 ## Support, Feedback & Contributing
 
