@@ -623,11 +623,14 @@
       const currentTabName = getStyledText(`ui.buttons.${currentMode}`) || currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
       searchBox.placeholder = getStyledText('ui.placeholders.search', { mode: currentTabName });
 
-      // Update HA input placeholders
+      // Update HA input placeholders - only if managed by supervisor (addon mode)
+      // In Docker mode, the settings modal click handler sets appropriate placeholders
       const haUrlInput = document.getElementById('haUrl');
       const haTokenInput = document.getElementById('haToken');
-      if (haUrlInput) haUrlInput.placeholder = getStyledText('ui.placeholders.managedByHA');
-      if (haTokenInput) haTokenInput.placeholder = getStyledText('ui.placeholders.managedByHA');
+      if (haConfig && haConfig.haAuthMode === 'supervisor') {
+        if (haUrlInput) haUrlInput.placeholder = getStyledText('ui.placeholders.managedByHA');
+        if (haTokenInput) haTokenInput.placeholder = getStyledText('ui.placeholders.managedByHA');
+      }
     }
 
     // Format backup folder name to date/time
