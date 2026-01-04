@@ -214,9 +214,10 @@ For detailed history tracking powered by a local Git backend, check out [Home As
 
 Thank you to everyone who has written about or featured Home Assistant Time Machine!
 
-- 📰 [XDA Developers – "Home Assistant Time Machine tool is amazing"](https://www.xda-developers.com/home-assistant-time-machine-tool-is-amazing/)
-- 🎬 [mostlychris – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
-- 🎬 [Smart Home Junkie – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
+- [XDA Developers – "Home Assistant Time Machine tool is amazing"](https://www.xda-developers.com/home-assistant-time-machine-tool-is-amazing/)
+- [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
+- [
+smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
 
 ## Support, Feedback & Contributing
 
