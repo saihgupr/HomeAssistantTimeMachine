@@ -14,6 +14,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 ![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/3.png)
 ![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/4.png)
 ![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/5.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/6.png)
 
 ## Features
 

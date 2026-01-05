@@ -14,6 +14,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 ![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/3.png)
 ![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/4.png)
 ![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/5.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/6.png)
 
 ## Features
 
@@ -206,10 +207,17 @@ curl -X POST http://localhost:54000/api/scan-backups \
   -d '{"backupRootPath": "/media/timemachine"}'
 ```
 
-
 ## Alternative Options
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
+
+## Press & Community
+
+Thank you to everyone who has written about or featured Home Assistant Time Machine!
+
+- [XDA Developers – "Home Assistant Time Machine tool is amazing"](https://www.xda-developers.com/home-assistant-time-machine-tool-is-amazing/)
+- [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
+- [smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
 
 ## Support, Feedback & Contributing
 
