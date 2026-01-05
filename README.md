@@ -211,6 +211,18 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
+## Identity Verification (Migration from saihgupr)
+
+To prove that I am the same original creator, I have added cryptographic proof to this repository:
+*   **[proof_of_identity.txt](proof_of_identity.txt):** A statement linked to the old identity.
+*   **[proof_of_identity.txt.sig](proof_of_identity.txt.sig):** A digital signature created using `saihgupr`'s original private SSH key.
+*   **Signed Tags:** New releases (starting with [identity-proof-v1](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/releases/tag/identity-proof-v1)) are GPG-signed by the new `DiggingForDinos` identity.
+
+You can verify the SSH proof manually:
+```bash
+ssh-keygen -Y check-novalidate -n file -f old_identity.pub -s proof_of_identity.txt.sig < proof_of_identity.txt
+```
+
 ## Press & Community
 
 Thank you to everyone who has written about or featured Home Assistant Time Machine!
