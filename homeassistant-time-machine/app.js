@@ -486,7 +486,8 @@ async function getHomeAssistantAuth(optionsOverride, manualOverride) {
 
   const options = optionsOverride || await getAddonOptions();
 
-  if (options.supervisor_token) {
+  // Only use supervisor auth in addon mode - Docker mode should use env vars or stored credentials
+  if (options.mode === 'addon' && options.supervisor_token) {
     console.log('[auth] Using supervisor proxy for Home Assistant requests');
     return {
       baseUrl: 'http://supervisor/core/api',
