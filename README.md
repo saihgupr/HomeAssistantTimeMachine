@@ -168,11 +168,11 @@ You can trigger a backup from Home Assistant automations or scripts using the `h
 ```yaml
 service: hassio.addon_stdin
 data:
-  addon: homeassistant-time-machine
+  addon: 0f6ec05b_homeassistant-time-machine
   input: backup
 ```
 
-> **Note:** Replace `homeassistant-time-machine` with your addon's slug if different.
+> **Note:** Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
 
 ## Backup to Remote Share
 
