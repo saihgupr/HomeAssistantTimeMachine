@@ -1,39 +1,38 @@
-# Home Assistant Time Machine
+# Home Assistant Time Machine Beta
 
 Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" for your Home Assistant configuration. Browse YAML backups across automations, scripts, Lovelace dashboards, ESPHome files, and packages, then restore individual items back to your live setup with confidence.
 
 ## What's New!
 
-*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
-*   **Docker Images & Docker Compose:** Automated Docker image builds are now published on GHCR, and `compose.yaml` is included for easy one-command deployment.
-*   **Ingress Support:** Full support for Home Assistant ingress, allowing seamless access through the Home Assistant UI without port forwarding.
-*   **Lovelace Backup Support:** Comprehensive backup and restore functionality for your Lovelace UI configurations, ensuring your dashboards are always safe.
-*   **ESPHome & Packages Backup Support:** Enable backups for ESPHome and Packages via a toggle in the add-on configuration.
-*   **Backup Now Button:** Trigger an immediate backup of your Home Assistant configuration directly from the UI with a single click. This utilizes a new API for programmatic backups, shared with the scheduled backup feature.
-*   **Max Backups:** Set a limit on how many backups are kept.
-*   **Authentication:** Secure access with Home Assistant authentication integration, automatically proxying through the Supervisor when available.
-*   **Docker Container Installation:** Simplified installation process with a dedicated Docker container option, providing more flexibility for users without the Home Assistant add-on store.
-*   **Optimized Size & Performance:** The add-on is now 4X smaller and uses 6X less memory, making it faster to download and run.  
-*   **Dark/Light Mode:** Choose between dark and light themes in the configuration.
-*   **Flexible Backup Locations:** Backups can now be stored in `/share` `/backup` `/config` or `/media`. Folders are created automatically, and remote share backups are supported.
-*   **REST API:** Comprehensive API for managing backups, restores, and configurations.
+*   **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
+*   **Show Changes Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
+*   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
+*   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 
-## Screenshots
-
-![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/1.png)
-![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/2.png)
-![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/3.png)
-![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/4.png)
-![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/5.png)
+![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/5.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/6.png)
 
 ## Features
 
 *   **Browse Backups:** Easily browse through your Home Assistant backup YAML files.
 *   **View Changes:** See a side-by-side diff of the changes between a backed-up item and the live version.
 *   **Restore Individual Items:** Restore individual automations or scripts without having to restore an entire backup.
-*   **Safety first:** It automatically creates a backup of your YAML files in your backups folder before restoring anything.
-*   **Reload Home Assistant:** Reload automations or scripts in Home Assistant directly from the UI after a restore.
-*   **Scheduled Backups:** Configure automatic backups of your Home Assistant configuration directly from the UI.
+*   **Safety First:** Automatically creates a backup before restoring anything.
+*   **Reload Home Assistant:** Reload automations or scripts directly from the UI after a restore.
+*   **Scheduled Backups:** Configure automatic backups on a schedule.
+*   **Service Call Support:** Trigger backups from automations or scripts using the `hassio.addon_stdin` service.
+*   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
+*   **Ingress Support:** Access through the Home Assistant UI without port forwarding.
+*   **Lovelace Backup:** Backup and restore your Lovelace dashboard configurations.
+*   **ESPHome & Packages Backup:** Optionally backup ESPHome and Packages files.
+*   **Backup Now Button:** Trigger an immediate backup with a single click.
+*   **Max Backups:** Set a limit on how many backups are kept.
+*   **Flexible Backup Locations:** Store backups in `/share`, `/backup`, `/config`, `/media`, or remote shares.
+*   **REST API:** Full API for programmatic backup management.
 
 ## Installation
 
@@ -65,7 +64,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/compose.yaml
+   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
@@ -89,14 +88,14 @@ docker run -d \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
   --name ha-time-machine \
-  ghcr.io/diggingfordinos/homeassistanttimemachine:latest
+  ghcr.io/diggingfordinos/homeassistanttimemachinebeta:latest
 ```
 
 **Option C: Build locally:**
 
 ```bash
-git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachine.git
-cd HomeAssistantTimeMachine/homeassistant-time-machine
+git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta.git
+cd HomeAssistantTimeMachineBeta/homeassistant-time-machine
 docker build -t ha-time-machine .
 
 docker run -d \
@@ -162,13 +161,26 @@ After starting the container, access the web interface at `http://localhost:5400
     *   **Live Home Assistant Folder Path:** Set to `/config` (this is the mounted volume).
     *   **Backup Folder Path:** Set to `/media/timemachine` (this is the mounted volume).
 
+### Triggering Backups from Automations
+
+You can trigger a backup from Home Assistant automations or scripts using the `hassio.addon_stdin` service:
+
+```yaml
+service: hassio.addon_stdin
+data:
+  addon: homeassistant-time-machine-beta
+  input: backup
+```
+
+> **Note:** Replace `homeassistant-time-machine-beta` with your addon's slug if different.
+
 ## Backup to Remote Share
 
 To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
 
 ## API Endpoints
 
-- **POST /api/backup-now**: Trigger an immediate backup (requires `liveFolderPath` and `backupFolderPath`).
+- **POST /api/backup-now**: Trigger an immediate backup. Requires `liveFolderPath` and `backupFolderPath`. Optional parameters (`smartBackupEnabled`, `maxBackupsEnabled`, `maxBackupsCount`, `timezone`) fall back to saved settings when not provided.
 - **POST /api/restore-automation** / **POST /api/restore-script**: Restore a single automation or script after creating a safety backup.
 - **POST /api/restore-lovelace-file** / **POST /api/restore-esphome-file** / **POST /api/restore-packages-file**: Restore Lovelace, ESPHome, or package files with automatic pre-restore backups.
 - **POST /api/get-backup-* ** & **/api/get-live-* ** families: Fetch specific items from backups or the live config (automations, scripts, Lovelace, ESPHome, packages).
@@ -199,9 +211,17 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
+## Press & Community
+
+Thank you to everyone who has written about or featured Home Assistant Time Machine!
+
+- [XDA Developers – "Home Assistant Time Machine tool is amazing"](https://www.xda-developers.com/home-assistant-time-machine-tool-is-amazing/)
+- [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
+- [smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
+
 ## Support, Feedback & Contributing
 
-- File issues or feature requests at [GitHub Issues](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
+- File issues or feature requests at [GitHub Issues](https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta/issues).
 - Share feedback on usability so we can keep refining backup workflows.
 
 **If you find this add-on helpful, please ⭐ star the repository!**

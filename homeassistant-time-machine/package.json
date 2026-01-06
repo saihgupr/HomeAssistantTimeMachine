@@ -1,35 +1,11 @@
 {
-  "name": "home-assistant-time-machine",
-  "version": "2.1.0",
-  "description": "Home Assistant Time Machine - Browse and restore configuration snapshots",
-  "main": "app.js",
+  "name": "home-assistant-time-machine-beta",
+  "version": "2.1.2",
+  "description": "Browse and restore Home Assistant configuration backups",
+  "private": true,
   "scripts": {
     "start": "node app.js",
-    "dev": "node --watch app.js",
-    "test": "echo \"No tests specified\" && exit 0",
-    "lint": "echo \"No linter specified\" && exit 0"
-  },
-  "keywords": [
-    "home-assistant",
-    "addon",
-    "time-machine",
-    "backup",
-    "restore",
-    "snapshots",
-    "configuration"
-  ],
-  "author": "DiggingForDinos",
-  "license": "MIT",
-  "homepage": "https://github.com/DiggingForDinos/HomeAssistantTimeMachine#readme",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/DiggingForDinos/HomeAssistantTimeMachine.git"
-  },
-  "bugs": {
-    "url": "https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues"
-  },
-  "engines": {
-    "node": ">=20.0.0"
+    "dev": "node app.js"
   },
   "dependencies": {
     "ejs": "^3.1.9",
@@ -41,10 +17,5 @@
   },
   "overrides": {
     "brace-expansion": "2.0.2"
-  },
-  "ha-addon": {
-    "name": "Home Assistant Time Machine",
-    "slug": "home-assistant-time-machine",
-    "url": "https://github.com/DiggingForDinos/HomeAssistantTimeMachine"
   }
 }

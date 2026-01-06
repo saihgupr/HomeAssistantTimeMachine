@@ -316,7 +316,7 @@ window.STRINGS = {
         en: "Scripts",
         es: "Guiones",
         de: "Skripte",
-        fr: "Scripts",
+        fr: "Scénarios",
         nl: "Scripts",
         it: "Script"
       },
@@ -497,6 +497,22 @@ window.STRINGS = {
         fr: "Hebdomadaire",
         nl: "Wekelijks",
         it: "Settimanale"
+      },
+      smartBackupLabel: {
+        en: "Only Backup Changes",
+        es: "Solo respaldar cambios",
+        de: "Nur Änderungen sichern",
+        fr: "Sauvegarder uniquement les modifications",
+        nl: "Alleen wijzigingen back-uppen",
+        it: "Esegui backup solo delle modifiche"
+      },
+      smartBackupHint: {
+        en: "Backups only include files that changed since the last backup.",
+        es: "Las copias de seguridad solo incluyen archivos que cambiaron desde la última copia.",
+        de: "Backups enthalten nur Dateien, die seit dem letzten Backup geändert wurden.",
+        fr: "Les sauvegardes n'incluent que les fichiers modifiés depuis la dernière sauvegarde.",
+        nl: "Back-ups bevatten alleen bestanden die sinds de laatste back-up zijn gewijzigd.",
+        it: "I backup includono solo i file modificati dall'ultimo backup."
       }
     },
     connectionTest: {
@@ -599,6 +615,14 @@ window.STRINGS = {
         fr: "Sauvegarde stockée à {path}.",
         nl: "Back-up opgeslagen op {path}.",
         it: "Backup salvato in {path}."
+      },
+      noChanges: {
+        en: "No changes detected since last backup.",
+        es: "No se detectaron cambios desde la última copia.",
+        de: "Keine Änderungen seit dem letzten Backup.",
+        fr: "Aucune modification depuis la dernière sauvegarde.",
+        nl: "Geen wijzigingen sinds de laatste back-up.",
+        it: "Nessuna modifica rilevata dall'ultimo backup."
       }
     },
     diffViewer: {
@@ -849,6 +873,48 @@ window.STRINGS = {
         fr: "Géré automatiquement par Home Assistant",
         nl: "Automatisch beheerd door Home Assistant",
         it: "Gestito automaticamente da Home Assistant"
+      }
+    },
+    snapshotFilter: {
+      showOnlyChanges: {
+        en: "Show Changes Only",
+        es: "Mostrar solo cambios",
+        de: "Nur Geänderte anzeigen",
+        fr: "Afficher les modifiés seulement",
+        nl: "Alleen gewijzigd tonen",
+        it: "Mostra solo modificati"
+      },
+      checking: {
+        en: "Checking {current} of {total}...",
+        es: "Comprobando {current} de {total}...",
+        de: "Prüfe {current} von {total}...",
+        fr: "Vérification {current} sur {total}...",
+        nl: "Controleren {current} van {total}...",
+        it: "Verifica {current} di {total}..."
+      },
+      noChangesFound: {
+        en: "No snapshots with changes found",
+        es: "No se encontraron instantáneas con cambios",
+        de: "Keine Snapshots mit Änderungen gefunden",
+        fr: "Aucun instantané avec modifications trouvé",
+        nl: "Geen snapshots met wijzigingen gevonden",
+        it: "Nessuna istantanea con modifiche trovata"
+      },
+      snapshotsWithChanges: {
+        en: "{count} snapshots with changes",
+        es: "{count} instantáneas con cambios",
+        de: "{count} Snapshots mit Änderungen",
+        fr: "{count} instantanés avec modifications",
+        nl: "{count} snapshots met wijzigingen",
+        it: "{count} istantanee con modifiche"
+      },
+      loading: {
+        en: "Loading snapshots with changes...",
+        es: "Cargando instantáneas con cambios...",
+        de: "Lade Snapshots mit Änderungen...",
+        fr: "Chargement des instantanés avec modifications...",
+        nl: "Snapshots met wijzigingen laden...",
+        it: "Caricamento istantanee con modifiche..."
       }
     }
   }
