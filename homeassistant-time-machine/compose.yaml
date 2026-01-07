@@ -1,6 +1,6 @@
 services:
   ha-time-machine:
-    image: ghcr.io/diggingfordinos/homeassistanttimemachine:latest
+    image: ghcr.io/diggingfordinos/homeassistanttimemachinebeta:latest
     container_name: ha-time-machine
     ports:
       - "54000:54000"

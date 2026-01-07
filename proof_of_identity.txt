@@ -1,7 +1,0 @@
-I, DiggingForDinos, am confirming that I am the same individual who used the handle 'saihgupr'.
-This file is signed with the SSH private key previously associated with 'saihgupr'.
-
-Date: 2026-01-01
-Repo: HomeAssistantTimeMachine
-New Identity: DiggingForDinos
-Old Identity: saihgupr
