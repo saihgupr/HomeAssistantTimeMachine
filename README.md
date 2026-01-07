@@ -231,9 +231,16 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 - [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
 - [smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
 
-## Support, Feedback & Contributing
+## Contributing
 
-- File issues or feature requests at [GitHub Issues](https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta/issues).
-- Share feedback on usability so we can keep refining backup workflows.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**TL;DR:** New features → target the `develop` branch. Bug fixes → `main` is fine.
+
+---
+
+## Support
+
+Found a bug or have a feature request? Please [submit an issue on GitHub](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
 
 **If you find this add-on helpful, please ⭐ star the repository!**
