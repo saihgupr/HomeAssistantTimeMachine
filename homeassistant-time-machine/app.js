@@ -1108,13 +1108,43 @@ async function checkAutomationsChanges(backupPath, configPath) {
     // Get all automation file paths from configuration.yaml
     const { automationPaths } = await getConfigFilePaths(configPath);
 
-    // Load backup automations (for now, check both root automations.yaml and any backed-up directories)
-    const backupFile = path.join(backupPath, 'automations.yaml');
+    // Load backup automations (check both root automations.yaml and any backed-up directories/files)
+    // We search all files in the backup that match the automation file pattern
     let backupArray = [];
+    const manifestPath = path.join(backupPath, '.backup_manifest.json');
     try {
-      const backupData = await loadYamlWithCache(backupFile);
-      backupArray = Array.isArray(backupData) ? backupData : [];
-    } catch (err) { /* No backup file */ }
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      let autoFiles = null;
+      if (manifest.automation_files) {
+        autoFiles = manifest.automation_files;
+      } else if (manifest.files && manifest.files.root) {
+        autoFiles = manifest.files.root.filter(f =>
+          f === 'automations.yaml' ||
+          f.startsWith('automations/') ||
+          f.match(/^[^/]+\/.*\.ya?ml$/)
+        );
+      }
+
+      if (autoFiles) {
+        for (const file of autoFiles) {
+          try {
+            const filePath = path.join(backupPath, file);
+            const fileData = await loadYamlWithCache(filePath);
+            if (Array.isArray(fileData)) {
+              backupArray = backupArray.concat(fileData);
+            }
+          } catch (err) { /* Skip */ }
+        }
+      }
+    } catch (e) {
+      // Fallback for old backups
+      try {
+        const backupFile = path.join(backupPath, 'automations.yaml');
+        const backupData = await loadYamlWithCache(backupFile);
+        backupArray = Array.isArray(backupData) ? backupData : [];
+      } catch (err) { /* No backup file */ }
+    }
 
     // Load all live automations from all configured paths
     let liveArray = [];
@@ -1152,12 +1182,41 @@ async function checkScriptsChanges(backupPath, configPath) {
     const { scriptPaths } = await getConfigFilePaths(configPath);
 
     // Load backup scripts
-    const backupFile = path.join(backupPath, 'scripts.yaml');
     let backupScripts = {};
+    const manifestPath = path.join(backupPath, '.backup_manifest.json');
     try {
-      const backupRaw = await loadYamlWithCache(backupFile);
-      backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
-    } catch (err) { /* No backup file */ }
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      let scriptFiles = null;
+      if (manifest.script_files) {
+        scriptFiles = manifest.script_files;
+      } else if (manifest.files && manifest.files.root) {
+        scriptFiles = manifest.files.root.filter(f =>
+          f === 'scripts.yaml' ||
+          f.startsWith('scripts/') ||
+          f.match(/^[^/]+\/.*\.ya?ml$/)
+        );
+      }
+
+      if (scriptFiles) {
+        for (const file of scriptFiles) {
+          try {
+            const filePath = path.join(backupPath, file);
+            const fileData = await loadYamlWithCache(filePath);
+            if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
+              Object.assign(backupScripts, fileData);
+            }
+          } catch (err) { /* Skip */ }
+        }
+      }
+    } catch (e) {
+      // Fallback for old backups
+      try {
+        const backupFile = path.join(backupPath, 'scripts.yaml');
+        const backupRaw = await loadYamlWithCache(backupFile);
+        backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
+      } catch (err) { /* No backup file */ }
+    }
 
     // Load all live scripts from all configured paths
     let liveScripts = {};
@@ -1304,14 +1363,18 @@ app.post('/api/get-backup-automations', async (req, res) => {
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
 
-      if (manifest.files && manifest.files.root) {
-        // Get all automation-related files from manifest
-        const autoFiles = manifest.files.root.filter(f =>
+      let autoFiles = null;
+      if (manifest.automation_files) {
+        autoFiles = manifest.automation_files;
+      } else if (manifest.files && manifest.files.root) {
+        autoFiles = manifest.files.root.filter(f =>
           f === 'automations.yaml' ||
           f.startsWith('automations/') ||
           f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "auto_dir/lights.yaml"
         );
+      }
 
+      if (autoFiles) {
         for (const file of autoFiles) {
           try {
             const filePath = path.join(backupPath, file);
@@ -1327,8 +1390,10 @@ app.post('/api/get-backup-automations', async (req, res) => {
         }
 
         // If no automation files in manifest, return empty
-        if (!autoFiles.includes('automations.yaml')) {
-          return res.json({ automations: [] });
+        if (manifest.automation_files || autoFiles.includes('automations.yaml')) {
+          // If we have explicit list OR it included standard file, we return what we found (even if empty)
+          // unless it's an old manifest without explicit list and didn't include automations.yaml
+          return res.json({ automations: allAutomations });
         }
       }
     } catch (e) {
@@ -1375,14 +1440,18 @@ app.post('/api/get-backup-scripts', async (req, res) => {
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
 
-      if (manifest.files && manifest.files.root) {
-        // Get all script-related files from manifest
-        const scriptFiles = manifest.files.root.filter(f =>
+      let scriptFiles = null;
+      if (manifest.script_files) {
+        scriptFiles = manifest.script_files;
+      } else if (manifest.files && manifest.files.root) {
+        scriptFiles = manifest.files.root.filter(f =>
           f === 'scripts.yaml' ||
           f.startsWith('scripts/') ||
           f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "script_dir/utilities.yaml"
         );
+      }
 
+      if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
             const filePath = path.join(backupPath, file);
@@ -1396,8 +1465,8 @@ app.post('/api/get-backup-scripts', async (req, res) => {
         }
 
         // If no script files in manifest, return empty
-        if (!scriptFiles.includes('scripts.yaml')) {
-          return res.json({ scripts: [] });
+        if (manifest.script_files || scriptFiles.includes('scripts.yaml')) {
+          return res.json({ scripts: allScripts });
         }
       }
     } catch (e) {
@@ -1559,32 +1628,69 @@ app.post('/api/restore-automation', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
     }
 
-    // Perform a backup before restoring - respect Smart Backup setting
-    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    // Perform a backup before restoring
     let effectiveSmartBackup = smartBackupEnabled;
     if (typeof smartBackupEnabled === 'undefined') {
       const scheduledJobsData = await loadScheduledJobs();
       const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
       effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
     }
-    console.log(`[restore-automation] smartBackupEnabled: ${effectiveSmartBackup}`);
     await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
-    const liveFilePath = path.join(configPath, 'automations.yaml');
-    const backupFilePath = path.join(backupPath, 'automations.yaml');
 
-    // Read raw contents
+    // Find which file in the backup contains the requested automation
+    let relativeFilePath = 'automations.yaml';
+    let backupFilePath = null;
+
+    let autoFiles = null;
+    try {
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+
+      if (manifest.automation_files) {
+        autoFiles = manifest.automation_files;
+      } else if (manifest.files && manifest.files.root) {
+        autoFiles = manifest.files.root.filter(f =>
+          f === 'automations.yaml' ||
+          f.startsWith('automations/') ||
+          f.match(/^[^/]+\/.*\.ya?ml$/)
+        );
+      }
+
+      if (autoFiles) {
+        for (const file of autoFiles) {
+          try {
+            const potentialBackupPath = path.join(backupPath, file);
+            const data = await loadYamlWithCache(potentialBackupPath);
+            if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
+              relativeFilePath = file;
+              backupFilePath = potentialBackupPath;
+              break;
+            }
+          } catch (err) { /* Skip */ }
+        }
+      }
+    } catch (e) { /* Proceed to fallback */ }
+
+    if (!backupFilePath) {
+      // Fallback: search the backup chain for automations.yaml
+      backupFilePath = await resolveFileInBackupChain(backupPath, 'automations.yaml');
+    }
+
+    // Determine target live file path
+    const liveFilePath = path.join(configPath, relativeFilePath);
+    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
+
+    // Read live contents
     let liveContent = '';
     try {
       liveContent = await fs.readFile(liveFilePath, 'utf-8');
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
-      // If file doesn't exist, start with empty list
       liveContent = '[]';
     }
-
-    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
 
     // Parse documents (preserves ranges)
     const liveDoc = YAML.parseDocument(liveContent);
@@ -1612,13 +1718,10 @@ app.post('/api/restore-automation', async (req, res) => {
 
     let newLiveContent;
     if (liveIndex !== -1) {
-      // Replace existing: Use full ranges to swap entire blocks (including comments/dash)
       const liveNode = liveItems[liveIndex];
       const [liveStart, liveEnd] = findFullRange(liveContent, liveNode, true);
       newLiveContent = liveContent.substring(0, liveStart) + backupSnippet + liveContent.substring(liveEnd);
     } else {
-      // Add new: Append to end
-      // Just append the full snippet (which includes dash). Ensure newline separator.
       const prefix = (liveContent.length > 0 && !liveContent.endsWith('\n')) ? '\n' : '';
       newLiveContent = liveContent + prefix + backupSnippet;
     }
@@ -1626,7 +1729,7 @@ app.post('/api/restore-automation', async (req, res) => {
     // Write back
     await fs.writeFile(liveFilePath, newLiveContent, 'utf-8');
 
-    res.json({ success: true, message: 'Automation restored successfully with preserved formatting' });
+    res.json({ success: true, message: `Automation restored successfully to ${relativeFilePath}` });
   } catch (error) {
     console.error('[restore-automation] Error:', error);
     res.status(500).json({ error: error.message });
@@ -1634,7 +1737,7 @@ app.post('/api/restore-automation', async (req, res) => {
 });
 
 // Restore script
-// Restore script endpoint with text replacement
+// Restore script
 app.post('/api/restore-script', async (req, res) => {
   try {
     const { backupPath, automationIdentifier: scriptIdentifier, timezone, liveConfigPath, smartBackupEnabled } = req.body;
@@ -1643,8 +1746,7 @@ app.post('/api/restore-script', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
     }
 
-    // Perform a backup before restoring - respect Smart Backup setting
-    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    // Perform a backup before restoring
     let effectiveSmartBackup = smartBackupEnabled;
     if (typeof smartBackupEnabled === 'undefined') {
       const scheduledJobsData = await loadScheduledJobs();
@@ -1654,26 +1756,65 @@ app.post('/api/restore-script', async (req, res) => {
     await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
-    const liveFilePath = path.join(configPath, 'scripts.yaml');
-    const backupFilePath = path.join(backupPath, 'scripts.yaml');
 
-    // Read raw contents
+    // Find which file in the backup contains the requested script
+    let relativeFilePath = 'scripts.yaml';
+    let backupFilePath = null;
+
+    let scriptFiles = null;
+    try {
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+
+      if (manifest.script_files) {
+        scriptFiles = manifest.script_files;
+      } else if (manifest.files && manifest.files.root) {
+        scriptFiles = manifest.files.root.filter(f =>
+          f === 'scripts.yaml' ||
+          f.startsWith('scripts/') ||
+          f.match(/^[^/]+\/.*\.ya?ml$/)
+        );
+      }
+
+      if (scriptFiles) {
+        for (const file of scriptFiles) {
+          try {
+            const potentialBackupPath = path.join(backupPath, file);
+            const data = await loadYamlWithCache(potentialBackupPath);
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+              if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
+                relativeFilePath = file;
+                backupFilePath = potentialBackupPath;
+                break;
+              }
+            }
+          } catch (err) { /* Skip */ }
+        }
+      }
+    } catch (e) { /* Proceed to fallback */ }
+
+    if (!backupFilePath) {
+      backupFilePath = await resolveFileInBackupChain(backupPath, 'scripts.yaml');
+    }
+
+    const liveFilePath = path.join(configPath, relativeFilePath);
+    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
+
+    // Read live contents
     let liveContent = '';
     try {
       liveContent = await fs.readFile(liveFilePath, 'utf-8');
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
-      // If file doesn't exist, start with empty dict
       liveContent = '{}';
     }
-
-    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
 
     // Parse documents (preserves ranges)
     const liveDoc = YAML.parseDocument(liveContent);
     const backupDoc = YAML.parseDocument(backupContent);
 
-    // Find backup node - for scripts, it's a map
+    // Find backup node
     const backupNode = backupDoc.get(scriptIdentifier);
     if (!backupNode) {
       return res.status(404).json({ error: 'Script not found in backup' });
@@ -1686,12 +1827,9 @@ app.post('/api/restore-script', async (req, res) => {
 
     let newLiveContent;
     if (liveNode) {
-      // Replace existing: Use full ranges to swap entire blocks (including comments/key)
       const [liveStart, liveEnd] = findFullRange(liveContent, liveNode, false);
       newLiveContent = liveContent.substring(0, liveStart) + backupSnippet + liveContent.substring(liveEnd);
     } else {
-      // Add new: Append to end
-      // Just append the full snippet (which includes key). Ensure newline separator.
       const prefix = (liveContent.length > 0 && !liveContent.endsWith('\n')) ? '\n' : '';
       newLiveContent = liveContent + prefix + backupSnippet;
     }
@@ -1699,7 +1837,7 @@ app.post('/api/restore-script', async (req, res) => {
     // Write back
     await fs.writeFile(liveFilePath, newLiveContent, 'utf-8');
 
-    res.json({ success: true, message: 'Script restored successfully with preserved formatting' });
+    res.json({ success: true, message: `Script restored successfully to ${relativeFilePath}` });
   } catch (error) {
     console.error('[restore-script] Error:', error);
     res.status(500).json({ error: error.message });
@@ -2256,7 +2394,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       storage: [],
       esphome: [],
       packages: []
-    }
+    },
+    automation_files: [],
+    script_files: []
   };
 
   try {
@@ -2302,7 +2442,12 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   // Backup split config directories (automations/, scripts/, etc.)
   // These are directories containing YAML files used via !include_dir_list or !include_dir_named
-  const { automationDirs, scriptDirs } = await getConfigFilePaths(configPath);
+  const { automationPaths, scriptPaths, automationDirs, scriptDirs } = await getConfigFilePaths(configPath);
+
+  // Record which files are automations and scripts in the manifest (relative to config root)
+  manifest.automation_files = automationPaths.map(p => path.relative(configPath, p));
+  manifest.script_files = scriptPaths.map(p => path.relative(configPath, p));
+
   const splitDirs = [...new Set([...automationDirs, ...scriptDirs])]; // Dedupe
 
   let copiedSplitCount = 0;
@@ -2351,6 +2496,48 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   if (splitDirs.length > 0) {
     console.log(`[backup-${source}] Copied ${copiedSplitCount} split config files${smartBackupEnabled ? `, skipped ${skippedSplitCount} unchanged` : ''}.`);
+  }
+
+  // Backup individual split config files (!include path/to/file.yaml)
+  // These are specific files detected in configuration.yaml that might be in subdirectories
+  const individuaSplitFiles = [...new Set([...automationPaths, ...scriptPaths])]
+    .filter(f => {
+      const rel = path.relative(configPath, f);
+      return rel !== 'automations.yaml' && rel !== 'scripts.yaml' && !rel.startsWith('..');
+    });
+
+  let copiedIndividualCount = 0;
+  let skippedIndividualCount = 0;
+
+  for (const srcFile of individuaSplitFiles) {
+    const relativePath = path.relative(configPath, srcFile);
+    const destFile = path.join(backupPath, relativePath);
+
+    try {
+      // Smart backup mode: only copy if file has changed
+      if (smartBackupEnabled && allBackupPaths.length > 0) {
+        const changed = await hasFileChanged(srcFile, allBackupPaths, relativePath);
+        if (!changed) {
+          skippedIndividualCount++;
+          continue;
+        }
+      }
+
+      // Ensure target directory exists
+      await fs.mkdir(path.dirname(destFile), { recursive: true });
+
+      await fs.copyFile(srcFile, destFile);
+      manifest.files.root.push(relativePath);
+      copiedIndividualCount++;
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.error(`[backup-${source}] Error copying individual split config ${relativePath}:`, err.message);
+      }
+    }
+  }
+
+  if (individuaSplitFiles.length > 0) {
+    console.log(`[backup-${source}] Copied ${copiedIndividualCount} individual split files${smartBackupEnabled ? `, skipped ${skippedIndividualCount} unchanged` : ''}.`);
   }
 
   // Backup Lovelace files
