@@ -39,14 +39,14 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 1.  **Add Repository:**
     Click the button below to add the repository to your Home Assistant instance:
 
-    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/DiggingForDinos/ha-addons)
+    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://codeberg.org/DiggingForDinos/ha-addons)
 
     **Or manually add it:**
     - Navigate to **Settings** → **Add-ons** → **Add-on Store**
     - Click the three dots (⋮) in the top right corner and select **Repositories**
     - Add the repository URL:
       ```
-      https://github.com/DiggingForDinos/ha-addons
+      https://codeberg.org/DiggingForDinos/ha-addons
       ```
 
 2.  **Install the Add-on:**
@@ -60,7 +60,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/compose.yaml
+   curl -o compose.yaml https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
@@ -90,7 +90,7 @@ docker run -d \
 **Option C: Build locally:**
 
 ```bash
-git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachine.git
+git clone https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine.git
 cd HomeAssistantTimeMachine/homeassistant-time-machine
 docker build -t ha-time-machine .
 
@@ -205,14 +205,14 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 ## Alternative Options
 
-For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
+For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://codeberg.org/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
 ## Identity Verification (Migration from saihgupr)
 
 To prove that I am the same original creator, I have added cryptographic proof to this repository:
 *   **[proof_of_identity.txt](proof_of_identity.txt):** A statement linked to the old identity.
 *   **[proof_of_identity.txt.sig](proof_of_identity.txt.sig):** A digital signature created using `saihgupr`'s original private SSH key.
-*   **Signed Tags:** New releases (starting with [identity-proof-v1](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/releases/tag/identity-proof-v1)) are GPG-signed by the new `DiggingForDinos` identity.
+*   **Signed Tags:** New releases (starting with [identity-proof-v1](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/releases)) are GPG-signed by the new `DiggingForDinos` identity.
 
 You can verify the SSH proof manually:
 ```bash
@@ -231,6 +231,6 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 Check out the [contribution guidelines](CONTRIBUTING.md) for details on how to contribute to this project.
 
-If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
+If you encounter a bug or have a feature request, feel free to [open an issue](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/issues).
 
 **If you find this add-on helpful, please ⭐ star the repository!**
