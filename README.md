@@ -229,17 +229,10 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 ## Contributing & Support
 
-Check out the [contribution guidelines](CONTRIBUTING.md) for details on how to contribute to this project.
+Contributions are welcome! Check out [contribution guidelines](CONTRIBUTING.md) for more details.
 
 If you encounter a bug or have a feature request, feel free to [open an issue](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/issues).
 
-**If you find this add-on helpful, please ⭐ star the repository!**## Support & Contributing
+If you'd like to buy me a coffee, you can do so [here](https://ko-fi.com/diggingfordinos).
 
-Found a bug or have a feature request? Please [submit an issue on Codeberg](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/issues).
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-*   **TL;DR:** New features → target the `develop` branch. Bug fixes → `main` is fine.
-
-If you find this add-on helpful, please ⭐ star the repository!
-
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/diggingfordinos)
+**If you find this add-on helpful, please ⭐ star the repository!**
