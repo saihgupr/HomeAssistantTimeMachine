@@ -1,37 +1,33 @@
-# Home Assistant Time Machine Beta
+# Home Assistant Time Machine
 
 Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" for your Home Assistant configuration. Browse YAML backups across automations, scripts, Lovelace dashboards, ESPHome files, and packages, then restore individual items back to your live setup with confidence.
 
 ## What's New!
 
-*   **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
-*   **Show Changes Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
-*   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
-*   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
+*   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
 
-![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/1.png)
-![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/2.png)
-![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/3.png)
-![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/4.png)
-![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/5.png)
-![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/6.png)
+![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/5.png)
+![Screenshot 6](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/6.png)
 
 ## Features
 
 *   **Browse Backups:** Easily browse through your Home Assistant backup YAML files.
-*   **View Changes:** See a side-by-side diff of the changes between a backed-up item and the live version.
+*   **View Changes & Diff Palettes:** See side-by-side diffs with 8 vibrant color palettes to choose from.
 *   **Restore Individual Items:** Restore individual automations or scripts without having to restore an entire backup.
+*   **Smart Backup:** Incremental backup mode that only saves changed files, significantly reducing storage usage.
+*   **Show Changes Only:** Filter backups to only show snapshots that contain changed or deleted items compared to live config.
 *   **Safety First:** Automatically creates a backup before restoring anything.
 *   **Reload Home Assistant:** Reload automations or scripts directly from the UI after a restore.
 *   **Scheduled Backups:** Configure automatic backups on a schedule.
-*   **Service Call Support:** Trigger backups from automations or scripts using the `hassio.addon_stdin` service.
+*   **Service Call Support:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service.
 *   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
 *   **Ingress Support:** Access through the Home Assistant UI without port forwarding.
-*   **Lovelace Backup:** Backup and restore your Lovelace dashboard configurations.
-*   **ESPHome & Packages Backup:** Optionally backup ESPHome and Packages files.
-*   **Backup Now Button:** Trigger an immediate backup with a single click.
-*   **Max Backups:** Set a limit on how many backups are kept.
-*   **Flexible Backup Locations:** Store backups in `/share`, `/backup`, `/config`, `/media`, or remote shares.
+*   **Lovelace, ESPHome & Packages:** Full support for backing up and restoring dashboards, ESPHome files, and package configurations.
+*   **Max Backups & Flexible Locations:** Control retention limits and store backups in `/share`, `/backup`, `/media`, or remote shares.
 *   **REST API:** Full API for programmatic backup management.
 
 ## Installation
@@ -64,7 +60,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/compose.yaml
+   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
@@ -88,14 +84,14 @@ docker run -d \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
   --name ha-time-machine \
-  ghcr.io/diggingfordinos/homeassistanttimemachinebeta:latest
+  ghcr.io/diggingfordinos/homeassistanttimemachine:latest
 ```
 
 **Option C: Build locally:**
 
 ```bash
-git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta.git
-cd HomeAssistantTimeMachineBeta/homeassistant-time-machine
+git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachine.git
+cd HomeAssistantTimeMachine/homeassistant-time-machine
 docker build -t ha-time-machine .
 
 docker run -d \
@@ -168,11 +164,11 @@ You can trigger a backup from Home Assistant automations or scripts using the `h
 ```yaml
 service: hassio.addon_stdin
 data:
-  addon: homeassistant-time-machine-beta
+  addon: 0f6ec05b_homeassistant-time-machine
   input: backup
 ```
 
-> **Note:** Replace `homeassistant-time-machine-beta` with your addon's slug if different.
+> **Note:** Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
 
 ## Backup to Remote Share
 
@@ -211,6 +207,18 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
+## Identity Verification (Migration from saihgupr)
+
+To prove that I am the same original creator, I have added cryptographic proof to this repository:
+*   **[proof_of_identity.txt](proof_of_identity.txt):** A statement linked to the old identity.
+*   **[proof_of_identity.txt.sig](proof_of_identity.txt.sig):** A digital signature created using `saihgupr`'s original private SSH key.
+*   **Signed Tags:** New releases (starting with [identity-proof-v1](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/releases/tag/identity-proof-v1)) are GPG-signed by the new `DiggingForDinos` identity.
+
+You can verify the SSH proof manually:
+```bash
+ssh-keygen -Y check-novalidate -n file -f old_identity.pub -s proof_of_identity.txt.sig < proof_of_identity.txt
+```
+
 ## Press & Community
 
 Thank you to everyone who has written about or featured Home Assistant Time Machine!
@@ -219,9 +227,10 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 - [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
 - [smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
 
-## Support, Feedback & Contributing
+## Contributing & Support
 
-- File issues or feature requests at [GitHub Issues](https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta/issues).
-- Share feedback on usability so we can keep refining backup workflows.
+Check out the [contribution guidelines](CONTRIBUTING.md) for details on how to contribute to this project.
+
+If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
 
 **If you find this add-on helpful, please ⭐ star the repository!**

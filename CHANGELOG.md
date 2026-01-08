@@ -1,3 +1,9 @@
+# v2.3
+
+- **Split Config Support:** Advanced support for Home Assistant configurations using `!include`, `!include_dir_list`, and other split configuration methods.
+- **Manifest-Driven Backups:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live.
+- **Improved Restoration:** Restore operations now automatically use the backup manifest to track and place files back exactly where they belong in your YAML structure.
+
 # v2.2
 
 - **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
