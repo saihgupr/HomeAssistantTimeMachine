@@ -233,8 +233,8 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 ## Contributing & Support
 
-Contributions welcome! Check out [how to contribute](CONTRIBUTING.md) for details.
+Contributions are welcome. Check out the [contribution guidelines](CONTRIBUTING.md) for details.
 
-Found a bug or have a feature request? [Open an issue](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
+If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
 
 **If you find this add-on helpful, please ⭐ star the repository!**

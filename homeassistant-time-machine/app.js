@@ -310,6 +310,102 @@ function clearBackupCacheEntries() {
 
 const YAML_EXTENSIONS = new Set(['.yaml', '.yml']);
 
+/**
+ * Parse configuration.yaml to find automation and script file locations
+ * Supports !include, !include_dir_list, !include_dir_named, !include_dir_merge_list, !include_dir_merge_named
+ * @param {string} configPath - Path to the config directory
+ * @returns {Object} Object with automationPaths (array), scriptPaths (array), and automationDirs/scriptDirs for directory includes
+ */
+async function getConfigFilePaths(configPath) {
+  const configFile = path.join(configPath, 'configuration.yaml');
+  const automationPaths = [];
+  const scriptPaths = [];
+  const automationDirs = [];
+  const scriptDirs = [];
+
+  try {
+    const configContent = await fs.readFile(configFile, 'utf-8');
+    debugLog('[getConfigFilePaths] Found configuration.yaml, parsing...');
+
+    const lines = configContent.split('\n');
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Match automation: !include filename.yaml
+      const autoIncludeMatch = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
+      if (autoIncludeMatch) {
+        const file = autoIncludeMatch[1].trim();
+        automationPaths.push(path.join(configPath, file));
+      }
+
+      // Match script: !include filename.yaml
+      const scriptIncludeMatch = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
+      if (scriptIncludeMatch) {
+        const file = scriptIncludeMatch[1].trim();
+        scriptPaths.push(path.join(configPath, file));
+      }
+
+      // Match automation: !include_dir_list dir_name or !include_dir_merge_list dir_name
+      const autoDirListMatch = trimmedLine.match(/^automation:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
+      if (autoDirListMatch) {
+        const dir = autoDirListMatch[1].trim();
+        const fullDir = path.join(configPath, dir);
+        automationDirs.push(fullDir);
+        try {
+          const files = await fs.readdir(fullDir);
+          for (const file of files) {
+            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+              automationPaths.push(path.join(fullDir, file));
+            }
+          }
+        } catch (err) {
+          debugLog(`[getConfigFilePaths] Could not read automation directory ${fullDir}:`, err.message);
+        }
+      }
+
+      // Match script: !include_dir_named dir_name or !include_dir_merge_named dir_name
+      const scriptDirNamedMatch = trimmedLine.match(/^script:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
+      if (scriptDirNamedMatch) {
+        const dir = scriptDirNamedMatch[1].trim();
+        const fullDir = path.join(configPath, dir);
+        scriptDirs.push(fullDir);
+        try {
+          const files = await fs.readdir(fullDir);
+          for (const file of files) {
+            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+              scriptPaths.push(path.join(fullDir, file));
+            }
+          }
+        } catch (err) {
+          debugLog(`[getConfigFilePaths] Could not read script directory ${fullDir}:`, err.message);
+        }
+      }
+    }
+
+    // Default fallback if nothing found in config
+    if (automationPaths.length === 0) {
+      automationPaths.push(path.join(configPath, 'automations.yaml'));
+    }
+    if (scriptPaths.length === 0) {
+      scriptPaths.push(path.join(configPath, 'scripts.yaml'));
+    }
+
+  } catch (error) {
+    // If configuration.yaml doesn't exist or can't be read, use defaults
+    debugLog('[getConfigFilePaths] Could not read configuration.yaml, using defaults:', error.message);
+    automationPaths.push(path.join(configPath, 'automations.yaml'));
+    scriptPaths.push(path.join(configPath, 'scripts.yaml'));
+  }
+
+  debugLog('[getConfigFilePaths] Automation paths:', automationPaths);
+  debugLog('[getConfigFilePaths] Script paths:', scriptPaths);
+  debugLog('[getConfigFilePaths] Automation dirs:', automationDirs);
+  debugLog('[getConfigFilePaths] Script dirs:', scriptDirs);
+
+  return { automationPaths, scriptPaths, automationDirs, scriptDirs };
+}
+
+
 async function listYamlFilesRecursive(rootDir) {
   const results = [];
 
@@ -1006,19 +1102,30 @@ async function checkSnapshotHasChanges(backupPath, configPath, mode) {
   return await checkAutomationsChanges(backupPath, configPath);
 }
 
-// Check automations.yaml for changes
+// Check automations for changes (supports split configs)
 async function checkAutomationsChanges(backupPath, configPath) {
   try {
+    // Get all automation file paths from configuration.yaml
+    const { automationPaths } = await getConfigFilePaths(configPath);
+
+    // Load backup automations (for now, check both root automations.yaml and any backed-up directories)
     const backupFile = path.join(backupPath, 'automations.yaml');
-    const liveFile = path.join(configPath, 'automations.yaml');
+    let backupArray = [];
+    try {
+      const backupData = await loadYamlWithCache(backupFile);
+      backupArray = Array.isArray(backupData) ? backupData : [];
+    } catch (err) { /* No backup file */ }
 
-    const [backupData, liveData] = await Promise.all([
-      loadYamlWithCache(backupFile).catch(() => []),
-      loadYamlWithCache(liveFile).catch(() => [])
-    ]);
-
-    const backupArray = Array.isArray(backupData) ? backupData : [];
-    const liveArray = Array.isArray(liveData) ? liveData : [];
+    // Load all live automations from all configured paths
+    let liveArray = [];
+    for (const filePath of automationPaths) {
+      try {
+        const fileData = await loadYamlWithCache(filePath);
+        if (Array.isArray(fileData)) {
+          liveArray = liveArray.concat(fileData);
+        }
+      } catch (err) { /* File not found, skip */ }
+    }
 
     // Only check for deleted or modified items (not new items, since UI only shows backup items)
     for (const backupItem of backupArray) {
@@ -1037,19 +1144,32 @@ async function checkAutomationsChanges(backupPath, configPath) {
   }
 }
 
-// Check scripts.yaml for changes
+
+// Check scripts for changes (supports split configs)
 async function checkScriptsChanges(backupPath, configPath) {
   try {
+    // Get all script file paths from configuration.yaml
+    const { scriptPaths } = await getConfigFilePaths(configPath);
+
+    // Load backup scripts
     const backupFile = path.join(backupPath, 'scripts.yaml');
-    const liveFile = path.join(configPath, 'scripts.yaml');
+    let backupScripts = {};
+    try {
+      const backupRaw = await loadYamlWithCache(backupFile);
+      backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
+    } catch (err) { /* No backup file */ }
 
-    const [backupRaw, liveRaw] = await Promise.all([
-      loadYamlWithCache(backupFile).catch(() => ({})),
-      loadYamlWithCache(liveFile).catch(() => ({}))
-    ]);
-
-    const backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
-    const liveScripts = (liveRaw && typeof liveRaw === 'object' && !Array.isArray(liveRaw)) ? liveRaw : {};
+    // Load all live scripts from all configured paths
+    let liveScripts = {};
+    for (const filePath of scriptPaths) {
+      try {
+        const fileData = await loadYamlWithCache(filePath);
+        if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
+          // Merge scripts from this file
+          Object.assign(liveScripts, fileData);
+        }
+      } catch (err) { /* File not found, skip */ }
+    }
 
     // Only check for deleted or modified items (not new items, since UI only shows backup items)
     for (const scriptId of Object.keys(backupScripts)) {
@@ -1062,6 +1182,7 @@ async function checkScriptsChanges(backupPath, configPath) {
     return false;
   }
 }
+
 
 // Check lovelace files for changes
 async function checkLovelaceChanges(backupPath, configPath) {
@@ -1171,89 +1292,165 @@ async function checkPackagesChanges(backupPath, configPath) {
   }
 }
 
-// Get backup automations
+// Get backup automations (supports split configs)
 app.post('/api/get-backup-automations', async (req, res) => {
   try {
     const { backupPath } = req.body;
+    let allAutomations = [];
 
-    // Check manifest for existence
+    // Check manifest for split config files
     try {
       const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
-      if (manifest.files && manifest.files.root && !manifest.files.root.includes('automations.yaml')) {
-        return res.json({ automations: [] });
+
+      if (manifest.files && manifest.files.root) {
+        // Get all automation-related files from manifest
+        const autoFiles = manifest.files.root.filter(f =>
+          f === 'automations.yaml' ||
+          f.startsWith('automations/') ||
+          f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "auto_dir/lights.yaml"
+        );
+
+        for (const file of autoFiles) {
+          try {
+            const filePath = path.join(backupPath, file);
+            const fileData = await loadYamlWithCache(filePath);
+            if (Array.isArray(fileData)) {
+              allAutomations = allAutomations.concat(fileData);
+            }
+          } catch (err) { /* File not found, skip */ }
+        }
+
+        if (allAutomations.length > 0) {
+          return res.json({ automations: allAutomations });
+        }
+
+        // If no automation files in manifest, return empty
+        if (!autoFiles.includes('automations.yaml')) {
+          return res.json({ automations: [] });
+        }
       }
     } catch (e) {
       // Manifest missing -> assume old full backup -> proceed to resolve
     }
 
-    const automationsFile = await resolveFileInBackupChain(backupPath, 'automations.yaml');
-    const automations = await loadYamlWithCache(automationsFile) || [];
-    res.json({ automations });
+    // Fallback: try standard automations.yaml
+    try {
+      const automationsFile = await resolveFileInBackupChain(backupPath, 'automations.yaml');
+      const automations = await loadYamlWithCache(automationsFile) || [];
+      allAutomations = Array.isArray(automations) ? automations : [];
+    } catch (err) { /* No automations.yaml */ }
+
+    res.json({ automations: allAutomations });
   } catch (error) {
     console.error('[get-backup-automations] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get backup scripts  
+
+// Get backup scripts (supports split configs)
 app.post('/api/get-backup-scripts', async (req, res) => {
   try {
     const { backupPath } = req.body;
+    let allScripts = [];
 
-    // Check manifest for existence
+    // Helper function to process script data
+    const processScriptData = (data) => {
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        return Object.keys(data).map(scriptId => ({
+          id: scriptId,
+          ...data[scriptId]
+        }));
+      } else if (Array.isArray(data)) {
+        return data;
+      }
+      return [];
+    };
+
+    // Check manifest for split config files
     try {
       const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
-      if (manifest.files && manifest.files.root && !manifest.files.root.includes('scripts.yaml')) {
-        return res.json({ scripts: [] });
+
+      if (manifest.files && manifest.files.root) {
+        // Get all script-related files from manifest
+        const scriptFiles = manifest.files.root.filter(f =>
+          f === 'scripts.yaml' ||
+          f.startsWith('scripts/') ||
+          f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "script_dir/utilities.yaml"
+        );
+
+        for (const file of scriptFiles) {
+          try {
+            const filePath = path.join(backupPath, file);
+            const fileData = await loadYamlWithCache(filePath);
+            allScripts = allScripts.concat(processScriptData(fileData));
+          } catch (err) { /* File not found, skip */ }
+        }
+
+        if (allScripts.length > 0) {
+          return res.json({ scripts: allScripts });
+        }
+
+        // If no script files in manifest, return empty
+        if (!scriptFiles.includes('scripts.yaml')) {
+          return res.json({ scripts: [] });
+        }
       }
     } catch (e) {
       // Manifest missing -> assume old full backup -> proceed to resolve
     }
 
-    const scriptsFile = await resolveFileInBackupChain(backupPath, 'scripts.yaml');
-    const scriptsObject = await loadYamlWithCache(scriptsFile);
+    // Fallback: try standard scripts.yaml
+    try {
+      const scriptsFile = await resolveFileInBackupChain(backupPath, 'scripts.yaml');
+      const scriptsData = await loadYamlWithCache(scriptsFile);
+      allScripts = processScriptData(scriptsData);
+    } catch (err) { /* No scripts.yaml */ }
 
-    // Scripts are stored as a dictionary/object, not an array
-    // Transform: { script_id: { alias: '...', sequence: [...] } }
-    // Into: [{ id: 'script_id', alias: '...', sequence: [...] }]
-    let scripts = [];
-    if (scriptsObject && typeof scriptsObject === 'object' && !Array.isArray(scriptsObject)) {
-      scripts = Object.keys(scriptsObject).map(scriptId => ({
-        id: scriptId,
-        ...scriptsObject[scriptId]
-      }));
-    } else if (Array.isArray(scriptsObject)) {
-      // Fallback for array format (shouldn't happen)
-      scripts = scriptsObject;
-    }
-
-    res.json({ scripts });
+    res.json({ scripts: allScripts });
   } catch (error) {
     console.error('[get-backup-scripts] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get live items (automations or scripts)
+
+// Get live items (automations or scripts) - supports split configs
 app.post('/api/get-live-items', async (req, res) => {
   try {
     const { itemIdentifiers, mode, liveConfigPath } = req.body;
     const configPath = liveConfigPath || '/config';
-    const fileName = mode === 'automations' ? 'automations.yaml' : 'scripts.yaml';
-    const filePath = path.join(configPath, fileName);
 
-    let allItems = await loadYamlWithCache(filePath) || [];
+    // Get all file paths from configuration.yaml
+    const { automationPaths, scriptPaths } = await getConfigFilePaths(configPath);
+    const filePaths = mode === 'automations' ? automationPaths : scriptPaths;
 
-    // Handle scripts dictionary format
-    if (mode === 'scripts' && typeof allItems === 'object' && !Array.isArray(allItems)) {
-      allItems = Object.keys(allItems).map(scriptId => ({
-        id: scriptId,
-        ...allItems[scriptId]
-      }));
+    // Load all items from all configured paths
+    let allItems = [];
+    for (const filePath of filePaths) {
+      try {
+        const fileData = await loadYamlWithCache(filePath);
+        if (mode === 'automations') {
+          if (Array.isArray(fileData)) {
+            allItems = allItems.concat(fileData);
+          }
+        } else if (mode === 'scripts') {
+          // Handle scripts dictionary format
+          if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
+            const scriptItems = Object.keys(fileData).map(scriptId => ({
+              id: scriptId,
+              ...fileData[scriptId]
+            }));
+            allItems = allItems.concat(scriptItems);
+          } else if (Array.isArray(fileData)) {
+            allItems = allItems.concat(fileData);
+          }
+        }
+      } catch (err) { /* File not found, skip */ }
     }
 
     const liveItems = {};
@@ -1271,14 +1468,27 @@ app.post('/api/get-live-items', async (req, res) => {
   }
 });
 
-// Get live automation
+
+// Get live automation (supports split configs)
 app.post('/api/get-live-automation', async (req, res) => {
   try {
     const { automationIdentifier, liveConfigPath } = req.body;
     const configPath = liveConfigPath || '/config';
-    const filePath = path.join(configPath, 'automations.yaml');
-    const automations = await loadYamlWithCache(filePath) || [];
-    const automation = automations.find(a => a.id === automationIdentifier || a.alias === automationIdentifier);
+
+    // Get all automation file paths from configuration.yaml
+    const { automationPaths } = await getConfigFilePaths(configPath);
+
+    // Search all automation files for the requested automation
+    let automation = null;
+    for (const filePath of automationPaths) {
+      try {
+        const automations = await loadYamlWithCache(filePath) || [];
+        if (Array.isArray(automations)) {
+          automation = automations.find(a => a.id === automationIdentifier || a.alias === automationIdentifier);
+          if (automation) break;
+        }
+      } catch (err) { /* File not found, continue */ }
+    }
 
     if (!automation) {
       return res.status(404).json({ error: 'Automation not found' });
@@ -1291,14 +1501,42 @@ app.post('/api/get-live-automation', async (req, res) => {
   }
 });
 
-// Get live script
+
+// Get live script (supports split configs)
 app.post('/api/get-live-script', async (req, res) => {
   try {
     const { automationIdentifier, liveConfigPath } = req.body;
     const configPath = liveConfigPath || '/config';
-    const filePath = path.join(configPath, 'scripts.yaml');
-    const scripts = await loadYamlWithCache(filePath) || [];
-    const script = scripts.find(s => s.id === automationIdentifier || s.alias === automationIdentifier);
+
+    // Get all script file paths from configuration.yaml
+    const { scriptPaths } = await getConfigFilePaths(configPath);
+
+    // Search all script files for the requested script
+    let script = null;
+    for (const filePath of scriptPaths) {
+      try {
+        const scriptsData = await loadYamlWithCache(filePath);
+        // Scripts can be in dictionary format (key: script_id, value: script object)
+        if (scriptsData && typeof scriptsData === 'object' && !Array.isArray(scriptsData)) {
+          if (scriptsData[automationIdentifier]) {
+            script = { id: automationIdentifier, ...scriptsData[automationIdentifier] };
+            break;
+          }
+          // Also search by alias
+          for (const [id, scriptObj] of Object.entries(scriptsData)) {
+            if (scriptObj.alias === automationIdentifier) {
+              script = { id, ...scriptObj };
+              break;
+            }
+          }
+          if (script) break;
+        } else if (Array.isArray(scriptsData)) {
+          // Fallback for array format
+          script = scriptsData.find(s => s.id === automationIdentifier || s.alias === automationIdentifier);
+          if (script) break;
+        }
+      } catch (err) { /* File not found, continue */ }
+    }
 
     if (!script) {
       return res.status(404).json({ error: 'Script not found' });
@@ -1310,6 +1548,7 @@ app.post('/api/get-live-script', async (req, res) => {
     res.status(404).json({ error: error.message });
   }
 });
+
 
 // Restore automation
 app.post('/api/restore-automation', async (req, res) => {
@@ -1776,14 +2015,23 @@ app.post('/api/validate-path', async (req, res) => {
       }
 
       if (type === 'live') {
-        const automationsPath = `${requestedPath}/automations.yaml`;
-        try {
-          await fs.access(automationsPath);
-        } catch (err) {
-          if (err.code === 'ENOENT') {
-            return res.json({ errorCode: 'missing_automations', path: requestedPath });
+        // Check if config has automations (either standard or split config)
+        const { automationPaths } = await getConfigFilePaths(requestedPath);
+
+        // Check if at least one automation file exists
+        let hasAutomations = false;
+        for (const autoPath of automationPaths) {
+          try {
+            await fs.access(autoPath);
+            hasAutomations = true;
+            break;
+          } catch (err) {
+            // File doesn't exist, try next
           }
-          return res.json({ errorCode: 'cannot_access', path: requestedPath, details: err.message });
+        }
+
+        if (!hasAutomations) {
+          return res.json({ errorCode: 'missing_automations', path: requestedPath });
         }
       }
 
@@ -1799,6 +2047,7 @@ app.post('/api/validate-path', async (req, res) => {
     res.status(500).json({ error: error.message, errorCode: 'unknown' });
   }
 });
+
 
 // Helper function to get all backup paths in reverse chronological order
 async function getAllBackupPaths(backupRoot) {
@@ -2051,7 +2300,61 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   }
   console.log(`[backup-${source}] Copied ${copiedYamlCount} YAML files${smartBackupEnabled ? `, skipped ${skippedYamlCount} unchanged` : ''}.`);
 
+  // Backup split config directories (automations/, scripts/, etc.)
+  // These are directories containing YAML files used via !include_dir_list or !include_dir_named
+  const { automationDirs, scriptDirs } = await getConfigFilePaths(configPath);
+  const splitDirs = [...new Set([...automationDirs, ...scriptDirs])]; // Dedupe
+
+  let copiedSplitCount = 0;
+  let skippedSplitCount = 0;
+
+  for (const dirPath of splitDirs) {
+    try {
+      const dirName = path.relative(configPath, dirPath);
+      const backupDirPath = path.join(backupPath, dirName);
+
+      const dirFiles = await fs.readdir(dirPath);
+      const yamlDirFiles = dirFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+
+      if (yamlDirFiles.length > 0) {
+        await fs.mkdir(backupDirPath, { recursive: true });
+
+        for (const file of yamlDirFiles) {
+          const srcFile = path.join(dirPath, file);
+          const destFile = path.join(backupDirPath, file);
+          const relativePath = path.join(dirName, file);
+
+          try {
+            // Smart backup mode: only copy if file has changed
+            if (smartBackupEnabled && allBackupPaths.length > 0) {
+              const changed = await hasFileChanged(srcFile, allBackupPaths, relativePath);
+              if (!changed) {
+                skippedSplitCount++;
+                continue;
+              }
+            }
+
+            await fs.copyFile(srcFile, destFile);
+            manifest.files.root.push(relativePath);
+            copiedSplitCount++;
+          } catch (err) {
+            console.error(`[backup-${source}] Error copying split config ${relativePath}:`, err.message);
+          }
+        }
+      }
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.error(`[backup-${source}] Error reading split config directory ${dirPath}:`, err.message);
+      }
+    }
+  }
+
+  if (splitDirs.length > 0) {
+    console.log(`[backup-${source}] Copied ${copiedSplitCount} split config files${smartBackupEnabled ? `, skipped ${skippedSplitCount} unchanged` : ''}.`);
+  }
+
   // Backup Lovelace files
+
   const storagePath = path.join(configPath, '.storage');
   const backupStoragePath = path.join(backupPath, '.storage');
   let storageDirectoryCreated = false;
