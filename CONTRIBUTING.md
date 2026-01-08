@@ -1,6 +1,6 @@
 # Contributing to Home Assistant Time Machine
 
-Thanks for your interest in contributing! 🎉
+Thanks for your interest in contributing!
 
 ## Where to Submit PRs
 
