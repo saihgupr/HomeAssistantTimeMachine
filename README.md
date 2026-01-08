@@ -1,4 +1,4 @@
-# Home Assistant Time Machine Beta
+# Home Assistant Time Machine
 
 Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" for your Home Assistant configuration. Browse YAML backups across automations, scripts, Lovelace dashboards, ESPHome files, and packages, then restore individual items back to your live setup with confidence.
 
@@ -9,12 +9,12 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
 *   **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
 
-![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/1.png)
-![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/2.png)
-![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/3.png)
-![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/4.png)
-![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/5.png)
-![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/images/6.png)
+![Screenshot 1](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/5.png)
+![Screenshot 6](https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/images/6.png)
 
 ## Features
 
@@ -64,7 +64,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachineBeta/main/compose.yaml
+   curl -o compose.yaml https://raw.githubusercontent.com/DiggingForDinos/HomeAssistantTimeMachine/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
@@ -88,14 +88,14 @@ docker run -d \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
   --name ha-time-machine \
-  ghcr.io/diggingfordinos/homeassistanttimemachinebeta:latest
+  ghcr.io/diggingfordinos/homeassistanttimemachine:latest
 ```
 
 **Option C: Build locally:**
 
 ```bash
-git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta.git
-cd HomeAssistantTimeMachineBeta/homeassistant-time-machine
+git clone https://github.com/DiggingForDinos/HomeAssistantTimeMachine.git
+cd HomeAssistantTimeMachine/homeassistant-time-machine
 docker build -t ha-time-machine .
 
 docker run -d \
@@ -168,11 +168,11 @@ You can trigger a backup from Home Assistant automations or scripts using the `h
 ```yaml
 service: hassio.addon_stdin
 data:
-  addon: homeassistant-time-machine-beta
+  addon: homeassistant-time-machine
   input: backup
 ```
 
-> **Note:** Replace `homeassistant-time-machine-beta` with your addon's slug if different.
+> **Note:** Replace `homeassistant-time-machine` with your addon's slug if different.
 
 ## Backup to Remote Share
 
@@ -231,16 +231,10 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 - [Glooob Domo – YouTube Video](https://www.youtube.com/watch?v=aWZ0ON8b8io)
 - [smarterkram | Olli – YouTube Video](https://www.youtube.com/watch?v=zyTExP_ebAE)
 
-## Contributing
+## Contributing & Support
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! Check out [how to contribute](CONTRIBUTING.md) for details.
 
-**TL;DR:** New features → target the `develop` branch. Bug fixes → `main` is fine.
-
----
-
-## Support
-
-Found a bug or have a feature request? Please [submit an issue on GitHub](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
+Found a bug or have a feature request? [Open an issue](https://github.com/DiggingForDinos/HomeAssistantTimeMachine/issues).
 
 **If you find this add-on helpful, please ⭐ star the repository!**
