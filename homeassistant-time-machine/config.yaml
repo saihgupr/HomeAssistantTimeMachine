@@ -1,9 +1,9 @@
-name: Home Assistant Time Machine Beta
-version: 2.1.2
-slug: homeassistant-time-machine-beta
+name: Home Assistant Time Machine
+version: 2.2.0
+slug: homeassistant-time-machine
 description: Browse and restore Home Assistant configuration backups
-url: https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta
-changelog: https://github.com/DiggingForDinos/HomeAssistantTimeMachineBeta/src/branch/develop/homeassistant-time-machine/CHANGELOG.md
+url: https://github.com/saihgupr/HomeAssistantTimeMachine
+changelog: https://github.com/saihgupr/HomeAssistantTimeMachine/blob/develop/homeassistant-time-machine/CHANGELOG.md
 arch:
   - amd64
   - aarch64

@@ -6,12 +6,12 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 *   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
 
-![Screenshot 1](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/develop/images/1.png)
-![Screenshot 2](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/develop/images/2.png)
-![Screenshot 3](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/develop/images/3.png)
-![Screenshot 4](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/develop/images/4.png)
-![Screenshot 5](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/develop/images/5.png)
-![Screenshot 6](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/develop/images/6.png)
+![Screenshot 1](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/1.png)
+![Screenshot 2](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/2.png)
+![Screenshot 3](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/3.png)
+![Screenshot 4](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/4.png)
+![Screenshot 5](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/5.png)
+![Screenshot 6](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/6.png)
 
 ## Features
 
@@ -39,14 +39,14 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 1.  **Add Repository:**
     Click the button below to add the repository to your Home Assistant instance:
 
-    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://codeberg.org/DiggingForDinos/ha-addons)
+    [![Open your Home Assistant instance and show the add-on store](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/saihgupr/ha-addons)
 
     **Or manually add it:**
     - Navigate to **Settings** → **Add-ons** → **Add-on Store**
     - Click the three dots (⋮) in the top right corner and select **Repositories**
     - Add the repository URL:
       ```
-      https://codeberg.org/DiggingForDinos/ha-addons
+      https://github.com/saihgupr/ha-addons
       ```
 
 2.  **Install the Add-on:**
@@ -60,7 +60,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/raw/branch/main/compose.yaml
+   curl -o compose.yaml https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
@@ -84,13 +84,13 @@ docker run -d \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
   --name ha-time-machine \
-  ghcr.io/diggingfordinos/homeassistanttimemachine:latest
+  ghcr.io/saihgupr/homeassistanttimemachine:latest
 ```
 
 **Option C: Build locally:**
 
 ```bash
-git clone https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine.git
+git clone https://github.com/saihgupr/HomeAssistantTimeMachine.git
 cd HomeAssistantTimeMachine/homeassistant-time-machine
 docker build -t ha-time-machine .
 
@@ -205,19 +205,9 @@ curl -X POST http://localhost:54000/api/scan-backups \
 
 ## Alternative Options
 
-For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://codeberg.org/DiggingForDinos/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
+For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
 
-## Identity Verification (Migration from saihgupr)
 
-To prove that I am the same original creator, I have added cryptographic proof to this repository:
-*   **[proof_of_identity.txt](proof_of_identity.txt):** A statement linked to the old identity.
-*   **[proof_of_identity.txt.sig](proof_of_identity.txt.sig):** A digital signature created using `saihgupr`'s original private SSH key.
-*   **Signed Tags:** New releases (starting with [identity-proof-v1](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/releases)) are GPG-signed by the new `DiggingForDinos` identity.
-
-You can verify the SSH proof manually:
-```bash
-ssh-keygen -Y check-novalidate -n file -f old_identity.pub -s proof_of_identity.txt.sig < proof_of_identity.txt
-```
 
 ## Press & Community
 
@@ -231,8 +221,8 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 Contributions are welcome! Check out [contribution guidelines](CONTRIBUTING.md) for more details.
 
-If you encounter a bug or have a feature request, feel free to [open an issue](https://codeberg.org/DiggingForDinos/HomeAssistantTimeMachine/issues).
+If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
 
-If you'd like to buy me a coffee, you can do so [here](https://ko-fi.com/diggingfordinos).
+If you'd like to buy me a coffee, you can do so [here](https://ko-fi.com/saihgupr).
 
 **If you find this add-on helpful, please ⭐ star the repository!**
