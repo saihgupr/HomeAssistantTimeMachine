@@ -1,29 +1,26 @@
-# Contributing to Home Assistant Time Machine
+# Contributing
 
-Thanks for your interest in contributing!
+Thanks for wanting to help out! To keep things organized and make sure stable versions don't break, we use two main branches:
 
-## Where to Submit PRs
+### Where should your code go?
 
-| Type of Change | Target Branch |
-|----------------|---------------|
-| **New features** | `develop` |
-| **Bug fixes** for current stable | `main` (or `develop` if it affects beta) |
-| **Documentation** | Either branch is fine |
+*   **New Features:** Please target the **`develop`** branch. This is where we test everything before it goes live.
+*   **Bug Fixes:** If it's a quick fix for the current version, **`main`** is fine. If it's for something currently in beta, use **`develop`**.
+*   **Docs & Typos:** Either branch is totally fine.
 
-### How to Change PR Target
+**Tip:** When you open a Pull Request on GitHub, look for the "base" dropdown and switch it to `develop` if you're adding something new.
 
-When creating a PR, use the "base" dropdown to select `develop` instead of `main`.
+---
 
-If you've already created a PR targeting `main`, you can change it by clicking "Edit" next to the base branch on the PR page.
+### Getting Started
 
-## Development Workflow
+1.  **Fork it:** Create your own copy of the repo.
+2.  **Branch it:** Create a new branch starting from `develop`.
+3.  **Code it:** Do your thing! Keep changes focused and clean.
+4.  **PR it:** Send over a Pull Request targeting `develop`.
 
-1. Fork the repository
-2. Create a feature branch from `develop`
-3. Make your changes
-4. Submit a PR targeting `develop`
-5. Your changes will be tested in beta, then merged to `main` for stable releases
+We'll take a look, test it out in the beta versions, and eventually merge it into `main` for the next stable release. 
 
-## Questions?
+### Not sure?
+If you have a question or a cool idea but don't know where to start, just [open an issue](https://github.com/saihgupr/HomeAssistantTimeMachine/issues) and we can chat about it!
 
-Open an issue if you're unsure where your contribution should go!
