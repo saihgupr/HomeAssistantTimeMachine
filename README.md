@@ -6,12 +6,12 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 *   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
 
-![Screenshot 1](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/1.png)
-![Screenshot 2](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/2.png)
-![Screenshot 3](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/3.png)
-![Screenshot 4](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/4.png)
-![Screenshot 5](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/5.png)
-![Screenshot 6](https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/develop/images/6.png)
+![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/develop/images/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/develop/images/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/develop/images/3.png)
+![Screenshot 4](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/develop/images/4.png)
+![Screenshot 5](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/develop/images/5.png)
+![Screenshot 6](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/develop/images/6.png)
 
 ## Features
 
@@ -60,7 +60,7 @@ For Docker users who aren't using the Home Assistant add-on, you have three depl
 
 1. Download the compose.yaml file:
    ```bash
-   curl -o compose.yaml https://github.com/saihgupr/HomeAssistantTimeMachine/raw/branch/main/compose.yaml
+   curl -o compose.yaml https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/compose.yaml
    ```
 
 2. Edit the file to set your paths and credentials:
