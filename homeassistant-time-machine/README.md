@@ -4,10 +4,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
-*   **Smart Backup:** Incremental snapshots only save files that changed since your last backup. It looks complete in the UI but uses significantly less storage.
-*   **Show Changes Only:** Filter snapshots and files to just what has changed or deleted compared to your live config. This works per tab in both the snapshot list and file view.
-*   **Automation Triggers:** Backups can now be triggered from automations or scripts via `hassio.addon_stdin`. This is useful for scheduled, conditional, or event-driven backups.
-*   **Diff Color Palettes:** Eight new color palettes in the diff viewer which are switchable directly by clicking the header bar.
+*   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
 
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/1.png)
 ![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/2.png)
@@ -19,10 +16,14 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 ## Features
 
 *   **Browse Backups:** Easily browse through your Home Assistant backup YAML files.
+*   **View Changes & Diff Palettes:** See side-by-side diffs with 8 vibrant color palettes to choose from.
 *   **Restore Individual Items:** Restore individual automations or scripts without having to restore an entire backup.
+*   **Smart Backup:** Incremental backup mode that only saves changed files, significantly reducing storage usage.
+*   **Show Changes Only:** Filter backups to only show snapshots that contain changed or deleted items compared to live config.
 *   **Safety First:** Automatically creates a backup before restoring anything.
 *   **Reload Home Assistant:** Reload automations or scripts directly from the UI after a restore.
 *   **Scheduled Backups:** Configure automatic backups on a schedule.
+*   **Service Call Support:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service.
 *   **Multi-language Support:** Available in English, Spanish, German, French, Dutch, and Italian.
 *   **Ingress Support:** Access through the Home Assistant UI without port forwarding.
 *   **Lovelace, ESPHome & Packages:** Full support for backing up and restoring dashboards, ESPHome files, and package configurations.
