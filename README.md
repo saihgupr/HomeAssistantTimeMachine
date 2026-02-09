@@ -111,6 +111,29 @@ Supplying the URL and token keeps credentials out of the UI. These environment v
 
 **Alternative:** omit the environment variables, start the container with the same volumes, then visit `http://localhost:54000` to enter credentials in the settings modal. They are stored in `/data/docker-ha-credentials.json`.
 
+### 3. HACS Companion Integration
+
+Enhance your Home Assistant experience by adding the Time Machine companion integration via HACS. This provides:
+- **Sensors:** Track backup status and health directly in Home Assistant.
+- **Services:** Trigger backups using native `ha_time_machine.backup_now` service calls in your automations.
+
+#### Installation via HACS:
+1. Ensure [HACS](https://hacs.xyz/) is installed.
+2. In Home Assistant, go to **HACS** → **Integrations**.
+3. Click the three dots (⋮) in the top right and select **Custom repositories**.
+4. Add `https://github.com/saihgupr/HomeAssistantTimeMachine` as an **Integration**.
+5. Find **Home Assistant Time Machine** in HACS and click **Download**.
+6. Restart Home Assistant.
+7. Add the following to your `configuration.yaml`:
+   ```yaml
+   ha_time_machine:
+     url: "http://localhost:54000" # Change if running standalone/Docker
+   
+   sensor:
+     - platform: ha_time_machine
+       url: "http://localhost:54000"
+   ```
+
 #### Changing Options in Docker
 
 After the container is running, you can toggle ESPHome support, adjust text style, and switch light/dark modes by POSTing to the app settings API. This persists the value in `/data/homeassistant-time-machine/docker-app-settings.json` so the UI reflects it on reload:

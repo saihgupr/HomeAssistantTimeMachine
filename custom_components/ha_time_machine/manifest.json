@@ -1,0 +1,13 @@
+{
+    "domain": "ha_time_machine",
+    "name": "Home Assistant Time Machine",
+    "documentation": "https://github.com/saihgupr/HomeAssistantTimeMachine",
+    "issue_tracker": "https://github.com/saihgupr/HomeAssistantTimeMachine/issues",
+    "dependencies": [],
+    "codeowners": [
+        "@saihgupr"
+    ],
+    "requirements": [],
+    "version": "1.0.0",
+    "iot_class": "local_polling"
+}
