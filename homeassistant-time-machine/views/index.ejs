@@ -310,6 +310,13 @@
     let packagesFeatureEnabled = document.body.dataset.packagesEnabled === 'true';
     let showOnlyChanges = false; // Will be set from server in loadAppSettings()
 
+    // Keyboard navigation state
+    let activePanel = 'backups'; // 'backups' or 'items'
+    let currentBackupIndex = -1;
+    let currentItemIndex = -1;
+    let filteredBackupsGlobal = []; // Keep track of backups for arrow navigation
+    let filteredItemsGlobal = []; // Keep track of items for arrow navigation
+
     if (!document.body.dataset.theme) {
       document.body.dataset.theme = currentTheme;
       document.body.style.colorScheme = currentTheme;
@@ -724,8 +731,11 @@
         if (!data.backups || data.backups.length === 0) {
           backupCount.textContent = getStyledText('ui.backupList.noBackups');
           backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.backupList.noBackups')}</p>`;
+          filteredBackupsGlobal = [];
           return;
         }
+
+        filteredBackupsGlobal = data.backups;
 
         // If showOnlyChanges is enabled, do sequential filtering
         if (showOnlyChanges) {
@@ -743,7 +753,7 @@
 
     // Helper to render backup list
     function renderBackupList(backups, backupList) {
-      backupList.innerHTML = `<div style="display: flex; flex-direction: column; gap: 8px;">` +
+      backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;">` +
         backups.map((backup, index) => {
           const isSelected = currentBackupPath === backup.path;
           const isLightMode = currentTheme === 'light';
@@ -755,7 +765,8 @@
             <button 
               class="list-item" 
               data-path="${backup.path}"
-              onclick="selectBackup('${backup.path}', '${backup.folderName}', '${backup.mtime}')"
+              data-index="${index}"
+              onclick="selectBackup('${backup.path}', '${backup.folderName}', '${backup.mtime}', ${index})"
               style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor};"
             >
               <div style="display: flex; align-items: center; gap: 12px;">
@@ -776,6 +787,8 @@
       backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"><p class="loading">${getStyledText('ui.backupList.loading')}</p></div>`;
       const container = document.getElementById('backupListContainer');
 
+      filteredBackupsGlobal = [];
+
       // Check each backup sequentially, add to list as found
       for (let i = 0; i < allBackups.length; i++) {
         const backup = allBackups[i];
@@ -793,9 +806,11 @@
             if (filteredBackups.length === 0) {
               container.innerHTML = '';
             }
+            const index = filteredBackups.length;
             filteredBackups.push(backup);
+            filteredBackupsGlobal = filteredBackups;
             // Add this backup to the visible list immediately
-            appendBackupToList(backup, container);
+            appendBackupToList(backup, container, index);
           }
         } catch (error) {
           console.error('[loadBackupsWithChangesFilter] Error checking backup:', backup.path, error);
@@ -803,9 +818,11 @@
           if (filteredBackups.length === 0) {
             container.innerHTML = '';
           }
+          const index = filteredBackups.length;
           // On error, include the backup to be safe
           filteredBackups.push(backup);
-          appendBackupToList(backup, container);
+          filteredBackupsGlobal = filteredBackups;
+          appendBackupToList(backup, container, index);
         }
       }
 
@@ -822,7 +839,7 @@
     }
 
     // Append a single backup item to the list progressively
-    function appendBackupToList(backup, container) {
+    function appendBackupToList(backup, container, index) {
       const isSelected = currentBackupPath === backup.path;
       const isLightMode = currentTheme === 'light';
       const bgColor = isSelected ? '#007AFC' : (isLightMode ? 'white' : 'rgb(46, 46, 46)');
@@ -832,9 +849,11 @@
 
       const button = document.createElement('button');
       button.className = 'list-item';
-      button.dataset.path = backup.path; // Add data attribute for selection detection
-      button.onclick = () => selectBackup(backup.path, backup.folderName, backup.mtime);
-      button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor};`;
+      button.dataset.path = backup.path;
+      button.dataset.index = index;
+      button.onclick = () => selectBackup(backup.path, backup.folderName, backup.mtime, index);
+      button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; margin-bottom: 8px;`;
+
       button.innerHTML = `
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="font-weight: 400; font-size: 16px;">${formatFolderName(backup.folderName, backup.mtime)}</span>
@@ -846,10 +865,11 @@
 
 
     // Select backup
-    async function selectBackup(backupPath, folderName, mtime) {
+    async function selectBackup(backupPath, folderName, mtime, index = -1) {
       currentBackupPath = backupPath;
       currentBackupName = folderName;
       currentBackupMtime = mtime;
+      if (index !== -1) currentBackupIndex = index;
 
       // Update title and subtitle
       document.getElementById('itemsTitle').textContent = getStyledText('ui.titles.items', { mode: getStyledText(`ui.buttons.${currentMode}`) });
@@ -1098,14 +1118,19 @@
         return;
       }
 
+      filteredItemsGlobal = items;
       itemsList.innerHTML = items.map((item, idx) => {
         const key = item.id || item.alias || '';
         const status = itemStatuses[key] || '';
+        const isSelected = currentItemIndex === idx && activePanel === 'items';
+        const isLightMode = currentTheme === 'light';
+        const itemStyle = isSelected ? `style="background-color: var(--primary-color); color: white;"` : '';
+
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
 
         return `
-          <div class="list-item" data-index="${idx}">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
             <div class="item-content">
               <span class="dot"></span>
               <span>${item.alias || item.id || `${currentMode} ${idx + 1}`}</span>
@@ -1353,16 +1378,15 @@
     // Render Lovelace files
     function renderLovelaceFiles(files) {
       const itemsList = document.getElementById('itemsList');
-      if (files.length === 0) {
-        itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.lovelace.noFiles')}</p>`;
-        return;
-      }
+      filteredItemsGlobal = files;
       itemsList.innerHTML = files.map((file, idx) => {
+        const isSelected = currentItemIndex === idx && activePanel === 'items';
+        const itemStyle = isSelected ? `style="background-color: var(--primary-color); color: white;"` : '';
         const status = lovelaceFileStatuses[file.name] || '';
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
-          <div class="list-item" data-index="${idx}">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
             <div class="item-content">
               <span class="dot"></span>
               <span>${file.name}</span>
@@ -1702,16 +1726,15 @@
     // Render ESPHome files
     function renderEsphomeFiles(files) {
       const itemsList = document.getElementById('itemsList');
-      if (files.length === 0) {
-        itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.esphome.noFiles')}</p>`;
-        return;
-      }
+      filteredItemsGlobal = files;
       itemsList.innerHTML = files.map((file, idx) => {
+        const isSelected = currentItemIndex === idx && activePanel === 'items';
+        const itemStyle = isSelected ? `style="background-color: var(--primary-color); color: white;"` : '';
         const status = esphomeFileStatuses[file.name] || '';
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
-          <div class="list-item" data-index="${idx}">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
             <div class="item-content">
               <span class="dot"></span>
               <span>${file.name}</span>
@@ -1904,16 +1927,15 @@
     // Render Packages files
     function renderPackagesFiles(files) {
       const itemsList = document.getElementById('itemsList');
-      if (files.length === 0) {
-        itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.packages.noFiles')}</p>`;
-        return;
-      }
+      filteredItemsGlobal = files;
       itemsList.innerHTML = files.map((file, idx) => {
+        const isSelected = currentItemIndex === idx && activePanel === 'items';
+        const itemStyle = isSelected ? `style="background-color: var(--primary-color); color: white;"` : '';
         const status = packagesFileStatuses[file.name] || '';
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
-          <div class="list-item" data-index="${idx}">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
             <div class="item-content">
               <span class="dot"></span>
               <span>${file.name}</span>
@@ -3010,6 +3032,85 @@
     document.addEventListener('click', function (e) {
       if (e.target.closest('.diff-banners-grid')) {
         cycleDiffPalette();
+      }
+    });
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+      // Ignore if user is typing in an input/textarea/select
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+      // Ignore if modals are open (except for closing with Escape)
+      const isModalOpen = document.getElementById('diffModal').style.display === 'flex' ||
+        document.getElementById('settingsModal').style.display === 'flex';
+
+      if (isModalOpen) {
+        if (e.key === 'Escape') {
+          document.getElementById('diffModal').style.display = 'none';
+          document.getElementById('settingsModal').style.display = 'none';
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (activePanel === 'backups') {
+          if (filteredBackupsGlobal.length === 0) return;
+          const newIndex = e.key === 'ArrowUp'
+            ? Math.max(0, currentBackupIndex - 1)
+            : Math.min(filteredBackupsGlobal.length - 1, currentBackupIndex + 1);
+
+          if (newIndex !== currentBackupIndex) {
+            const backup = filteredBackupsGlobal[newIndex];
+            selectBackup(backup.path, backup.folderName, backup.mtime, newIndex);
+
+            // Scroll into view
+            const btn = document.querySelector(`#backupListContainer .list-item[data-index="${newIndex}"]`);
+            if (btn) btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        } else if (activePanel === 'items') {
+          if (filteredItemsGlobal.length === 0) return;
+          const newIndex = e.key === 'ArrowUp'
+            ? Math.max(0, currentItemIndex - 1)
+            : Math.min(filteredItemsGlobal.length - 1, currentItemIndex + 1);
+
+          if (newIndex !== currentItemIndex) {
+            currentItemIndex = newIndex;
+            applyFilters(); // Re-render to show selection
+
+            // Scroll into view
+            const item = document.querySelector(`#itemsList .list-item[data-index="${newIndex}"]`);
+            if (item) item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (activePanel === 'backups' && currentBackupPath) {
+          activePanel = 'items';
+          if (currentItemIndex === -1 && filteredItemsGlobal.length > 0) {
+            currentItemIndex = 0;
+          }
+          applyFilters();
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (activePanel === 'items') {
+          activePanel = 'backups';
+          applyFilters();
+        }
+      } else if (e.key === 'Enter') {
+        if (activePanel === 'items' && currentItemIndex !== -1) {
+          const item = filteredItemsGlobal[currentItemIndex];
+          if (item) {
+            if (currentMode === 'lovelace') {
+              document.querySelectorAll('#itemsList .list-item')[currentItemIndex].click();
+            } else if (currentMode === 'esphome') {
+              document.querySelectorAll('#itemsList .list-item')[currentItemIndex].click();
+            } else if (currentMode === 'packages') {
+              document.querySelectorAll('#itemsList .list-item')[currentItemIndex].click();
+            } else {
+              showDiffViewer(item);
+            }
+          }
+        }
       }
     });
 
