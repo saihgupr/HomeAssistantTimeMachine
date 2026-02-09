@@ -12,12 +12,13 @@
 - **Manifest-Driven Backups:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live.
 - **Improved Restoration:** Restore operations now automatically use the backup manifest to track and place files back exactly where they belong in your YAML structure.
 
-# v2.2
+# v2.2.0
 
-- **Smart Backup:** New incremental backup mode that only saves files that have changed since the last snapshot. This significantly reduces storage usage while ensuring every snapshot appears complete and browsable in the UI.
-- **Show Changes Only:** New toggle in settings to filter the snapshot list, showing only backups that contain changed or deleted items compared to your current live configuration. Works per-tab and filters both the snapshot list and items list.
-- **Automation Service Call:** Trigger backups from Home Assistant automations or scripts using the `hassio.addon_stdin` service. Perfect for custom backup schedules or event-driven backups.
-- **Diff Palettes:** Cycle through 8 new vibrant color palettes for the diff viewer by clicking the diff header bar.
+- **Integration Renaming:** Unified integration domain to `time_machine` for a cleaner experience.
+- **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage) and backup count.
+- **Backup Status Tracking:** Real-time tracking of the last backup status (`success`, `failed`, `no_changes`) with persistence across restarts.
+- **Service Improved:** `time_machine.backup_now` service call is now more robust and reliable.
+- **Performance:** Reduced default scan interval to 30 seconds for more responsive status updates.
 
 # v2.1
 

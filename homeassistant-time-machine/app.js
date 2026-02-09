@@ -25,6 +25,29 @@ let LAST_BACKUP_STATE = {
   source: null
 };
 
+// Persistence helpers
+const BACKUP_STATE_FILE = path.join(DATA_DIR, 'backup-state.json');
+
+async function saveBackupState() {
+  try {
+    await fs.writeFile(BACKUP_STATE_FILE, JSON.stringify(LAST_BACKUP_STATE, null, 2));
+    debugLog('[state] Saved backup state to disk');
+  } catch (e) {
+    console.error('[state] Failed to save backup state:', e.message);
+  }
+}
+
+async function loadBackupState() {
+  try {
+    const data = await fs.readFile(BACKUP_STATE_FILE, 'utf-8');
+    LAST_BACKUP_STATE = JSON.parse(data);
+    debugLog('[state] Loaded backup state from disk:', LAST_BACKUP_STATE.status);
+  } catch (e) {
+    debugLog('[state] No saved backup state found, starting fresh');
+    await saveBackupState();
+  }
+}
+
 const TLS_CERT_ERROR_CODES = new Set([
   'SELF_SIGNED_CERT_IN_CHAIN',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
@@ -2715,6 +2738,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       }
       LAST_BACKUP_STATE.status = 'no_changes';
       LAST_BACKUP_STATE.timestamp = Date.now();
+      await saveBackupState();
       return null; // Indicate no backup was created
     }
   }
@@ -2743,6 +2767,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   LAST_BACKUP_STATE.status = 'success';
   LAST_BACKUP_STATE.timestamp = Date.now();
+  await saveBackupState();
   return backupPath;
 }
 
@@ -2818,6 +2843,7 @@ app.post('/api/backup-now', async (req, res) => {
     LAST_BACKUP_STATE.status = 'failed';
     LAST_BACKUP_STATE.timestamp = Date.now();
     LAST_BACKUP_STATE.error = error.message;
+    await saveBackupState();
     res.status(500).json({
       error: error.message,
       errorCode: error.code || 'BACKUP_FAILED',
@@ -3236,7 +3262,7 @@ app.get('/api/health', async (req, res) => {
       disk_usage: disk_info,
       active_schedules,
       last_backup_status: LAST_BACKUP_STATE.status,
-      timestamp: Date.now()
+      last_backup_error: LAST_BACKUP_STATE.error
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3244,113 +3270,115 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, HOST, () => {
-  console.log('='.repeat(60));
-  console.log(`Home Assistant Time Machine v${version}`);
-  console.log('='.repeat(60));
-  console.log(`Server running at http://${HOST}:${PORT}`);
-  if (INGRESS_PATH) {
-    console.log(`[ingress] Ingress path detected: ${INGRESS_PATH}`);
-  }
+loadBackupState().then(() => {
+  app.listen(PORT, HOST, () => {
+    console.log('='.repeat(60));
+    console.log(`Home Assistant Time Machine v${version}`);
+    console.log('='.repeat(60));
+    console.log(`Server running at http://${HOST}:${PORT}`);
+    if (INGRESS_PATH) {
+      console.log(`[ingress] Ingress path detected: ${INGRESS_PATH}`);
+    }
 
-  // Initialize scheduled jobs
-  loadScheduledJobs().then(jobs => {
-    console.log('[scheduler] Loaded schedules:', jobs.jobs);
-    console.log('[scheduler] Initializing schedules on startup...');
-    Object.entries(jobs.jobs || {}).forEach(([id, job]) => {
-      if (job.enabled) {
-        console.log(`[scheduler] Setting up schedule "${id}" with cron "${job.cronExpression}" and timezone "${job.timezone}"`);
-        scheduledJobs[id] = cron.schedule(job.cronExpression, async () => {
-          console.log(`[cron] Triggered backup job: ${id} at ${new Date().toISOString()}`);
-          try {
-            console.log(`[cron] Fetching addon options for job ${id}...`);
-            const options = await getAddonOptions();
-            const sanitizedOptions = JSON.parse(JSON.stringify(options));
-            if (sanitizedOptions.long_lived_access_token) {
-              sanitizedOptions.long_lived_access_token = 'REDACTED';
-            }
-            console.log(`[cron] Addon options for job ${id}:`, sanitizedOptions);
+    // Initialize scheduled jobs
+    loadScheduledJobs().then(jobs => {
+      console.log('[scheduler] Loaded schedules:', jobs.jobs);
+      console.log('[scheduler] Initializing schedules on startup...');
+      Object.entries(jobs.jobs || {}).forEach(([id, job]) => {
+        if (job.enabled) {
+          console.log(`[scheduler] Setting up schedule "${id}" with cron "${job.cronExpression}" and timezone "${job.timezone}"`);
+          scheduledJobs[id] = cron.schedule(job.cronExpression, async () => {
+            console.log(`[cron] Triggered backup job: ${id} at ${new Date().toISOString()}`);
             try {
-              const response = await fetch(`http://localhost:${PORT}/api/backup-now`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  liveConfigPath: job.liveConfigPath || options.liveConfigPath || '/config',
-                  backupFolderPath: job.backupFolderPath || options.backupFolderPath || '/media/timemachine',
-                  maxBackupsEnabled: job.maxBackupsEnabled,
-                  maxBackupsCount: job.maxBackupsCount
-                })
-              });
-              const result = await response.json();
-              if (response.ok) {
-                console.log(`[cron] Backup triggered successfully: ${result.message}`);
-              } else {
-                console.error(`[cron] Backup trigger failed: ${result.error}`);
+              console.log(`[cron] Fetching addon options for job ${id}...`);
+              const options = await getAddonOptions();
+              const sanitizedOptions = JSON.parse(JSON.stringify(options));
+              if (sanitizedOptions.long_lived_access_token) {
+                sanitizedOptions.long_lived_access_token = 'REDACTED';
+              }
+              console.log(`[cron] Addon options for job ${id}:`, sanitizedOptions);
+              try {
+                const response = await fetch(`http://localhost:${PORT}/api/backup-now`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    liveConfigPath: job.liveConfigPath || options.liveConfigPath || '/config',
+                    backupFolderPath: job.backupFolderPath || options.backupFolderPath || '/media/timemachine',
+                    maxBackupsEnabled: job.maxBackupsEnabled,
+                    maxBackupsCount: job.maxBackupsCount
+                  })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                  console.log(`[cron] Backup triggered successfully: ${result.message}`);
+                } else {
+                  console.error(`[cron] Backup trigger failed: ${result.error}`);
+                }
+              } catch (error) {
+                console.error(`[cron] Error triggering backup:`, error);
               }
             } catch (error) {
-              console.error(`[cron] Error triggering backup:`, error);
+              console.error(`[cron] Error during scheduled backup for job ${id}:`, error);
             }
-          } catch (error) {
-            console.error(`[cron] Error during scheduled backup for job ${id}:`, error);
-          }
-        }, { timezone: job.timezone });
-      }
+          }, { timezone: job.timezone });
+        }
+      });
+      console.log('[scheduler] Initialization complete.');
     });
-    console.log('[scheduler] Initialization complete.');
   });
-});
 
-// Helper to find the full range of a YAML item including comments and structure
-function findFullRange(content, node, isListItem) {
-  let start = node.range[0];
-  let end = node.range[1];
+  // Helper to find the full range of a YAML item including comments and structure
+  function findFullRange(content, node, isListItem) {
+    let start = node.range[0];
+    let end = node.range[1];
 
-  // 1. Find the start of the item structure (dash or key)
-  if (isListItem) {
-    // Scan backwards for dash
-    while (start > 0 && content[start] !== '-') {
-      start--;
-    }
-  } else {
-    // For map item (script), node is the value. We need to find the key.
-    // Scan backwards for ':'
-    while (start > 0 && content[start] !== ':') {
-      start--;
-    }
-    // Now scan backwards for the key start (start of line or after whitespace)
-    if (start > 0) {
-      // Scan back to newline or start of file.
-      while (start > 0 && content[start - 1] !== '\n') {
+    // 1. Find the start of the item structure (dash or key)
+    if (isListItem) {
+      // Scan backwards for dash
+      while (start > 0 && content[start] !== '-') {
         start--;
       }
-    }
-  }
-
-  // 2. Scan backwards for comments and empty lines
-  let current = start;
-  while (current > 0) {
-    const prevChar = content[current - 1];
-    if (prevChar === '\n') {
-      // Check the line before this newline
-      let lineEnd = current - 1;
-      let lineStart = lineEnd;
-      while (lineStart > 0 && content[lineStart - 1] !== '\n') {
-        lineStart--;
-      }
-      const line = content.substring(lineStart, lineEnd);
-      if (line.trim().startsWith('#') || line.trim() === '') {
-        // Include this line
-        current = lineStart;
-      } else {
-        // This line is content (previous item), stop.
-        break;
-      }
     } else {
-      // Consume spaces/indentation before the item start
-      current--;
+      // For map item (script), node is the value. We need to find the key.
+      // Scan backwards for ':'
+      while (start > 0 && content[start] !== ':') {
+        start--;
+      }
+      // Now scan backwards for the key start (start of line or after whitespace)
+      if (start > 0) {
+        // Scan back to newline or start of file.
+        while (start > 0 && content[start - 1] !== '\n') {
+          start--;
+        }
+      }
     }
-  }
-  start = current;
 
-  return [start, end];
-}
+    // 2. Scan backwards for comments and empty lines
+    let current = start;
+    while (current > 0) {
+      const prevChar = content[current - 1];
+      if (prevChar === '\n') {
+        // Check the line before this newline
+        let lineEnd = current - 1;
+        let lineStart = lineEnd;
+        while (lineStart > 0 && content[lineStart - 1] !== '\n') {
+          lineStart--;
+        }
+        const line = content.substring(lineStart, lineEnd);
+        if (line.trim().startsWith('#') || line.trim() === '') {
+          // Include this line
+          current = lineStart;
+        } else {
+          // This line is content (previous item), stop.
+          break;
+        }
+      } else {
+        // Consume spaces/indentation before the item start
+        current--;
+      }
+    }
+    start = current;
+
+    return [start, end];
+  }
+});
