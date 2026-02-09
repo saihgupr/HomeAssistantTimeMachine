@@ -80,6 +80,7 @@ docker run -d \
   -p 54000:54000 \
   -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
   -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -e ESPHOME_CONFIG_PATH="/path/to/esphome/config" \
   -v /path/to/your/ha/config:/config \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
@@ -98,6 +99,7 @@ docker run -d \
   -p 54000:54000 \
   -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
   -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -e ESPHOME_CONFIG_PATH="/path/to/esphome/config" \
   -v /path/to/your/ha/config:/config \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \

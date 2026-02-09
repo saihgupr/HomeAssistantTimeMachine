@@ -1289,7 +1289,7 @@ async function checkLovelaceChanges(backupPath, configPath) {
 async function checkEsphomeChanges(backupPath, configPath) {
   try {
     const backupEsphomeDir = path.join(backupPath, 'esphome');
-    const liveEsphomeDir = path.join(configPath, 'esphome');
+    const liveEsphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
 
     const backupFiles = await fs.readdir(backupEsphomeDir).catch(() => []);
     const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
@@ -2594,7 +2594,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   if (esphomeEnabled) {
     // Backup ESPHome files
-    const esphomePath = path.join(configPath, 'esphome');
+    const esphomePath = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
     const backupEsphomePath = path.join(backupPath, 'esphome');
 
     try {
@@ -3001,7 +3001,7 @@ app.post('/api/get-live-esphome-file', async (req, res) => {
     }
     const { fileName, liveConfigPath } = req.body;
     const configPath = liveConfigPath || '/config';
-    const esphomeDir = path.join(configPath, 'esphome');
+    const esphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
     const filePath = resolveWithinDirectory(esphomeDir, fileName);
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
@@ -3031,7 +3031,7 @@ app.post('/api/restore-esphome-file', async (req, res) => {
     await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
     const configPath = liveConfigPath || '/config';
-    const esphomeDir = path.join(configPath, 'esphome');
+    const esphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
     const filePath = resolveWithinDirectory(esphomeDir, fileName);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
