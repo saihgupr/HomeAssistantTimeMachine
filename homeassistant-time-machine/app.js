@@ -352,11 +352,9 @@ async function getConfigFilePaths(configPath) {
         const fullDir = path.join(configPath, dir);
         automationDirs.push(fullDir);
         try {
-          const files = await fs.readdir(fullDir);
+          const files = await listYamlFilesRecursive(fullDir);
           for (const file of files) {
-            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-              automationPaths.push(path.join(fullDir, file));
-            }
+            automationPaths.push(path.join(fullDir, file));
           }
         } catch (err) {
           debugLog(`[getConfigFilePaths] Could not read automation directory ${fullDir}:`, err.message);
@@ -370,11 +368,9 @@ async function getConfigFilePaths(configPath) {
         const fullDir = path.join(configPath, dir);
         scriptDirs.push(fullDir);
         try {
-          const files = await fs.readdir(fullDir);
+          const files = await listYamlFilesRecursive(fullDir);
           for (const file of files) {
-            if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-              scriptPaths.push(path.join(fullDir, file));
-            }
+            scriptPaths.push(path.join(fullDir, file));
           }
         } catch (err) {
           debugLog(`[getConfigFilePaths] Could not read script directory ${fullDir}:`, err.message);
