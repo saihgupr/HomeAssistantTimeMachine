@@ -15,7 +15,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     async def handle_backup_now(call):
         """Handle the service call."""
-        url = call.data.get("url", "http://localhost:54000")
+        url = call.data.get("url", "http://homeassistant-time-machine:54000")
         _LOGGER.info("Triggering Time Machine backup at %s", url)
         
         async with aiohttp.ClientSession() as session:

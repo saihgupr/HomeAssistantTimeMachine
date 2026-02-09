@@ -127,11 +127,11 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 7. Add the following to your `configuration.yaml`:
    ```yaml
    ha_time_machine:
-     url: "http://localhost:54000" # Change if running standalone/Docker
+     # url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on
    
    sensor:
      - platform: ha_time_machine
-       url: "http://localhost:54000"
+       # url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on
    ```
 
 #### Changing Options in Docker
