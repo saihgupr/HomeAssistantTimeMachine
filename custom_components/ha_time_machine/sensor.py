@@ -11,7 +11,7 @@ from .const import DOMAIN, API_HEALTH
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=5)
+SCAN_INTERVAL = timedelta(seconds=30)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Time Machine sensors."""
@@ -43,6 +43,7 @@ class TimeMachineHealthSensor(SensorEntity):
                         if response.status == 200:
                             data = await response.json()
                             self._state = "Online"
+                            _LOGGER.debug("Time Machine health data: %s", data)
                             self._attr_extra_state_attributes = {
                                 "version": data.get("version"),
                                 "backup_count": data.get("backup_count"),
@@ -54,7 +55,7 @@ class TimeMachineHealthSensor(SensorEntity):
                                 "timestamp": data.get("timestamp")
                             }
                         else:
-                            _LOGGER.error("Error fetching Time Machine health: %s", response.status)
+                            _LOGGER.error("Error fetching Time Machine health: %s (response: %s)", response.status, await response.text())
                             self._state = "Error"
             except Exception as err:
                 _LOGGER.error("Failed to connect to Time Machine at %s: %s", self._url, err)
