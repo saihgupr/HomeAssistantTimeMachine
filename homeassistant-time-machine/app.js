@@ -9,7 +9,7 @@ const fetch = require('node-fetch');
 const https = require('https');
 const readline = require('readline');
 
-const version = '2.0.1';
+const version = '2.2.0';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
@@ -3173,10 +3173,46 @@ app.post('/api/restore-packages-file', async (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const options = await getAddonOptions();
+    const backupRoot = options.backupFolderPath || '/media/timemachine';
+    let allBackups = [];
+    try {
+      allBackups = await getAllBackupPaths(backupRoot);
+    } catch (e) {
+      debugLog('[health] Could not get backup paths:', e.message);
+    }
+
+    let lastBackup = null;
+    if (allBackups.length > 0) {
+      lastBackup = path.basename(allBackups[0]);
+    }
+
+    // Disk usage
+    let disk_info = {};
+    try {
+      const stats = await fs.statfs(backupRoot);
+      const total = Number(stats.blocks * stats.bsize);
+      const free = Number(stats.bfree * stats.bsize);
+      disk_info = {
+        total_gb: (total / (1024 ** 3)).toFixed(2),
+        free_gb: (free / (1024 ** 3)).toFixed(2),
+        used_pct: (((total - free) / total) * 100).toFixed(1)
+      };
+    } catch (e) {
+      debugLog('[health] Could not get disk stats:', e.message);
+    }
+
+    // Schedules
+    const jobs = await loadScheduledJobs();
+    const active_schedules = Object.values(jobs.jobs || {}).filter(j => j.enabled).length;
+
     res.json({
       ok: true,
       version,
       mode: options.mode,
+      backup_count: allBackups.length,
+      last_backup: lastBackup,
+      disk_usage: disk_info,
+      active_schedules,
       timestamp: Date.now()
     });
   } catch (error) {

@@ -45,10 +45,17 @@ class TimeMachineHealthSensor(SensorEntity):
                             self._state = "Online"
                             self._attr_extra_state_attributes = {
                                 "version": data.get("version"),
-                                "ingress": data.get("ingress"),
+                                "backup_count": data.get("backup_count"),
+                                "last_backup": data.get("last_backup"),
+                                "active_schedules": data.get("active_schedules"),
+                                "disk_total_gb": data.get("disk_usage", {}).get("total_gb"),
+                                "disk_free_gb": data.get("disk_usage", {}).get("free_gb"),
+                                "disk_used_pct": data.get("disk_usage", {}).get("used_pct"),
                                 "timestamp": data.get("timestamp")
                             }
                         else:
+                            _LOGGER.error("Error fetching Time Machine health: %s", response.status)
                             self._state = "Error"
-            except Exception:
+            except Exception as err:
+                _LOGGER.error("Failed to connect to Time Machine at %s: %s", self._url, err)
                 self._state = "Offline"
