@@ -3236,7 +3236,6 @@ app.get('/api/health', async (req, res) => {
       disk_usage: disk_info,
       active_schedules,
       last_backup_status: LAST_BACKUP_STATE.status,
-      last_backup_error: LAST_BACKUP_STATE.error,
       timestamp: Date.now()
     });
   } catch (error) {

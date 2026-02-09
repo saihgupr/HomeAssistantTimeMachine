@@ -12,10 +12,12 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Home Assistant Time Machine component."""
-    
+    conf = config.get(DOMAIN, {})
+    default_url = conf.get("url", "http://192.168.1.4:54000")
+
     async def handle_backup_now(call):
         """Handle the service call."""
-        url = call.data.get("url", "http://homeassistant-time-machine:54000")
+        url = call.data.get("url", default_url)
         _LOGGER.info("Triggering Time Machine backup at %s", url)
         
         async with aiohttp.ClientSession() as session:

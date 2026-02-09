@@ -53,7 +53,6 @@ class TimeMachineHealthSensor(SensorEntity):
                                 "disk_free_gb": data.get("disk_usage", {}).get("free_gb"),
                                 "disk_used_pct": data.get("disk_usage", {}).get("used_pct"),
                                 "last_backup_status": data.get("last_backup_status"),
-                                "last_backup_error": data.get("last_backup_error"),
                                 "timestamp": data.get("timestamp")
                             }
                         else:
