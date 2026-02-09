@@ -1,6 +1,6 @@
 """Constants for the Home Assistant Time Machine integration."""
 
-DOMAIN = "ha_time_machine"
+DOMAIN = "time_machine"
 
 # API Endpoints
 API_HEALTH = "/api/health"

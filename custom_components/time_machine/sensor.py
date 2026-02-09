@@ -15,7 +15,7 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the Time Machine sensors."""
-    url = config.get("url", "http://homeassistant-time-machine:54000")
+    url = config.get("url", "http://192.168.1.4:54000")
     sensors = [TimeMachineHealthSensor(url)]
     async_add_entities(sensors, True)
 
@@ -27,7 +27,7 @@ class TimeMachineHealthSensor(SensorEntity):
         self._url = url
         self._state = None
         self._attr_name = "Time Machine Status"
-        self._attr_unique_id = f"{DOMAIN}_health"
+        self._attr_unique_id = "time_machine_v2_status"
 
     @property
     def state(self):
@@ -52,6 +52,8 @@ class TimeMachineHealthSensor(SensorEntity):
                                 "disk_total_gb": data.get("disk_usage", {}).get("total_gb"),
                                 "disk_free_gb": data.get("disk_usage", {}).get("free_gb"),
                                 "disk_used_pct": data.get("disk_usage", {}).get("used_pct"),
+                                "last_backup_status": data.get("last_backup_status"),
+                                "last_backup_error": data.get("last_backup_error"),
                                 "timestamp": data.get("timestamp")
                             }
                         else:

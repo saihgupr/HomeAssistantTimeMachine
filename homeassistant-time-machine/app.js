@@ -17,6 +17,14 @@ const debugLog = (...args) => {
   }
 };
 
+// Track the state of the last backup
+let LAST_BACKUP_STATE = {
+  status: 'never_run',
+  timestamp: null,
+  error: null,
+  source: null
+};
+
 const TLS_CERT_ERROR_CODES = new Set([
   'SELF_SIGNED_CERT_IN_CHAIN',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
@@ -2294,6 +2302,13 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   const configPath = liveConfigPath || '/config';
   const backupRoot = backupFolderPath || '/media/timemachine';
 
+  LAST_BACKUP_STATE = {
+    status: 'in_progress',
+    timestamp: Date.now(),
+    error: null,
+    source: source
+  };
+
   console.log(`[backup-${source}] Starting backup...`);
   console.log(`[backup-${source}] Config path:`, configPath);
   console.log(`[backup-${source}] Backup root:`, backupRoot);
@@ -2698,6 +2713,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       } catch (rmErr) {
         console.error(`[backup-${source}] Failed to remove empty backup folder:`, rmErr.message);
       }
+      LAST_BACKUP_STATE.status = 'no_changes';
+      LAST_BACKUP_STATE.timestamp = Date.now();
       return null; // Indicate no backup was created
     }
   }
@@ -2724,6 +2741,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     }
   }
 
+  LAST_BACKUP_STATE.status = 'success';
+  LAST_BACKUP_STATE.timestamp = Date.now();
   return backupPath;
 }
 
@@ -2796,6 +2815,9 @@ app.post('/api/backup-now', async (req, res) => {
     res.json({ success: true, path: backupPath, message: `Backup created successfully at ${backupPath}` });
   } catch (error) {
     console.error('[backup-now] Error:', error);
+    LAST_BACKUP_STATE.status = 'failed';
+    LAST_BACKUP_STATE.timestamp = Date.now();
+    LAST_BACKUP_STATE.error = error.message;
     res.status(500).json({
       error: error.message,
       errorCode: error.code || 'BACKUP_FAILED',
@@ -3213,6 +3235,8 @@ app.get('/api/health', async (req, res) => {
       last_backup: lastBackup,
       disk_usage: disk_info,
       active_schedules,
+      last_backup_status: LAST_BACKUP_STATE.status,
+      last_backup_error: LAST_BACKUP_STATE.error,
       timestamp: Date.now()
     });
   } catch (error) {
