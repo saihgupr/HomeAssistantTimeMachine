@@ -115,7 +115,7 @@ Supplying the URL and token keeps credentials out of the UI. These environment v
 
 Enhance your Home Assistant experience by adding the Time Machine companion integration via HACS. This provides:
 - **Sensors:** Track backup status and health directly in Home Assistant.
-- **Services:** Trigger backups using native `ha_time_machine.backup_now` service calls in your automations.
+- **Services:** Trigger backups using native `time_machine.backup_now` service calls in your automations.
 
 #### Installation via HACS:
 1. Ensure [HACS](https://hacs.xyz/) is installed.
@@ -126,12 +126,12 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 6. Restart Home Assistant.
 7. Add the following to your `configuration.yaml`:
    ```yaml
-   ha_time_machine:
-     # url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on
+   time_machine:
+     url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on (or your IP)
    
    sensor:
-     - platform: ha_time_machine
-       # url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on
+     - platform: time_machine
+       # url: "http://homeassistant-time-machine:54000" # Optional override
    ```
 
 #### Changing Options in Docker
