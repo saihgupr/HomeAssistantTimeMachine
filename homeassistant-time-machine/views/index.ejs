@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.3.4') %>">
+  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.3.0') %>">
   <script>
     // Set theme immediately (before <body> exists) to prevent flash
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -21,7 +21,7 @@
     root.classList.add('theme-preload');
     window.__initialTheme = savedTheme;
   </script>
-  <script defer src="<%= url('/static/js/strings-language.js?v=2.3.4') %>"></script>
+  <script defer src="<%= url('/static/js/strings-language.js?v=2.3.0') %>"></script>
 </head>
 
 <body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>"

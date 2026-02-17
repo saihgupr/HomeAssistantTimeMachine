@@ -30,7 +30,7 @@ const DATA_DIR = (() => {
   return fallback;
 })();
 
-const version = '2.3.4';
+const version = '2.3.0';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {

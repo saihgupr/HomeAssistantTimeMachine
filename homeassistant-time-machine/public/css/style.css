@@ -2938,6 +2938,7 @@ body[data-theme='light'] [data-diff-palette="8"] .diff-word-removed {
 body[data-theme='light'] [data-diff-palette="8"] .diff-word-added {
   background-color: rgba(6, 182, 212, 0.3);
 }
+
 /* Context Menu */
 .context-menu {
   position: absolute;
@@ -2954,8 +2955,15 @@ body[data-theme='light'] [data-diff-palette="8"] .diff-word-added {
 }
 
 @keyframes contextMenuFadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .context-menu-item {
@@ -3013,10 +3021,22 @@ body[data-theme='light'] [data-diff-palette="8"] .diff-word-added {
   position: absolute;
   top: 8px;
   right: 8px;
-  color: #fbbf24;
+  color: rgba(255, 255, 255, 0.4);
   font-size: 14px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
   z-index: 2;
+  transition: color 0.2s ease;
+}
+
+.backup-item:hover .lock-indicator {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+body[data-theme='light'] .lock-indicator {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme='light'] .backup-item:hover .lock-indicator {
+  color: rgba(0, 0, 0, 0.6);
 }
 
 body[data-theme='light'] .context-menu {

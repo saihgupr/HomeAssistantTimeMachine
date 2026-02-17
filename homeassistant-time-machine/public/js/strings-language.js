@@ -919,19 +919,19 @@ window.STRINGS = {
     },
     contextMenu: {
       protect: {
-        en: "Protect / Lock",
-        es: "Proteger / Bloquear",
-        de: "Schützen / Sperren",
-        fr: "Protéger / Verrouiller",
-        nl: "Beschermen / Vergrendelen",
-        it: "Proteggi / Blocca"
+        en: "Lock",
+        es: "Bloquear",
+        de: "Sperren",
+        fr: "Verrouiller",
+        nl: "Vergrendelen",
+        it: "Blocca"
       },
       unprotect: {
-        en: "Unprotect / Unlock",
-        es: "Desproteger / Desbloquear",
-        de: "Schutz aufheben / Entsperren",
-        fr: "Déprotéger / Déverrouiller",
-        nl: "Bescherming opheffen / Ontgrendelen",
+        en: "Unlock",
+        es: "Desbloquear",
+        de: "Entsperren",
+        fr: "Déverrouiller",
+        nl: "Ontgrendelen",
         it: "Sblocca"
       },
       delete: {
