@@ -9,7 +9,28 @@ const fetch = require('node-fetch');
 const https = require('https');
 const readline = require('readline');
 
-const version = '2.2.0';
+const DATA_DIR = (() => {
+  const addonDataRoot = '/data';
+  if (fsSync.existsSync(addonDataRoot)) {
+    const dir = path.join(addonDataRoot, 'homeassistant-time-machine');
+    try {
+      fsSync.mkdirSync(dir, { recursive: true });
+    } catch (error) {
+      console.error('[data-dir] Failed to ensure addon data directory exists:', error);
+    }
+    return dir;
+  }
+
+  const fallback = path.join(__dirname, 'data');
+  try {
+    fsSync.mkdirSync(fallback, { recursive: true });
+  } catch (error) {
+    console.error('[data-dir] Failed to ensure local data directory exists:', error);
+  }
+  return fallback;
+})();
+
+const version = '2.3.2';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
@@ -87,30 +108,62 @@ const INGRESS_PATH = process.env.INGRESS_ENTRY || '';
 const basePath = INGRESS_PATH || '';
 const BODY_SIZE_LIMIT = '50mb';
 
-const DATA_DIR = (() => {
-  const addonDataRoot = '/data';
-  if (fsSync.existsSync(addonDataRoot)) {
-    const dir = path.join(addonDataRoot, 'homeassistant-time-machine');
-    try {
-      fsSync.mkdirSync(dir, { recursive: true });
-    } catch (error) {
-      console.error('[data-dir] Failed to ensure addon data directory exists:', error);
-    }
-    return dir;
-  }
 
-  const fallback = path.join(__dirname, 'data');
-  try {
-    fsSync.mkdirSync(fallback, { recursive: true });
-  } catch (error) {
-    console.error('[data-dir] Failed to ensure local data directory exists:', error);
-  }
-  return fallback;
-})();
 
 console.log('[data-dir] Using persistent data directory:', DATA_DIR);
 
 // Set up stdin listener for hassio.addon_stdin service
+// Toggle backup lock
+app.post('/api/toggle-lock', async (req, res) => {
+  try {
+    const { backupPath } = req.body;
+    if (!backupPath) {
+      return res.status(400).json({ error: 'backupPath is required' });
+    }
+
+    const lockFile = path.join(backupPath, '.lock');
+    let locked = false;
+
+    try {
+      await fs.access(lockFile);
+      // If it exists, remove it
+      await fs.unlink(lockFile);
+      locked = false;
+    } catch (e) {
+      // If it doesn't exist, create it
+      await fs.writeFile(lockFile, 'locked', 'utf-8');
+      locked = true;
+    }
+
+    res.json({ success: true, locked });
+  } catch (error) {
+    console.error('[toggle-lock] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/delete-backup', async (req, res) => {
+  const { backupPath } = req.body;
+  if (!backupPath) {
+    return res.status(400).json({ error: 'backupPath is required' });
+  }
+
+  try {
+    // Check if locked
+    const lockFile = path.join(backupPath, '.lock');
+    if (fsSync.existsSync(lockFile)) {
+      return res.status(403).json({ error: 'This backup is protected and cannot be deleted.' });
+    }
+
+    console.log(`[api] Manually deleting backup: ${backupPath}`);
+    await fs.rm(backupPath, { recursive: true, force: true });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[api] Error deleting backup:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // This allows triggering backups from Home Assistant automations/scripts
 // Must be at top level to catch stdin before server starts
 const setupStdinListener = () => {
@@ -948,7 +1001,14 @@ async function getBackupDirs(dir, depth = 0) {
 
         if (isBackupFolder) {
           const stats = await fs.stat(fullPath);
-          results.push({ path: fullPath, folderName: name, mtime: stats.mtime });
+          let locked = false;
+          try {
+            await fs.access(path.join(fullPath, '.lock'));
+            locked = true;
+          } catch (e) {
+            // Not locked
+          }
+          results.push({ path: fullPath, folderName: name, mtime: stats.mtime, locked });
         }
 
         // Continue scanning deeper regardless to support nested structures like /year/month/backup
@@ -2780,15 +2840,17 @@ async function cleanupOldBackups(backupRoot, maxBackupsCount) {
     // Sort by folderName descending (newest first)
     allBackups.sort((a, b) => b.folderName.localeCompare(a.folderName));
 
-    console.log(`[cleanup] Found ${allBackups.length} total backups, keeping max ${maxBackupsCount}`);
+    // Filter out locked backups
+    const candidates = allBackups.filter(b => !b.locked);
+    console.log(`[cleanup] Found ${allBackups.length} total backups, ${allBackups.length - candidates.length} are locked.`);
 
-    if (allBackups.length <= maxBackupsCount) {
-      console.log(`[cleanup] No cleanup needed - only ${allBackups.length} backups exist`);
+    if (candidates.length <= maxBackupsCount) {
+      console.log(`[cleanup] No cleanup needed - only ${candidates.length} unlockable backups exist`);
       return;
     }
 
     // Get backups to delete (all beyond maxBackupsCount)
-    const backupsToDelete = allBackups.slice(maxBackupsCount);
+    const backupsToDelete = candidates.slice(maxBackupsCount);
     console.log(`[cleanup] Will delete ${backupsToDelete.length} old backups`);
 
     for (const backup of backupsToDelete) {

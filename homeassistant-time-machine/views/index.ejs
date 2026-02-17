@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<%= url('/static/css/style.css') %>">
+  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.3.2') %>">
   <script>
     // Set theme immediately (before <body> exists) to prevent flash
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -21,7 +21,7 @@
     root.classList.add('theme-preload');
     window.__initialTheme = savedTheme;
   </script>
-  <script defer src="<%= url('/static/js/strings-language.js?v=2.9.270') %>"></script>
+  <script defer src="<%= url('/static/js/strings-language.js?v=2.3.2') %>"></script>
 </head>
 
 <body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>"
@@ -766,12 +766,15 @@
               class="list-item" 
               data-path="${backup.path}"
               data-index="${index}"
+              data-locked="${backup.locked}"
               onclick="selectBackup('${backup.path}', '${backup.folderName}', '${backup.mtime}', ${index})"
-              style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor};"
+              oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
+              style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; position: relative;"
             >
               <div style="display: flex; align-items: center; gap: 12px;">
                 <span style="font-weight: 400; font-size: 16px;">${formatFolderName(backup.folderName, backup.mtime)}</span>
               </div>
+              ${backup.locked ? `<i class="mdi mdi-lock lock-indicator"></i>` : ''}
             </button>
           `;
         }).join('') + `</div>`;
@@ -851,13 +854,16 @@
       button.className = 'list-item';
       button.dataset.path = backup.path;
       button.dataset.index = index;
+      button.dataset.locked = backup.locked;
       button.onclick = () => selectBackup(backup.path, backup.folderName, backup.mtime, index);
-      button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; margin-bottom: 8px;`;
+      button.oncontextmenu = (e) => showContextMenu(e, backup.path, backup.locked);
+      button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; margin-bottom: 8px; position: relative;`;
 
       button.innerHTML = `
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="font-weight: 400; font-size: 16px;">${formatFolderName(backup.folderName, backup.mtime)}</span>
         </div>
+        ${backup.locked ? `<i class="mdi mdi-lock lock-indicator"></i>` : ''}
       `;
       container.appendChild(button);
     }
@@ -3112,6 +3118,115 @@
           }
         }
       }
+    });
+
+    // Context Menu Logic
+    function showContextMenu(e, backupPath, isLocked) {
+      e.preventDefault();
+      hideContextMenu();
+
+      const menu = document.createElement('div');
+      menu.id = 'contextMenu';
+      menu.className = 'context-menu';
+      menu.style.left = `${e.pageX}px`;
+      menu.style.top = `${e.pageY}px`;
+
+      const lockLabel = isLocked ? getStyledText('ui.contextMenu.unprotect') : getStyledText('ui.contextMenu.protect');
+      const lockIcon = isLocked ? 'mdi-lock-open-variant' : 'mdi-lock';
+
+      menu.innerHTML = `
+        <div class="context-menu-item" onclick="toggleLock('${backupPath}', ${isLocked})">
+          <i class="mdi ${lockIcon}"></i>
+          <span>${lockLabel}</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item danger" onclick="confirmDeleteBackup('${backupPath}')">
+          <i class="mdi mdi-delete"></i>
+          <span>${getStyledText('ui.contextMenu.delete')}</span>
+        </div>
+      `;
+
+      document.body.appendChild(menu);
+
+      // Prevent menu from going off-screen
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+      }
+      if (rect.bottom > window.innerHeight) {
+        menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+      }
+
+      // Hide menu on click outside
+      document.addEventListener('click', hideContextMenu);
+    }
+
+    function hideContextMenu() {
+      const menu = document.getElementById('contextMenu');
+      if (menu) {
+        menu.remove();
+        document.removeEventListener('click', hideContextMenu);
+      }
+    }
+
+    async function toggleLock(backupPath, currentlyLocked) {
+      hideContextMenu();
+
+      const confirmMsg = currentlyLocked ? getStyledText('ui.contextMenu.confirmUnlock') : getStyledText('ui.contextMenu.confirmLock');
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        const response = await fetch(url('/api/toggle-lock'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ backupPath })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification(currentlyLocked ? 'Backup unlocked' : 'Backup locked', 'success');
+          loadBackups(); // Refresh the list to update icons
+        } else {
+          showNotification('Error: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('[toggleLock] Error:', error);
+        showNotification('Error toggling lock: ' + error.message, 'error');
+      }
+    }
+
+    async function confirmDeleteBackup(backupPath) {
+      hideContextMenu();
+
+      if (!confirm(getStyledText('ui.contextMenu.confirmDelete') || 'Are you sure you want to delete this backup?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(url('/api/delete-backup'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ backupPath })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification('Backup deleted successfully', 'success');
+          loadBackups(); // Refresh the list
+        } else {
+          showNotification('Error: ' + data.error, 'error');
+        }
+      } catch (error) {
+        console.error('[confirmDeleteBackup] Error:', error);
+        showNotification('Error deleting backup: ' + error.message, 'error');
+      }
+    }
+
+    // Global listener to hide context menu on scroll or resize
+    window.addEventListener('scroll', hideContextMenu);
+    window.addEventListener('resize', hideContextMenu);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') hideContextMenu();
     });
 
     function escapeHtml(text) {

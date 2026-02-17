@@ -1,13 +1,11 @@
-# v2.5
+# v2.3.0
 
+- **Backup Lock:** Added a backup lock feature to prevent accidental deletion of backups. Protect your most important snapshots from being rotated out by auto-cleanup.
+- **HACS Integration:** Introduced the Home Assistant companion integration, enabling native sensors and service calls.
+- **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage), backup count, and version tracking.
+- **Service Improved:** `time_machine.backup_now` service call is now available with full parameter support for flexible automation.
 - **Keyboard Navigation:** Navigate backups and items using arrow keys! Use Up/Down to change selection and Left/Right to switch between panels. Press Enter on an item to view its diff.
-
-# v2.4
-
 - **Docker Env Var:** Added `ESPHOME_CONFIG_PATH` environment variable support for Docker installations, allowing custom locations for ESPHome configuration files.
-
-# v2.3
-
 - **Split Config Support:** Advanced support for Home Assistant configurations using `!include`, `!include_dir_list`, and other split configuration methods.
 - **Manifest-Driven Backups:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live.
 - **Improved Restoration:** Restore operations now automatically use the backup manifest to track and place files back exactly where they belong in your YAML structure.
