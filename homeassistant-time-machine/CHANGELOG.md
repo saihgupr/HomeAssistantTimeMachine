@@ -1,8 +1,8 @@
 # v2.3.0
 
 - **Backup Lock:** Added a backup lock feature to prevent accidental deletion of backups. Protect your most important snapshots from being rotated out by auto-cleanup.
-- **Manual Deletion:** You can now delete individual backups via the context menu. Deletion is blocked for locked backups to ensure data safety.
-- **Context Menu:** Introduced a right-click context menu for backups to easily Lock, Unlock, or Delete them.
+- **Manual Deletion & Export:** You can now delete individual backups or export them as .tar.gz archives directly via the context menu. Deletion is blocked for locked backups to ensure data safety.
+- **Context Menu:** Introduced a right-click context menu for backups to easily Lock, Unlock, Export, or Delete them.
 - **HACS Integration:** Introduced the Home Assistant companion integration, enabling native sensors and service calls.
 - **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage), backup count, and version tracking.
 - **Service Improved:** `time_machine.backup_now` service call is now available with full parameter support for flexible automation.

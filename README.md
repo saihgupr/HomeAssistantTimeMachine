@@ -4,7 +4,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
-*   **Backup Lock & Deletion:** Added a new backup lock feature to prevent accidental deletion of snapshots. You can now also manually delete individual backups directly from the web UI using the new right-click context menu.
+*   **Backup Lock, Deletion & Export:** Added a new backup lock feature to prevent accidental deletion of snapshots. You can now also manually delete or export individual backups as .tar.gz archives directly from the web UI using the new right-click context menu.
 *   **HACS Integration:** Now available as a companion integration via HACS! Track backup status with a native sensor and trigger backups using the `time_machine.backup_now` service.
 *   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
 
@@ -30,7 +30,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 *   **Ingress Support:** Access through the Home Assistant UI without port forwarding.
 *   **Lovelace, ESPHome & Packages:** Full support for backing up and restoring dashboards, ESPHome files, and package configurations.
 *   **Max Backups & Flexible Locations:** Control retention limits and store backups in `/share`, `/backup`, `/media`, or remote shares.
-*   **Backup Lock & Context Menu:** Prevent accidental deletion by locking your favorite backups. Right-click any backup to Lock, Unlock, or Delete it instantly.
+*   **Backup Lock & Context Menu:** Prevent accidental deletion by locking your favorite backups. Right-click any backup to Lock, Unlock, Export, or Delete it instantly.
 *   **REST API:** Full API for programmatic backup management.
 
 ## Installation
