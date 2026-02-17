@@ -2814,6 +2814,18 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       } catch (rmErr) {
         console.error(`[backup-${source}] Failed to remove empty backup folder:`, rmErr.message);
       }
+
+      // Even when no snapshot is created, still enforce retention policy.
+      if (maxBackupsEnabled && maxBackupsCount > 0) {
+        try {
+          console.log(`[backup-${source}] No new snapshot, but enforcing max backups (${maxBackupsCount})...`);
+          await cleanupOldBackups(backupRoot, maxBackupsCount);
+        } catch (cleanupError) {
+          console.error(`[backup-${source}] Error during cleanup:`, cleanupError.message);
+          // Don't fail the backup flow if cleanup fails
+        }
+      }
+
       LAST_BACKUP_STATE.status = 'no_changes';
       LAST_BACKUP_STATE.timestamp = Date.now();
       await saveBackupState();

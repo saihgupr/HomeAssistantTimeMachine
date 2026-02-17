@@ -771,10 +771,10 @@
               oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
               style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; position: relative;"
             >
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-weight: 400; font-size: 16px;">${formatFolderName(backup.folderName, backup.mtime)}</span>
+              <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
+                ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
               </div>
-              ${backup.locked ? `<i class="mdi mdi-lock lock-indicator"></i>` : ''}
             </button>
           `;
         }).join('') + `</div>`;
@@ -860,10 +860,10 @@
       button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; margin-bottom: 8px; position: relative;`;
 
       button.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-weight: 400; font-size: 16px;">${formatFolderName(backup.folderName, backup.mtime)}</span>
+        <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+          <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
+          ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
         </div>
-        ${backup.locked ? `<i class="mdi mdi-lock lock-indicator"></i>` : ''}
       `;
       container.appendChild(button);
     }
