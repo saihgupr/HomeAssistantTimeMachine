@@ -4,6 +4,7 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
+*   **HACS Integration:** Now available as a companion integration via HACS! Track backup status with a native sensor and trigger backups using the `time_machine.backup_now` service.
 *   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
 
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/1.png)
@@ -111,13 +112,13 @@ Supplying the URL and token keeps credentials out of the UI. These environment v
 
 **Alternative:** omit the environment variables, start the container with the same volumes, then visit `http://localhost:54000` to enter credentials in the settings modal. They are stored in `/data/docker-ha-credentials.json`.
 
-### 3. HACS Companion Integration
+### HACS Companion Integration
 
 Enhance your Home Assistant experience by adding the Time Machine companion integration via HACS. This provides:
 - **Sensors:** Track backup status and health directly in Home Assistant.
 - **Services:** Trigger backups using native `time_machine.backup_now` service calls in your automations.
 
-#### Installation via HACS:
+#### Installation & Setup:
 1. Ensure [HACS](https://hacs.xyz/) is installed.
 2. In Home Assistant, go to **HACS** → **Integrations**.
 3. Click the three dots (⋮) in the top right and select **Custom repositories**.
@@ -131,8 +132,44 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
    
    sensor:
      - platform: time_machine
-       # url: "http://homeassistant-time-machine:54000" # Optional override
    ```
+
+#### Sensor: `sensor.time_machine_status`
+Monitor your backup system health directly in Home Assistant.
+
+| Attribute | Description | Example |
+| :--- | :--- | :--- |
+| `state` | Current status of the instance | `Online` |
+| `version` | Running version | `2.2.0` |
+| `backup_count` | Total number of backups stored | `764` |
+| `last_backup` | Timestamp of the last backup | `2026-02-17-000000` |
+| `disk_total_gb` | Total storage space | `111.73` |
+| `disk_free_gb` | Available storage space | `13.68` |
+| `disk_used_pct` | Storage usage percentage | `87.8%` |
+| `last_backup_status` | Status of the most recent run | `success` |
+
+#### Action: `time_machine.backup_now`
+Trigger backups via service calls in your automations or scripts.
+
+| Parameter | Description | Example |
+| :--- | :--- | :--- |
+| `url` | The URL of your Time Machine instance (e.g., `http://192.168.1.4:54000`). | `http://192.168.1.4:54000` |
+| `smart_backup_enabled` | Only backup if changes are detected compared to the last snapshot. | `true` |
+| `max_backups_enabled` | Whether to enforce the maximum number of backups to keep. | `true` |
+| `max_backups_count` | The number of backups to keep before removing oldest ones. | `100` |
+| `live_config_path` | The source path in the container to backup (default is `/config`). | `/config` |
+| `backup_folder_path` | The destination path in the container for backups (default is `/media/timemachine`). | `/media/timemachine` |
+| `timezone` | The timezone to use for the backup folder name (e.g., `America/New_York`). | `America/New_York` |
+
+**Example Automation:**
+```yaml
+action: time_machine.backup_now
+data:
+  smart_backup_enabled: true
+  max_backups_enabled: true
+  max_backups_count: 100
+  timezone: "America/New_York"
+```
 
 #### Changing Options in Docker
 

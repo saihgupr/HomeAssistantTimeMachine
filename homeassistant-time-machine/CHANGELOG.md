@@ -14,10 +14,11 @@
 
 # v2.2.0
 
+- **HACS Integration:** Introduced the Home Assistant companion integration, enabling native sensors and service calls.
 - **Integration Renaming:** Unified integration domain to `time_machine` for a cleaner experience.
-- **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage) and backup count.
+- **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage), backup count, and version tracking.
 - **Backup Status Tracking:** Real-time tracking of the last backup status (`success`, `failed`, `no_changes`) with persistence across restarts.
-- **Service Improved:** `time_machine.backup_now` service call is now more robust and reliable.
+- **Service Improved:** `time_machine.backup_now` service call is now available with full parameter support for flexible automation.
 - **Performance:** Reduced default scan interval to 30 seconds for more responsive status updates.
 
 # v2.1
