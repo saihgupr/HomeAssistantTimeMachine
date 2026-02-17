@@ -8,6 +8,7 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const https = require('https');
 const readline = require('readline');
+const { spawn } = require('child_process');
 
 const DATA_DIR = (() => {
   const addonDataRoot = '/data';
@@ -178,6 +179,79 @@ app.post('/api/delete-backup', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('[api] Error deleting backup:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/export-backup', async (req, res) => {
+  try {
+    const backupPath = req.query.backupPath;
+    if (!backupPath || typeof backupPath !== 'string') {
+      return res.status(400).json({ error: 'backupPath is required' });
+    }
+
+    const options = await getAddonOptions();
+    const settings = await loadDockerSettings();
+    const configuredBackupRoot = options.backupFolderPath || settings.backupFolderPath || '/media/timemachine';
+
+    const resolvedRoot = path.resolve(configuredBackupRoot);
+    const resolvedBackupPath = path.resolve(backupPath);
+    const rootWithSep = resolvedRoot.endsWith(path.sep) ? resolvedRoot : `${resolvedRoot}${path.sep}`;
+    if (resolvedBackupPath !== resolvedRoot && !resolvedBackupPath.startsWith(rootWithSep)) {
+      return res.status(403).json({ error: 'Invalid backup path' });
+    }
+
+    const stats = await fs.stat(resolvedBackupPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: 'backupPath must be a directory' });
+    }
+
+    const parentDir = path.dirname(resolvedBackupPath);
+    const folderName = path.basename(resolvedBackupPath);
+    const safeName = folderName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const archiveName = `${safeName}.tar.gz`;
+
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', `attachment; filename="${archiveName}"`);
+
+    const tarProcess = spawn('tar', ['-czf', '-', '-C', parentDir, folderName], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let stderrOutput = '';
+    tarProcess.stderr.on('data', (chunk) => {
+      stderrOutput += chunk.toString();
+    });
+
+    tarProcess.on('error', (error) => {
+      console.error('[export-backup] Failed to spawn tar:', error.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to export backup archive' });
+      } else if (!res.writableEnded) {
+        res.end();
+      }
+    });
+
+    req.on('close', () => {
+      if (!tarProcess.killed) {
+        tarProcess.kill('SIGTERM');
+      }
+    });
+
+    tarProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error('[export-backup] tar exited with code', code, stderrOutput.trim());
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to export backup archive' });
+        } else if (!res.writableEnded) {
+          res.end();
+        }
+      }
+    });
+
+    tarProcess.stdout.pipe(res);
+  } catch (error) {
+    console.error('[export-backup] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -3139,6 +3139,10 @@
           <i class="mdi ${lockIcon}"></i>
           <span>${lockLabel}</span>
         </div>
+        <div class="context-menu-item" onclick="exportBackup('${backupPath}')">
+          <i>⤓</i>
+          <span>${getStyledText('ui.contextMenu.export')}</span>
+        </div>
         <div class="context-menu-separator"></div>
         <div class="context-menu-item danger" onclick="confirmDeleteBackup('${backupPath}')">
           <i class="mdi mdi-delete"></i>
@@ -3219,6 +3223,41 @@
       } catch (error) {
         console.error('[confirmDeleteBackup] Error:', error);
         showNotification('Error deleting backup: ' + error.message, 'error');
+      }
+    }
+
+    async function exportBackup(backupPath) {
+      hideContextMenu();
+
+      try {
+        const response = await fetch(url(`/api/export-backup?backupPath=${encodeURIComponent(backupPath)}`));
+        if (!response.ok) {
+          let message = `Export failed (${response.status})`;
+          try {
+            const errorData = await response.json();
+            message = errorData.error || message;
+          } catch (parseError) {
+            // Ignore JSON parse errors and use the fallback message.
+          }
+          throw new Error(message);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const contentDisposition = response.headers.get('content-disposition') || '';
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/i);
+        link.href = downloadUrl;
+        link.download = filenameMatch ? filenameMatch[1] : 'backup.tar.gz';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        showNotification('Backup exported successfully', 'success');
+      } catch (error) {
+        console.error('[exportBackup] Error:', error);
+        showNotification('Error exporting backup: ' + error.message, 'error');
       }
     }
 
