@@ -2992,6 +2992,19 @@ body[data-theme='light'] [data-diff-palette="8"] .diff-word-added {
   width: 20px;
   text-align: center;
   color: #a2a2a2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.context-menu-item i svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .context-menu-item.danger {

@@ -3132,7 +3132,9 @@
       menu.style.top = `${e.pageY}px`;
 
       const lockLabel = isLocked ? getStyledText('ui.contextMenu.unprotect') : getStyledText('ui.contextMenu.protect');
-      const lockIcon = isLocked ? '🔓' : '🔒';
+      const lockIcon = isLocked
+        ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10V7a4 4 0 1 1 8 0"/><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M12 14v2"/></svg>`
+        : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10V7a4 4 0 1 1 8 0v3"/><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M12 14v2"/></svg>`;
 
       menu.innerHTML = `
         <div class="context-menu-item" onclick="toggleLock('${backupPath}', ${isLocked})">
@@ -3140,12 +3142,12 @@
           <span>${lockLabel}</span>
         </div>
         <div class="context-menu-item" onclick="exportBackup('${backupPath}')">
-          <i>⤓</i>
+          <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></i>
           <span>${getStyledText('ui.contextMenu.export')}</span>
         </div>
         <div class="context-menu-separator"></div>
         <div class="context-menu-item danger" onclick="confirmDeleteBackup('${backupPath}')">
-          <i>🗑</i>
+          <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 10v7"/><path d="M14 10v7"/></svg></i>
           <span>${getStyledText('ui.contextMenu.delete')}</span>
         </div>
       `;
