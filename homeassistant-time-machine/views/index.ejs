@@ -3132,11 +3132,11 @@
       menu.style.top = `${e.pageY}px`;
 
       const lockLabel = isLocked ? getStyledText('ui.contextMenu.unprotect') : getStyledText('ui.contextMenu.protect');
-      const lockIcon = isLocked ? 'mdi-lock-open-variant' : 'mdi-lock';
+      const lockIcon = isLocked ? '🔓' : '🔒';
 
       menu.innerHTML = `
         <div class="context-menu-item" onclick="toggleLock('${backupPath}', ${isLocked})">
-          <i class="mdi ${lockIcon}"></i>
+          <i>${lockIcon}</i>
           <span>${lockLabel}</span>
         </div>
         <div class="context-menu-item" onclick="exportBackup('${backupPath}')">
@@ -3145,7 +3145,7 @@
         </div>
         <div class="context-menu-separator"></div>
         <div class="context-menu-item danger" onclick="confirmDeleteBackup('${backupPath}')">
-          <i class="mdi mdi-delete"></i>
+          <i>🗑</i>
           <span>${getStyledText('ui.contextMenu.delete')}</span>
         </div>
       `;
