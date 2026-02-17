@@ -838,6 +838,94 @@ body[data-theme='light'] .modal-actions {
   border-top: 1px solid rgba(203, 213, 225, 0.55);
 }
 
+.confirm-dialog {
+  max-width: 440px;
+  width: min(92vw, 440px);
+  max-height: none;
+  background-color: rgb(30, 30, 30);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5), 0 18px 36px -18px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-modal-header {
+  border-radius: 24px 24px 0 0;
+  padding: 24px 28px 12px;
+  background: transparent;
+  border-bottom: none;
+}
+
+.confirm-icon-container {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: rgba(0, 122, 252, 0.15);
+  color: #007AFC;
+}
+
+.confirm-btn-danger .confirm-icon-container,
+.modal-dialog:has(.confirm-btn-danger) .confirm-icon-container {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+}
+
+.confirm-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.confirm-modal-body {
+  padding: 8px 28px 24px;
+  max-height: none;
+  color: #9ca3af;
+}
+
+.confirm-modal-body p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.confirm-modal-footer {
+  padding: 16px 28px 28px;
+  justify-content: flex-end;
+  background: transparent;
+  border-top: none;
+}
+
+.confirm-btn-danger {
+  background-color: #dc2626;
+  border: none;
+  color: #ffffff;
+}
+
+.confirm-btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+/* Light Theme Overrides */
+body[data-theme='light'] .confirm-dialog {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 30px 60px -12px rgba(15, 23, 42, 0.15), 0 18px 36px -18px rgba(15, 23, 42, 0.1);
+}
+
+body[data-theme='light'] .confirm-modal-header h2 {
+  color: #1f2937;
+}
+
+body[data-theme='light'] .confirm-modal-body {
+  color: #4b5563;
+}
+
+body[data-theme='light'] .confirm-icon-container {
+  background-color: rgba(0, 122, 252, 0.08);
+}
+
 /* Diff Viewer - Claude-Inspired Design */
 .diff-controls {
   display: flex;

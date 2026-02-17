@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.3.0') %>">
+  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.3.0.1') %>">
   <script>
     // Set theme immediately (before <body> exists) to prevent flash
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -21,7 +21,7 @@
     root.classList.add('theme-preload');
     window.__initialTheme = savedTheme;
   </script>
-  <script defer src="<%= url('/static/js/strings-language.js?v=2.3.0') %>"></script>
+  <script defer src="<%= url('/static/js/strings-language.js?v=2.3.0.1') %>"></script>
 </head>
 
 <body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>"
@@ -210,6 +210,26 @@
           <button type="submit" class="btn-primary">Save</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmModal" class="modal" style="display: none;">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog confirm-dialog">
+      <div class="modal-header confirm-modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="confirmIcon" class="confirm-icon-container"></div>
+          <h2 id="confirmTitle">Confirm Action</h2>
+        </div>
+      </div>
+      <div class="modal-body confirm-modal-body">
+        <p id="confirmMessage"></p>
+      </div>
+      <div class="modal-footer confirm-modal-footer">
+        <button id="confirmCancelBtn" class="btn-secondary">Cancel</button>
+        <button id="confirmActionBtn" class="btn-primary">Confirm</button>
+      </div>
     </div>
   </div>
 
@@ -3041,6 +3061,59 @@
       }
     });
 
+    let confirmDialogResolver = null;
+
+    function showConfirmDialog({ title, message, confirmLabel, cancelLabel = 'Cancel', danger = false, icon = '' }) {
+      const modal = document.getElementById('confirmModal');
+      const titleEl = document.getElementById('confirmTitle');
+      const iconEl = document.getElementById('confirmIcon');
+      const messageEl = document.getElementById('confirmMessage');
+      const cancelBtn = document.getElementById('confirmCancelBtn');
+      const actionBtn = document.getElementById('confirmActionBtn');
+
+      if (confirmDialogResolver) {
+        confirmDialogResolver(false);
+        confirmDialogResolver = null;
+      }
+
+      titleEl.textContent = title || 'Confirm Action';
+      messageEl.textContent = message || '';
+      cancelBtn.textContent = cancelLabel || 'Cancel';
+      actionBtn.textContent = confirmLabel || 'Confirm';
+      actionBtn.classList.toggle('confirm-btn-danger', Boolean(danger));
+
+      if (icon) {
+        iconEl.innerHTML = icon;
+        iconEl.style.display = 'flex';
+      } else {
+        iconEl.style.display = 'none';
+      }
+
+      modal.style.display = 'flex';
+      return new Promise((resolve) => {
+        confirmDialogResolver = resolve;
+      });
+    }
+
+    function closeConfirmDialog(confirmed = false) {
+      const modal = document.getElementById('confirmModal');
+      modal.style.display = 'none';
+
+      if (confirmDialogResolver) {
+        const resolve = confirmDialogResolver;
+        confirmDialogResolver = null;
+        resolve(confirmed);
+      }
+    }
+
+    document.getElementById('confirmCancelBtn').addEventListener('click', () => closeConfirmDialog(false));
+    document.getElementById('confirmActionBtn').addEventListener('click', () => closeConfirmDialog(true));
+    document.getElementById('confirmModal').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-backdrop')) {
+        closeConfirmDialog(false);
+      }
+    });
+
     // Keyboard Navigation
     document.addEventListener('keydown', (e) => {
       // Ignore if user is typing in an input/textarea/select
@@ -3048,12 +3121,14 @@
 
       // Ignore if modals are open (except for closing with Escape)
       const isModalOpen = document.getElementById('diffModal').style.display === 'flex' ||
-        document.getElementById('settingsModal').style.display === 'flex';
+        document.getElementById('settingsModal').style.display === 'flex' ||
+        document.getElementById('confirmModal').style.display === 'flex';
 
       if (isModalOpen) {
         if (e.key === 'Escape') {
           document.getElementById('diffModal').style.display = 'none';
           document.getElementById('settingsModal').style.display = 'none';
+          closeConfirmDialog(false);
         }
         return;
       }
@@ -3179,7 +3254,15 @@
       hideContextMenu();
 
       const confirmMsg = currentlyLocked ? getStyledText('ui.contextMenu.confirmUnlock') : getStyledText('ui.contextMenu.confirmLock');
-      if (!confirm(confirmMsg)) return;
+      const lockLabel = currentlyLocked ? getStyledText('ui.contextMenu.unprotect') : getStyledText('ui.contextMenu.protect');
+      const confirmed = await showConfirmDialog({
+        title: lockLabel,
+        message: confirmMsg,
+        confirmLabel: lockLabel,
+        danger: false,
+        icon: '<svg viewBox="0 0 24 24" style="width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M8 10V7a4 4 0 1 1 8 0v3"/><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M12 14v2"/></svg>'
+      });
+      if (!confirmed) return;
 
       try {
         const response = await fetch(url('/api/toggle-lock'), {
@@ -3204,7 +3287,14 @@
     async function confirmDeleteBackup(backupPath) {
       hideContextMenu();
 
-      if (!confirm(getStyledText('ui.contextMenu.confirmDelete') || 'Are you sure you want to delete this backup?')) {
+      const confirmed = await showConfirmDialog({
+        title: getStyledText('ui.contextMenu.delete') || 'Delete Backup',
+        message: getStyledText('ui.contextMenu.confirmDelete') || 'Are you sure you want to delete this backup?',
+        confirmLabel: getStyledText('ui.contextMenu.delete') || 'Delete Backup',
+        danger: true,
+        icon: '<svg viewBox="0 0 24 24" style="width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 10v7"/><path d="M14 10v7"/></svg>'
+      });
+      if (!confirmed) {
         return;
       }
 
