@@ -1,6 +1,6 @@
 {
   "name": "home-assistant-time-machine",
-  "version": "2.3.2",
+  "version": "2.3.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/saihgupr/HomeAssistantTimeMachine.git"

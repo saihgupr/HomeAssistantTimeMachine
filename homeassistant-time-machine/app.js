@@ -30,7 +30,7 @@ const DATA_DIR = (() => {
   return fallback;
 })();
 
-const version = '2.3.2';
+const version = '2.3.4';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
@@ -102,6 +102,7 @@ const isTlsCertificateError = (error) => {
 };
 
 const app = express();
+app.use(express.json());
 const PORT = process.env.PORT || 54000;
 const HOST = process.env.HOST || '0.0.0.0';
 const INGRESS_PATH = process.env.INGRESS_ENTRY || '';
@@ -142,6 +143,23 @@ app.post('/api/toggle-lock', async (req, res) => {
   }
 });
 
+// Helper to retry deletion on ENOTEMPTY
+async function rmWithRetry(dirPath, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await fs.rm(dirPath, { recursive: true, force: true });
+      return; // Success
+    } catch (err) {
+      if (err.code === 'ENOTEMPTY' && i < retries - 1) {
+        console.log(`[rmWithRetry] ENOTEMPTY for ${dirPath}, retrying in ${delay}ms... (${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw err; // Re-throw if not ENOTEMPTY or out of retries
+    }
+  }
+}
+
 app.post('/api/delete-backup', async (req, res) => {
   const { backupPath } = req.body;
   if (!backupPath) {
@@ -156,7 +174,7 @@ app.post('/api/delete-backup', async (req, res) => {
     }
 
     console.log(`[api] Manually deleting backup: ${backupPath}`);
-    await fs.rm(backupPath, { recursive: true, force: true });
+    await rmWithRetry(backupPath);
     res.json({ success: true });
   } catch (error) {
     console.error('[api] Error deleting backup:', error);
