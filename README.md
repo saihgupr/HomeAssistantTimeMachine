@@ -6,7 +6,10 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 *   **Backup Lock, Deletion & Export:** Added a new backup lock feature to prevent accidental deletion of snapshots. You can now also manually delete or export individual backups as .tar.gz archives directly from the web UI using the new right-click context menu.
 *   **HACS Integration:** Now available as a companion integration via HACS! Track backup status with a native sensor and trigger backups using the `time_machine.backup_now` service.
-*   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods. The app now dynamically tracks the location of every automation and script file via a new manifest system, ensuring accurate backups and restores regardless of your YAML structure.
+*   **Keyboard Navigation:** Navigate backups and items using arrow keys! Use Up/Down to change selection and Left/Right to switch between panels. Press Enter on an item to view its diff.
+*   **Manifest-Driven Backups & Restoration:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live and are automatically placed back exactly where they belong in your YAML structure.
+*   **Docker Env Var:** Added `ESPHOME_CONFIG_PATH` environment variable support for Docker installations, allowing custom locations for ESPHome configuration files.
+*   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods.
 
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/1.png)
 ![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/2.png)
@@ -84,6 +87,8 @@ docker run -d \
   -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
   -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
   -e ESPHOME_CONFIG_PATH="/path/to/esphome/config" \
+  -e THEME="dark" \
+  -e DEBUG_LOGS="false" \
   -v /path/to/your/ha/config:/config \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \
@@ -103,6 +108,8 @@ docker run -d \
   -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
   -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
   -e ESPHOME_CONFIG_PATH="/path/to/esphome/config" \
+  -e THEME="dark" \
+  -e DEBUG_LOGS="false" \
   -v /path/to/your/ha/config:/config \
   -v /path/to/your/backups:/media \
   -v ha-time-machine-data:/data \

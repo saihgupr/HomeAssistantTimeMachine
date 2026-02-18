@@ -1,25 +1,23 @@
 # v2.3.0
 
-- **Backup Lock:** Added a backup lock feature to prevent accidental deletion of backups. Protect your most important snapshots from being rotated out by auto-cleanup.
 - **Manual Deletion & Export:** You can now delete individual backups or export them as .tar.gz archives directly via the context menu. Deletion is blocked for locked backups to ensure data safety.
 - **Context Menu:** Introduced a right-click context menu for backups to easily Lock, Unlock, Export, or Delete them.
+- **Backup Lock:** Added a backup lock feature to prevent accidental deletion of backups. Protect your most important snapshots from being rotated out by auto-cleanup.
 - **HACS Integration:** Introduced the Home Assistant companion integration, enabling native sensors and service calls.
 - **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage), backup count, and version tracking.
+- **Backup Status Tracking:** Real-time tracking of the last backup status (`success`, `failed`, `no_changes`) with persistence across restarts.
 - **Service Improved:** `time_machine.backup_now` service call is now available with full parameter support for flexible automation.
 - **Keyboard Navigation:** Navigate backups and items using arrow keys! Use Up/Down to change selection and Left/Right to switch between panels. Press Enter on an item to view its diff.
 - **Docker Env Var:** Added `ESPHOME_CONFIG_PATH` environment variable support for Docker installations, allowing custom locations for ESPHome configuration files.
 - **Split Config Support:** Advanced support for Home Assistant configurations using `!include`, `!include_dir_list`, and other split configuration methods.
-- **Manifest-Driven Backups:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live.
-- **Improved Restoration:** Restore operations now automatically use the backup manifest to track and place files back exactly where they belong in your YAML structure.
+- **Manifest-Driven Backups & Restoration:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live and are automatically placed back exactly where they belong in your YAML structure.
 
 # v2.2.0
 
-- **HACS Integration:** Introduced the Home Assistant companion integration, enabling native sensors and service calls.
-- **Integration Renaming:** Unified integration domain to `time_machine` for a cleaner experience.
-- **Enhanced Sensors:** New sensor attributes for disk usage (total, free, used percentage), backup count, and version tracking.
-- **Backup Status Tracking:** Real-time tracking of the last backup status (`success`, `failed`, `no_changes`) with persistence across restarts.
-- **Service Improved:** `time_machine.backup_now` service call is now available with full parameter support for flexible automation.
-- **Performance:** Reduced default scan interval to 30 seconds for more responsive status updates.
+- **Smart Backup:** Incremental snapshots only save files that changed since your last backup. It looks complete in the UI but uses significantly less storage.
+- **Show Changes Only:** Filter snapshots and files to just what has changed or deleted compared to your live config. This works per tab in both the snapshot list and file view.
+- **Automation Triggers:** Backups can now be triggered from automations or scripts via `hassio.addon_stdin`. This is useful for scheduled, conditional, or event-driven backups.
+- **Diff Color Palettes:** Eight new color palettes in the diff viewer which are switchable directly by clicking the header bar.
 
 # v2.1
 
