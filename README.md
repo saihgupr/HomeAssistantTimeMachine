@@ -149,7 +149,7 @@ Monitor your backup system health directly in Home Assistant.
 | Attribute | Description | Example |
 | :--- | :--- | :--- |
 | `state` | Current status of the instance | `Online` |
-| `version` | Running version | `2.2.0` |
+| `version` | Running version | `2.3.0` |
 | `backup_count` | Total number of backups stored | `764` |
 | `last_backup` | Timestamp of the last backup | `2026-02-17-000000` |
 | `disk_total_gb` | Total storage space | `111.73` |
