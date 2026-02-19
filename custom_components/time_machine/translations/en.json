@@ -1,0 +1,46 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Connect to Home Assistant Time Machine",
+                "description": "Enter the URL of your Home Assistant Time Machine addon. If you installed it as an addon, the default URL will work automatically.",
+                "data": {
+                    "url": "Addon URL",
+                    "scan_interval": "Update interval (seconds)"
+                },
+                "data_description": {
+                    "url": "The base URL of the Time Machine addon (e.g. http://homeassistant-time-machine:54000)",
+                    "scan_interval": "How often to poll the addon for status updates (10–3600 seconds)"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Unable to connect to Time Machine. Check that the addon is running and the URL is correct.",
+            "timeout_connect": "Connection to Time Machine timed out. Check that the addon is running.",
+            "unknown": "An unexpected error occurred. Check the logs for details."
+        },
+        "abort": {
+            "already_configured": "This Time Machine instance is already configured."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Home Assistant Time Machine Options",
+                "data": {
+                    "url": "Addon URL",
+                    "scan_interval": "Update interval (seconds)"
+                },
+                "data_description": {
+                    "url": "The base URL of the Time Machine addon",
+                    "scan_interval": "How often to poll the addon for status updates (10–3600 seconds)"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Unable to connect to Time Machine. Check that the addon is running and the URL is correct.",
+            "timeout_connect": "Connection to Time Machine timed out.",
+            "unknown": "An unexpected error occurred."
+        }
+    }
+}
