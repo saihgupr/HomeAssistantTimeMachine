@@ -149,10 +149,8 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
      - platform: time_machine
    ```
 
-> **IMPORTANT:** The `url` must be reachable **from both your browser and your Home Assistant instance**. 
-> - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` (internal hostname).
-> - **Docker:** Use the internal IP or container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
-> - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
+> [!NOTE]
+> If you are using the **Home Assistant Add-on**, ensure port `54000` is toggled on in the add-on's **Configuration > Network** settings if you encounter connection issues.
    
 7. Restart Home Assistant.
 

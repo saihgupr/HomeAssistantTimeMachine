@@ -6,9 +6,9 @@ from datetime import timedelta
 import aiohttp
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import DOMAIN, API_HEALTH, CONF_URL
 
@@ -17,29 +17,31 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
 
 
-async def async_setup_entry(
+async def async_setup_platform(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    config: ConfigType,
     async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up Time Machine sensor from a config entry."""
-    url = entry.options.get(CONF_URL) or entry.data.get(CONF_URL, "")
-    async_add_entities([TimeMachineHealthSensor(url, entry.entry_id)], True)
+    """Set up the Time Machine sensor from YAML."""
+    # Get URL from global domain config or platform config
+    url = config.get(CONF_URL) or hass.data.get(DOMAIN, {}).get("url", "http://homeassistant-time-machine:54000")
+    async_add_entities([TimeMachineHealthSensor(url)], True)
 
 
 class TimeMachineHealthSensor(SensorEntity):
     """Representation of a Time Machine Health sensor."""
 
     _attr_has_entity_name = True
-    _attr_name = "Status"
+    _attr_name = "Time Machine Status"
 
-    def __init__(self, url: str, entry_id: str) -> None:
+    def __init__(self, url: str) -> None:
         """Initialize the sensor."""
         self._url = url
         self._state = None
-        self._attr_unique_id = f"time_machine_{entry_id}_status"
+        self._attr_unique_id = "time_machine_v2_status"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry_id)},
+            "identifiers": {(DOMAIN, "time_machine_v2")},
             "name": "Time Machine",
             "manufacturer": "Home Assistant Time Machine",
         }

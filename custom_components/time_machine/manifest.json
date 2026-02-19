@@ -9,6 +9,5 @@
     ],
     "requirements": [],
     "version": "1.1.0",
-    "iot_class": "local_polling",
-    "config_flow": true
+    "iot_class": "local_polling"
 }

@@ -4,7 +4,6 @@ import logging
 
 import aiohttp
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
@@ -12,18 +11,17 @@ from .const import DOMAIN, API_BACKUP_NOW, CONF_URL
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor"]
-
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Home Assistant Time Machine component (YAML legacy)."""
-    return True
+    """Set up the Home Assistant Time Machine component."""
+    if DOMAIN not in config:
+        return True
 
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Time Machine from a config entry."""
-    url = entry.options.get(CONF_URL) or entry.data.get(CONF_URL, "")
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"url": url}
+    conf = config[DOMAIN]
+    url = conf.get(CONF_URL, "http://homeassistant-time-machine:54000").rstrip("/")
+    
+    # Store for platform setup
+    hass.data.setdefault(DOMAIN, {})["url"] = url
 
     async def handle_backup_now(call):
         """Handle the backup_now service call."""
@@ -42,20 +40,4 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.services.async_register(DOMAIN, "backup_now", handle_backup_now)
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
-
-
-async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-    return unload_ok
