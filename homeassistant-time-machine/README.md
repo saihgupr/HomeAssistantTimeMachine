@@ -140,8 +140,7 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 3. Click the three dots (⋮) in the top right and select **Custom repositories**.
 4. Add `https://github.com/saihgupr/HomeAssistantTimeMachine` as an **Integration**.
 5. Find **Home Assistant Time Machine** in HACS and click **Download**.
-6. Restart Home Assistant.
-7. Add the following to your `configuration.yaml`:
+6. Add the following to your `configuration.yaml`:
    ```yaml
    time_machine:
      url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on (or your IP)
@@ -149,6 +148,7 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
    sensor:
      - platform: time_machine
    ```
+7. Restart Home Assistant.
 
 #### Sensor: `sensor.time_machine_status`
 Monitor your backup system health directly in Home Assistant.
