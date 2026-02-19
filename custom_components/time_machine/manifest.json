@@ -7,11 +7,8 @@
     "codeowners": [
         "@saihgupr"
     ],
-    "requirements": [
-        "aiohttp"
-    ],
-    "version": "2.0.0",
+    "requirements": [],
+    "version": "1.1.0",
     "iot_class": "local_polling",
-    "config_flow": true,
-    "integration_type": "service"
+    "config_flow": true
 }

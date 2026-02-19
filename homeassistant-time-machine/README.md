@@ -149,9 +149,11 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
      - platform: time_machine
    ```
 
-> [!NOTE]
-> If you are using the **Home Assistant Add-on**, ensure port `54000` is toggled on in the add-on's **Configuration > Network** settings if you encounter connection issues.
-   
+> **IMPORTANT:** The `url` must be reachable **from both your browser and your Home Assistant instance**. 
+> - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` (internal hostname).
+> - **Docker:** Use the internal IP or container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
+> - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
+
 7. Restart Home Assistant.
 
 #### Sensor: `sensor.time_machine_status`
@@ -160,7 +162,7 @@ Monitor your backup system health directly in Home Assistant.
 | Attribute | Description | Example |
 | :--- | :--- | :--- |
 | `state` | Current status of the instance | `Online` |
-| `version` | Running version | `1.0.1` |
+| `version` | Running version | `2.3.0` |
 | `backup_count` | Total number of backups stored | `764` |
 | `last_backup` | Timestamp of the last backup | `2026-02-17-000000` |
 | `disk_total_gb` | Total storage space | `111.73` |
