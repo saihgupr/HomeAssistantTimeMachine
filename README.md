@@ -143,16 +143,16 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 6. Add the following to your `configuration.yaml`:
    ```yaml
    time_machine:
-     url: "http://homeassistant-time-machine:54000" 
+     url: "http://451bbd22-homeassistant-time-machine:54000" 
    
    sensor:
      - platform: time_machine
    ```
 
-> **IMPORTANT:** The `url` must be reachable **from both your browser and your Home Assistant instance**. 
-> - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` (internal hostname).
-> - **Docker:** Use the internal IP or container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
-> - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
+> **IMPORTANT:** 
+> - **HAOS Add-on:** Use `http://451bbd22-homeassistant-time-machine:54000` (internal hostname). The add-on network port **does not need to be exposed** for the integration to work, as communication happens over Home Assistant's internal Docker network!
+> - **Docker:** Use the internal container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
+> - **Note:** If `sensor.time_machine_status` shows as `Offline`, Home Assistant cannot reach the Time Machine API at that address.
    
 7. Restart Home Assistant.
 
@@ -222,11 +222,9 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ### Home Assistant add-on
 
-1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, esphome/packages toggle, and port.
+1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, and esphome/packages toggle. **You do not need to expose the network port** for the Companion Integration to work.
 2.  **Start the add-on.**
-3.  **Open the Web UI:**
-    *   Use **Open Web UI** from the add-on panel to launch ingress (default recommended when the external port is disabled).
-    *   Or, if you've enabled port `54000/tcp` in the add-on configuration, browse to `http://homeassistant.local:54000` (or your configured host/port).
+3.  **Open the Web UI:** Use **Open Web UI** from the add-on panel to launch INGRESS (recommended).
 4.  **In-app setup:**
     *   In the web UI, go to the settings menu.
     *   **Live Home Assistant Folder Path:** Set the path to your Home Assistant configuration directory (e.g., `/config`).
