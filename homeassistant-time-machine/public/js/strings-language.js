@@ -916,6 +916,56 @@ window.STRINGS = {
         nl: "Snapshots met wijzigingen laden...",
         it: "Caricamento istantanee con modifiche..."
       }
+    },
+    contextMenu: {
+      protect: {
+        en: "Lock",
+        es: "Bloquear",
+        de: "Sperren",
+        fr: "Verrouiller",
+        nl: "Vergrendelen",
+        it: "Blocca"
+      },
+      unprotect: {
+        en: "Unlock",
+        es: "Desbloquear",
+        de: "Entsperren",
+        fr: "Déverrouiller",
+        nl: "Ontgrendelen",
+        it: "Sblocca"
+      },
+      delete: {
+        en: "Delete Backup",
+        es: "Eliminar copia",
+        de: "Backup löschen",
+        fr: "Supprimer la sauvegarde",
+        nl: "Back-up verwijderen",
+        it: "Elimina backup"
+      },
+      export: {
+        en: "Export Backup",
+        es: "Exportar copia",
+        de: "Backup exportieren",
+        fr: "Exporter la sauvegarde",
+        nl: "Back-up exporteren",
+        it: "Esporta backup"
+      },
+      confirmLock: {
+        en: "Are you sure you want to lock this backup?",
+        es: "¿Estás seguro de que quieres bloquear esta copia?",
+        de: "Bist du sicher, dass du dieses Backup sperren möchtest?",
+        fr: "Voulez-vous vraiment verrouiller cette sauvegarde ?",
+        nl: "Weet u zeker dat u deze back-up wilt vergrendelen?",
+        it: "Sei sicuro di voler bloccare questo backup?"
+      },
+      confirmUnlock: {
+        en: "Are you sure you want to unlock this backup?",
+        es: "¿Estás seguro de que quieres desbloquear esta copia?",
+        de: "Bist du sicher, dass du dieses Backup entsperren möchtest?",
+        fr: "Voulez-vous vraiment déverrouiller cette sauvegarde ?",
+        nl: "Weet u zeker dat u deze back-up wilt ontgrendelen?",
+        it: "Sei sicuro di voler sbloccare questo backup?"
+      }
     }
   }
 };

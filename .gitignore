@@ -3,4 +3,4 @@ config.js
 node_modules/
 *.log
 .env
-deploy.sh
+deploy.shdata/

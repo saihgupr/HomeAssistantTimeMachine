@@ -1,0 +1,6 @@
+backup_now:
+  description: Triggers an immediate backup in Home Assistant Time Machine.
+  fields:
+    url:
+      description: The URL of your Time Machine instance (e.g., http://localhost:54000).
+      example: "http://localhost:54000"

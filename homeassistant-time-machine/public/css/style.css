@@ -838,6 +838,94 @@ body[data-theme='light'] .modal-actions {
   border-top: 1px solid rgba(203, 213, 225, 0.55);
 }
 
+.confirm-dialog {
+  max-width: 440px;
+  width: min(92vw, 440px);
+  max-height: none;
+  background-color: rgb(30, 30, 30);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5), 0 18px 36px -18px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-modal-header {
+  border-radius: 24px 24px 0 0;
+  padding: 24px 28px 12px;
+  background: transparent;
+  border-bottom: none;
+}
+
+.confirm-icon-container {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: rgba(0, 122, 252, 0.15);
+  color: #007AFC;
+}
+
+.confirm-btn-danger .confirm-icon-container,
+.modal-dialog:has(.confirm-btn-danger) .confirm-icon-container {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+}
+
+.confirm-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.confirm-modal-body {
+  padding: 8px 28px 24px;
+  max-height: none;
+  color: #9ca3af;
+}
+
+.confirm-modal-body p {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.confirm-modal-footer {
+  padding: 16px 28px 28px;
+  justify-content: flex-end;
+  background: transparent;
+  border-top: none;
+}
+
+.confirm-btn-danger {
+  background-color: #dc2626;
+  border: none;
+  color: #ffffff;
+}
+
+.confirm-btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+/* Light Theme Overrides */
+body[data-theme='light'] .confirm-dialog {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 30px 60px -12px rgba(15, 23, 42, 0.15), 0 18px 36px -18px rgba(15, 23, 42, 0.1);
+}
+
+body[data-theme='light'] .confirm-modal-header h2 {
+  color: #1f2937;
+}
+
+body[data-theme='light'] .confirm-modal-body {
+  color: #4b5563;
+}
+
+body[data-theme='light'] .confirm-icon-container {
+  background-color: rgba(0, 122, 252, 0.08);
+}
+
 /* Diff Viewer - Claude-Inspired Design */
 .diff-controls {
   display: flex;
@@ -2937,4 +3025,128 @@ body[data-theme='light'] [data-diff-palette="8"] .diff-word-removed {
 
 body[data-theme='light'] [data-diff-palette="8"] .diff-word-added {
   background-color: rgba(6, 182, 212, 0.3);
+}
+
+/* Context Menu */
+.context-menu {
+  position: absolute;
+  background: rgba(31, 31, 31, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  padding: 6px;
+  z-index: 10000;
+  min-width: 180px;
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #ededed;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.context-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu-item:active {
+  transform: scale(0.98);
+}
+
+.context-menu-item i {
+  font-size: 18px;
+  width: 20px;
+  text-align: center;
+  color: #a2a2a2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.context-menu-item i svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.context-menu-item.danger {
+  color: #ef4444;
+}
+
+.context-menu-item.danger i {
+  color: #ef4444;
+}
+
+.context-menu-item.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.08);
+  margin: 4px 8px;
+}
+
+/* Lock Icon Badge */
+.backup-item {
+  position: relative;
+}
+
+.lock-indicator {
+  margin-left: auto;
+  color: currentColor;
+  opacity: 0.85;
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+#backupList .list-item:hover .lock-indicator,
+#backupListContainer .list-item:hover .lock-indicator {
+  opacity: 1;
+}
+
+body[data-theme='light'] .context-menu {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+body[data-theme='light'] .context-menu-item {
+  color: #1f2937;
+}
+
+body[data-theme='light'] .context-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+body[data-theme='light'] .context-menu-separator {
+  background-color: rgba(0, 0, 0, 0.08);
 }
