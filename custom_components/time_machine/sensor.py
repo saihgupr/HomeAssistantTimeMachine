@@ -1,44 +1,59 @@
 """Sensor platform for Home Assistant Time Machine."""
+import asyncio
 import logging
 from datetime import timedelta
+
 import aiohttp
-import async_timeout
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, API_HEALTH
+from .const import DOMAIN, API_HEALTH, CONF_URL
 
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Time Machine sensors."""
-    url = config.get("url", "http://192.168.1.4:54000")
-    sensors = [TimeMachineHealthSensor(url)]
-    async_add_entities(sensors, True)
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up Time Machine sensor from a config entry."""
+    url = entry.options.get(CONF_URL) or entry.data.get(CONF_URL, "")
+    async_add_entities([TimeMachineHealthSensor(url, entry.entry_id)], True)
+
 
 class TimeMachineHealthSensor(SensorEntity):
     """Representation of a Time Machine Health sensor."""
 
-    def __init__(self, url):
+    _attr_has_entity_name = True
+    _attr_name = "Status"
+
+    def __init__(self, url: str, entry_id: str) -> None:
         """Initialize the sensor."""
         self._url = url
         self._state = None
-        self._attr_name = "Time Machine Status"
-        self._attr_unique_id = "time_machine_v2_status"
+        self._attr_unique_id = f"time_machine_{entry_id}_status"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry_id)},
+            "name": "Time Machine",
+            "manufacturer": "Home Assistant Time Machine",
+        }
 
     @property
     def state(self):
         """Return the state of the sensor."""
         return self._state
 
-    async def async_update(self):
+    async def async_update(self) -> None:
         """Fetch new state data for the sensor."""
-        async with aiohttp.ClientSession() as session:
-            try:
-                with async_timeout.timeout(5):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with asyncio.timeout(5):
                     async with session.get(f"{self._url}{API_HEALTH}") as response:
                         if response.status == 200:
                             data = await response.json()
@@ -52,11 +67,15 @@ class TimeMachineHealthSensor(SensorEntity):
                                 "disk_total_gb": data.get("disk_usage", {}).get("total_gb"),
                                 "disk_free_gb": data.get("disk_usage", {}).get("free_gb"),
                                 "disk_used_pct": data.get("disk_usage", {}).get("used_pct"),
-                                "last_backup_status": data.get("last_backup_status")
+                                "last_backup_status": data.get("last_backup_status"),
                             }
                         else:
-                            _LOGGER.error("Error fetching Time Machine health: %s (response: %s)", response.status, await response.text())
+                            _LOGGER.error(
+                                "Error fetching Time Machine health: %s", response.status
+                            )
                             self._state = "Error"
-            except Exception as err:
-                _LOGGER.error("Failed to connect to Time Machine at %s: %s", self._url, err)
-                self._state = "Offline"
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to connect to Time Machine at %s: %s", self._url, err
+            )
+            self._state = "Offline"

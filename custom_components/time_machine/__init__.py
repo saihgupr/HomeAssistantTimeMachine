@@ -1,36 +1,61 @@
 """The Home Assistant Time Machine integration."""
+import asyncio
 import logging
-import aiohttp
-import async_timeout
 
+import aiohttp
+
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, API_BACKUP_NOW
+from .const import DOMAIN, API_BACKUP_NOW, CONF_URL
 
 _LOGGER = logging.getLogger(__name__)
 
+PLATFORMS = ["sensor"]
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Home Assistant Time Machine component."""
-    conf = config.get(DOMAIN, {})
-    default_url = conf.get("url", "http://192.168.1.4:54000")
+    """Set up the Home Assistant Time Machine component (YAML legacy)."""
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Time Machine from a config entry."""
+    url = entry.options.get(CONF_URL) or entry.data.get(CONF_URL, "")
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"url": url}
 
     async def handle_backup_now(call):
-        """Handle the service call."""
-        url = call.data.get("url", default_url)
-        _LOGGER.info("Triggering Time Machine backup at %s", url)
-        
-        async with aiohttp.ClientSession() as session:
-            try:
-                with async_timeout.timeout(10):
-                    async with session.post(f"{url}{API_BACKUP_NOW}") as response:
+        """Handle the backup_now service call."""
+        service_url = call.data.get("url", url)
+        _LOGGER.info("Triggering Time Machine backup at %s", service_url)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with asyncio.timeout(10):
+                    async with session.post(f"{service_url}{API_BACKUP_NOW}") as response:
                         if response.status == 200:
                             _LOGGER.info("Backup triggered successfully")
                         else:
                             _LOGGER.error("Failed to trigger backup: %s", response.status)
-            except Exception as err:
-                _LOGGER.error("Error triggering backup: %s", err)
+        except Exception as err:
+            _LOGGER.error("Error triggering backup: %s", err)
 
     hass.services.async_register(DOMAIN, "backup_now", handle_backup_now)
-    
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+    return unload_ok
