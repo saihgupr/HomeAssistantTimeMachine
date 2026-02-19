@@ -143,11 +143,17 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 6. Add the following to your `configuration.yaml`:
    ```yaml
    time_machine:
-     url: "http://homeassistant-time-machine:54000" # Default for HAOS Add-on (or your IP)
+     url: "http://homeassistant-time-machine:54000" 
    
    sensor:
      - platform: time_machine
    ```
+
+   > [!IMPORTANT]
+   > The `url` must be reachable **from both your browser and your Home Assistant instance**. 
+   > - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` (internal hostname).
+   > - **Docker:** Use the internal IP or container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
+   > - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
 7. Restart Home Assistant.
 
 #### Sensor: `sensor.time_machine_status`
