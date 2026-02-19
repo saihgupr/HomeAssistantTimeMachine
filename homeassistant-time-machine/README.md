@@ -128,6 +128,13 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 - **Services:** Trigger backups using native `time_machine.backup_now` service calls in your automations.
 
 #### Installation & Setup:
+
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=saihgupr&repository=HomeAssistantTimeMachine&category=integration">
+  <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." />
+</a>
+
+**Or manually add the custom repository:**
+
 1. Ensure [HACS](https://hacs.xyz/) is installed.
 2. In Home Assistant, go to **HACS** → **Integrations**.
 3. Click the three dots (⋮) in the top right and select **Custom repositories**.
