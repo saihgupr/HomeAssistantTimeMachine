@@ -1,6 +1,7 @@
 """The Home Assistant Time Machine integration."""
 import asyncio
 import logging
+import os
 
 import aiohttp
 
@@ -22,6 +23,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     # Store for platform setup
     hass.data.setdefault(DOMAIN, {})["url"] = url
+
+    # Register static path for local assets (icon)
+    icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+    if os.path.exists(icon_path):
+        hass.http.register_static_path("/time_machine_local", icon_path)
 
     async def handle_backup_now(call):
         """Handle the backup_now service call."""

@@ -34,6 +34,7 @@ class TimeMachineHealthSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Time Machine Status"
+    _attr_entity_picture = "/time_machine_local"
 
     def __init__(self, url: str) -> None:
         """Initialize the sensor."""
