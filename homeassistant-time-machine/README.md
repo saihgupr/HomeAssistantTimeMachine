@@ -258,7 +258,6 @@ data:
 > [!NOTE]
 > Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
 
-**Advanced Method (HACS Integration):**
 For more control over your backups (like setting a custom timezone, limiting max backups, or only backing up when changes occur), install the [HACS Companion Integration](#hacs-companion-integration) and use the `time_machine.backup_now` service instead.
 
 ## Backup to Remote Share
