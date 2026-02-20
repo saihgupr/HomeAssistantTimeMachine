@@ -39,10 +39,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         """Handle the backup_now service call."""
         service_url = call.data.get("url") or url
         _LOGGER.info("Triggering Time Machine backup at %s", service_url)
+        
+        payload = {}
+        if "smart_backup_enabled" in call.data:
+            payload["smartBackupEnabled"] = call.data["smart_backup_enabled"]
+        if "max_backups_enabled" in call.data:
+            payload["maxBackupsEnabled"] = call.data["max_backups_enabled"]
+        if "max_backups_count" in call.data:
+            payload["maxBackupsCount"] = call.data["max_backups_count"]
+        if "live_config_path" in call.data:
+            payload["liveFolderPath"] = call.data["live_config_path"]
+        if "backup_folder_path" in call.data:
+            payload["backupFolderPath"] = call.data["backup_folder_path"]
+        if "timezone" in call.data:
+            payload["timezone"] = call.data["timezone"]
+            
         try:
             async with aiohttp.ClientSession() as session:
                 async with asyncio.timeout(10):
-                    async with session.post(f"{service_url}{API_BACKUP_NOW}") as response:
+                    async with session.post(f"{service_url}{API_BACKUP_NOW}", json=payload) as response:
                         if response.status == 200:
                             _LOGGER.info("Backup triggered successfully")
                         else:

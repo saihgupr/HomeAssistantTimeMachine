@@ -8,3 +8,41 @@ backup_now:
       example: "http://ccab4aaf-homeassistant-time-machine:54000"
       selector:
         text:
+    smart_backup_enabled:
+      name: Smart Backup
+      description: Only backup if changes are detected compared to the last snapshot.
+      example: true
+      selector:
+        boolean:
+    max_backups_enabled:
+      name: Limit Max Backups
+      description: Whether to enforce a maximum number of backups to keep.
+      example: true
+      selector:
+        boolean:
+    max_backups_count:
+      name: Max Backups Count
+      description: The number of backups to keep before removing the oldest ones.
+      example: 100
+      selector:
+        number:
+          min: 1
+          max: 1000
+    live_config_path:
+      name: Live Config Path
+      description: The source path in the container to backup (default is /config).
+      example: "/config"
+      selector:
+        text:
+    backup_folder_path:
+      name: Backup Folder Path
+      description: The destination path in the container for backups (default is /media/timemachine).
+      example: "/media/timemachine"
+      selector:
+        text:
+    timezone:
+      name: Timezone
+      description: The timezone to use for the backup folder name (e.g., America/New_York).
+      example: "America/New_York"
+      selector:
+        text:
