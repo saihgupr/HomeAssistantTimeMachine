@@ -58,7 +58,8 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 2.  **Install the Add-on:**
     The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
 
-### 2. Standalone Docker Installation
+<details>
+<summary><h3>2. Standalone Docker Installation</h3></summary>
 
 For Docker users who aren't using the Home Assistant add-on, you have three deployment options:
 
@@ -121,7 +122,34 @@ Supplying the URL and token keeps credentials out of the UI. These environment v
 
 **Alternative:** omit the environment variables, start the container with the same volumes, then visit `http://localhost:54000` to enter credentials in the settings modal. They are stored in `/data/docker-ha-credentials.json`.
 
-### HACS Companion Integration
+#### Changing Options in Docker
+
+After the container is running, you can toggle ESPHome support, adjust text style, and switch light/dark modes by POSTing to the app settings API. This persists the value in `/data/homeassistant-time-machine/docker-app-settings.json` so the UI reflects it on reload:
+
+```bash
+curl -X POST http://localhost:54000/api/app-settings \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "theme": "light",
+        "esphomeEnabled": true,
+        "packagesEnabled": true,
+        "language": "de"
+      }'
+```
+
+Adjust the payload if you need different paths, theme, or want to enable/disable features (`"esphomeEnabled": true|false`, `"packagesEnabled": true|false`, `"theme": light|dark`, `"language": en|es|de|fr|nl|it`).
+
+#### Accessing the Web Interface
+
+After starting the container, access the web interface at `http://localhost:54000` (or your server's IP/port).
+
+> [!NOTE]
+> The HA URL and token fields in settings will be read-only if configured via environment variables, or editable if configured through the web UI.
+
+</details>
+
+<details>
+<summary><h3>HACS Companion Integration</h3></summary>
 
 Enhance your Home Assistant experience by adding the Time Machine companion integration via HACS. This provides:
 - **Sensors:** Track backup status and health directly in Home Assistant.
@@ -140,23 +168,15 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 3. Click the three dots (⋮) in the top right and select **Custom repositories**.
 4. Add `https://github.com/saihgupr/HomeAssistantTimeMachine` as an **Integration**.
 5. Find **Home Assistant Time Machine** in HACS and click **Download**.
-6. Add the following to your `configuration.yaml`:
-   ```yaml
-   time_machine:
-     # Optional if installed as a Home Assistant Add-on
-     url: "http://homeassistant-time-machine:54000" 
-   
-   sensor:
-     - platform: time_machine
-   ```
+6. Go to **Settings** → **Devices & Services**.
+7. Click **Add Integration** in the bottom right and search for **Home Assistant Time Machine**.
+8. Follow the UI prompts.
+   * If installed via the official Home Assistant Add-on, it will automatically discover the instance!
+   * If installed via Docker (or if auto-discovery fails), you will be prompted to enter the instance URL.
 
 > [!IMPORTANT]
-> The `url` can be automatically discovered if installed as an Official Add-on. If running via Docker or if discovery fails, the URL must be reachable **from both your browser and your Home Assistant instance**. 
-> - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` if auto-discovery fails.
-> - **Docker:** Use the internal IP or container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
+> **Docker Users:** Use the internal container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
 > - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
-
-7. Restart Home Assistant.
 
 #### Sensor: `sensor.time_machine_status`
 Monitor your backup system health directly in Home Assistant.
@@ -195,29 +215,7 @@ data:
   timezone: "America/New_York"
 ```
 
-#### Changing Options in Docker
-
-After the container is running, you can toggle ESPHome support, adjust text style, and switch light/dark modes by POSTing to the app settings API. This persists the value in `/data/homeassistant-time-machine/docker-app-settings.json` so the UI reflects it on reload:
-
-```bash
-curl -X POST http://localhost:54000/api/app-settings \
-  -H 'Content-Type: application/json' \
-  -d '{
-        "theme": "light",
-        "esphomeEnabled": true,
-        "packagesEnabled": true,
-        "language": "de"
-      }'
-```
-
-Adjust the payload if you need different paths, theme, or want to enable/disable features (`"esphomeEnabled": true|false`, `"packagesEnabled": true|false`, `"theme": light|dark`, `"language": en|es|de|fr|nl|it`).
-
-#### Accessing the Web Interface
-
-After starting the container, access the web interface at `http://localhost:54000` (or your server's IP/port).
-
-> [!NOTE]
-> The HA URL and token fields in settings will be read-only if configured via environment variables, or editable if configured through the web UI.
+</details>
 
 ## Usage
 
@@ -247,6 +245,7 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ### Triggering Backups from Automations
 
+**Basic Method (Add-on built-in):**
 You can trigger a backup from Home Assistant automations or scripts using the `hassio.addon_stdin` service:
 
 ```yaml
@@ -259,11 +258,15 @@ data:
 > [!NOTE]
 > Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
 
+**Advanced Method (HACS Integration):**
+For more control over your backups (like setting a custom timezone, limiting max backups, or only backing up when changes occur), install the [HACS Companion Integration](#hacs-companion-integration) and use the `time_machine.backup_now` service instead.
+
 ## Backup to Remote Share
 
 To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
 
-## API Endpoints
+<details>
+<summary><h2>API Endpoints</h2></summary>
 
 - **POST /api/backup-now**: Trigger an immediate backup. Requires `liveFolderPath` and `backupFolderPath`. Optional parameters (`smartBackupEnabled`, `maxBackupsEnabled`, `maxBackupsCount`, `timezone`) fall back to saved settings when not provided.
 - **POST /api/restore-automation** / **POST /api/restore-script**: Restore a single automation or script after creating a safety backup.
@@ -292,6 +295,8 @@ curl -X POST http://localhost:54000/api/scan-backups \
   -d '{"backupRootPath": "/media/timemachine"}'
 ```
 
+</details>
+
 ## Alternative Options
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
@@ -308,10 +313,6 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 ## Contributing & Support
 
-Contributions are welcome! Check out [contribution guidelines](CONTRIBUTING.md) for more details.
+If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/saihgupr/HomeAssistantTimeMachine/issues). If you'd like to contribute, check out the [contribution guidelines](CONTRIBUTING.md).
 
-If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
-
-If you'd like to buy me a coffee, you can do so [here](https://ko-fi.com/saihgupr).
-
-**If you find this add-on helpful, please ⭐ star the repository!**
+If you find this add-on useful, consider giving it a ⭐ star or making a [donation](https://ko-fi.com/saihgupr) to support development.

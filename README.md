@@ -58,7 +58,8 @@ There are two ways to install Home Assistant Time Machine: as a Home Assistant a
 2.  **Install the Add-on:**
     The "Home Assistant Time Machine" add-on will now appear in the store. Click on it and then click "Install".
 
-### 2. Standalone Docker Installation
+<details>
+<summary><h3>2. Standalone Docker Installation</h3></summary>
 
 For Docker users who aren't using the Home Assistant add-on, you have three deployment options:
 
@@ -121,78 +122,6 @@ Supplying the URL and token keeps credentials out of the UI. These environment v
 
 **Alternative:** omit the environment variables, start the container with the same volumes, then visit `http://localhost:54000` to enter credentials in the settings modal. They are stored in `/data/docker-ha-credentials.json`.
 
-### HACS Companion Integration
-
-Enhance your Home Assistant experience by adding the Time Machine companion integration via HACS. This provides:
-- **Sensors:** Track backup status and health directly in Home Assistant.
-- **Services:** Trigger backups using native `time_machine.backup_now` service calls in your automations.
-
-#### Installation & Setup:
-
-<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=saihgupr&repository=HomeAssistantTimeMachine&category=integration">
-  <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." />
-</a>
-
-**Or manually add the custom repository:**
-
-1. Ensure [HACS](https://hacs.xyz/) is installed.
-2. In Home Assistant, go to **HACS** → **Integrations**.
-3. Click the three dots (⋮) in the top right and select **Custom repositories**.
-4. Add `https://github.com/saihgupr/HomeAssistantTimeMachine` as an **Integration**.
-5. Find **Home Assistant Time Machine** in HACS and click **Download**.
-6. Add the following to your `configuration.yaml`:
-   ```yaml
-   time_machine:
-     url: "http://451bbd22-homeassistant-time-machine:54000" 
-   
-   sensor:
-     - platform: time_machine
-   ```
-
-> **IMPORTANT:** 
-> - **HAOS Add-on:** Use `http://451bbd22-homeassistant-time-machine:54000` (internal hostname). The add-on network port **does not need to be exposed** for the integration to work, as communication happens over Home Assistant's internal Docker network!
-> - **Docker:** Use the internal container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
-> - **Note:** If `sensor.time_machine_status` shows as `Offline`, Home Assistant cannot reach the Time Machine API at that address.
-   
-7. Restart Home Assistant.
-
-#### Sensor: `sensor.time_machine_status`
-Monitor your backup system health directly in Home Assistant.
-
-| Attribute | Description | Example |
-| :--- | :--- | :--- |
-| `state` | Current status of the instance | `Online` |
-| `version` | Running version | `2.3.0` |
-| `backup_count` | Total number of backups stored | `764` |
-| `last_backup` | Timestamp of the last backup | `2026-02-17-000000` |
-| `disk_total_gb` | Total storage space | `111.73` |
-| `disk_free_gb` | Available storage space | `13.68` |
-| `disk_used_pct` | Storage usage percentage | `87.8%` |
-| `last_backup_status` | Status of the most recent run | `success` |
-
-#### Action: `time_machine.backup_now`
-Trigger backups via service calls in your automations or scripts.
-
-| Parameter | Description | Example |
-| :--- | :--- | :--- |
-| `url` | The URL of your Time Machine instance (e.g., `http://192.168.1.4:54000`). | `http://192.168.1.4:54000` |
-| `smart_backup_enabled` | Only backup if changes are detected compared to the last snapshot. | `true` |
-| `max_backups_enabled` | Whether to enforce the maximum number of backups to keep. | `true` |
-| `max_backups_count` | The number of backups to keep before removing oldest ones. | `100` |
-| `live_config_path` | The source path in the container to backup (default is `/config`). | `/config` |
-| `backup_folder_path` | The destination path in the container for backups (default is `/media/timemachine`). | `/media/timemachine` |
-| `timezone` | The timezone to use for the backup folder name (e.g., `America/New_York`). | `America/New_York` |
-
-**Example Automation:**
-```yaml
-action: time_machine.backup_now
-data:
-  smart_backup_enabled: true
-  max_backups_enabled: true
-  max_backups_count: 100
-  timezone: "America/New_York"
-```
-
 #### Changing Options in Docker
 
 After the container is running, you can toggle ESPHome support, adjust text style, and switch light/dark modes by POSTing to the app settings API. This persists the value in `/data/homeassistant-time-machine/docker-app-settings.json` so the UI reflects it on reload:
@@ -214,17 +143,92 @@ Adjust the payload if you need different paths, theme, or want to enable/disable
 
 After starting the container, access the web interface at `http://localhost:54000` (or your server's IP/port).
 
-**Note:** The HA URL and token fields in settings will be read-only if configured via environment variables, or editable if configured through the web UI.
+> [!NOTE]
+> The HA URL and token fields in settings will be read-only if configured via environment variables, or editable if configured through the web UI.
+
+</details>
+
+<details>
+<summary><h3>HACS Companion Integration</h3></summary>
+
+Enhance your Home Assistant experience by adding the Time Machine companion integration via HACS. This provides:
+- **Sensors:** Track backup status and health directly in Home Assistant.
+- **Services:** Trigger backups using native `time_machine.backup_now` service calls in your automations.
+
+#### Installation & Setup:
+
+<a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=saihgupr&repository=HomeAssistantTimeMachine&category=integration">
+  <img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store." />
+</a>
+
+**Or manually add the custom repository:**
+
+1. Ensure [HACS](https://hacs.xyz/) is installed.
+2. In Home Assistant, go to **HACS** → **Integrations**.
+3. Click the three dots (⋮) in the top right and select **Custom repositories**.
+4. Add `https://github.com/saihgupr/HomeAssistantTimeMachine` as an **Integration**.
+5. Find **Home Assistant Time Machine** in HACS and click **Download**.
+6. Go to **Settings** → **Devices & Services**.
+7. Click **Add Integration** in the bottom right and search for **Home Assistant Time Machine**.
+8. Follow the UI prompts.
+   * If installed via the official Home Assistant Add-on, it will automatically discover the instance!
+   * If installed via Docker (or if auto-discovery fails), you will be prompted to enter the instance URL.
+
+> [!IMPORTANT]
+> **Docker Users:** Use the internal container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
+> - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
+
+#### Sensor: `sensor.time_machine_status`
+Monitor your backup system health directly in Home Assistant.
+
+| Attribute | Description | Example |
+| :--- | :--- | :--- |
+| `state` | Current status of the instance | `Online` |
+| `version` | Running version | `2.3.0` |
+| `backup_count` | Total number of backups stored | `764` |
+| `last_backup` | Timestamp of the last backup | `2026-02-17-000000` |
+| `disk_total_gb` | Total storage space | `111.73` |
+| `disk_free_gb` | Available storage space | `13.68` |
+| `disk_used_pct` | Storage usage percentage | `87.8%` |
+| `last_backup_status` | Status of the most recent run | `success` |
+
+#### Action: `time_machine.backup_now`
+Trigger backups via service calls in your automations or scripts.
+
+| Parameter | Description | Example |
+| :--- | :--- | :--- |
+| `url` | (Optional) The URL of your Time Machine instance. Uses the integration's configured URL if left blank. | `http://192.168.1.4:54000` |
+| `smart_backup_enabled` | Only backup if changes are detected compared to the last snapshot. | `true` |
+| `max_backups_enabled` | Whether to enforce the maximum number of backups to keep. | `true` |
+| `max_backups_count` | The number of backups to keep before removing oldest ones. | `100` |
+| `live_config_path` | The source path in the container to backup (default is `/config`). | `/config` |
+| `backup_folder_path` | The destination path in the container for backups (default is `/media/timemachine`). | `/media/timemachine` |
+| `timezone` | The timezone to use for the backup folder name (e.g., `America/New_York`). | `America/New_York` |
+
+**Example Automation:**
+```yaml
+action: time_machine.backup_now
+data:
+  smart_backup_enabled: true
+  max_backups_enabled: true
+  max_backups_count: 100
+  timezone: "America/New_York"
+```
+
+</details>
 
 ## Usage
 
-> **Tip:** If you expose port `54000/tcp` (for example, via the add-on's Configuration tab), you can open the UI directly at `http://your-host:54000` without relying on ingress.
+> [!TIP]
+> If you expose port `54000/tcp` (for example, via the add-on's Configuration tab), you can open the UI directly at `http://your-host:54000` without relying on ingress.
 
 ### Home Assistant add-on
 
-1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, and esphome/packages toggle. **You do not need to expose the network port** for the Companion Integration to work.
+1.  **Configure the add-on:** In the add-on's configuration tab, set theme, language, esphome/packages toggle, and port.
 2.  **Start the add-on.**
-3.  **Open the Web UI:** Use **Open Web UI** from the add-on panel to launch INGRESS (recommended).
+3.  **Open the Web UI:**
+    *   Use **Open Web UI** from the add-on panel to launch ingress (default recommended when the external port is disabled).
+    *   Or, if you've enabled port `54000/tcp` in the add-on configuration, browse to `http://homeassistant.local:54000` (or your configured host/port).
 4.  **In-app setup:**
     *   In the web UI, go to the settings menu.
     *   **Live Home Assistant Folder Path:** Set the path to your Home Assistant configuration directory (e.g., `/config`).
@@ -241,6 +245,7 @@ After starting the container, access the web interface at `http://localhost:5400
 
 ### Triggering Backups from Automations
 
+**Basic Method (Add-on built-in):**
 You can trigger a backup from Home Assistant automations or scripts using the `hassio.addon_stdin` service:
 
 ```yaml
@@ -250,13 +255,18 @@ data:
   input: backup
 ```
 
-> **Note:** Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
+> [!NOTE]
+> Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
+
+**Advanced Method (HACS Integration):**
+For more control over your backups (like setting a custom timezone, limiting max backups, or only backing up when changes occur), install the [HACS Companion Integration](#hacs-companion-integration) and use the `time_machine.backup_now` service instead.
 
 ## Backup to Remote Share
 
 To configure backups to a remote share, first set up network storage within Home Assistant (Settings > System > Storage > 'Add network storage'). Name the share 'backups' and set its usage to 'Media'. Once configured, you can then specify the backup path in Home Assistant Time Machine settings as '/media/backups', which will direct backups to your remote share.
 
-## API Endpoints
+<details>
+<summary><h2>API Endpoints</h2></summary>
 
 - **POST /api/backup-now**: Trigger an immediate backup. Requires `liveFolderPath` and `backupFolderPath`. Optional parameters (`smartBackupEnabled`, `maxBackupsEnabled`, `maxBackupsCount`, `timezone`) fall back to saved settings when not provided.
 - **POST /api/restore-automation** / **POST /api/restore-script**: Restore a single automation or script after creating a safety backup.
@@ -285,6 +295,8 @@ curl -X POST http://localhost:54000/api/scan-backups \
   -d '{"backupRootPath": "/media/timemachine"}'
 ```
 
+</details>
+
 ## Alternative Options
 
 For detailed history tracking powered by a local Git backend, check out [Home Assistant Version Control](https://github.com/saihgupr/HomeAssistantVersionControl/). It provides complete version history for your setup by automatically tracking every change to your YAML files.
@@ -301,10 +313,6 @@ Thank you to everyone who has written about or featured Home Assistant Time Mach
 
 ## Contributing & Support
 
-Contributions are welcome! Check out [contribution guidelines](CONTRIBUTING.md) for more details.
+If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/saihgupr/HomeAssistantTimeMachine/issues). If you'd like to contribute, check out the [contribution guidelines](CONTRIBUTING.md).
 
-If you encounter a bug or have a feature request, feel free to [open an issue](https://github.com/saihgupr/HomeAssistantTimeMachine/issues).
-
-If you'd like to buy me a coffee, you can do so [here](https://ko-fi.com/saihgupr).
-
-**If you find this add-on helpful, please ⭐ star the repository!**
+If you find this add-on useful, consider giving it a ⭐ star or making a [donation](https://ko-fi.com/saihgupr) to support development.
