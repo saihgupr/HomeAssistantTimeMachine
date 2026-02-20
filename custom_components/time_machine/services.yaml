@@ -1,6 +1,10 @@
 backup_now:
+  name: Backup Now
   description: Triggers an immediate backup in Home Assistant Time Machine.
   fields:
     url:
-      description: The URL of your Time Machine instance (e.g., http://451bbd22-homeassistant-time-machine:54000).
-      example: "http://451bbd22-homeassistant-time-machine:54000"
+      name: URL
+      description: (Optional) The URL of your Time Machine instance. Uses the integration's configured URL if left blank.
+      example: "http://ccab4aaf-homeassistant-time-machine:54000"
+      selector:
+        text:

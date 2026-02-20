@@ -17,6 +17,16 @@ PLATFORMS = ["sensor"]
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Home Assistant Time Machine component (YAML legacy)."""
+    if DOMAIN in config:
+        conf = config[DOMAIN]
+        if conf and CONF_URL in conf:
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "import"},
+                    data=conf,
+                )
+            )
     return True
 
 
@@ -27,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_backup_now(call):
         """Handle the backup_now service call."""
-        service_url = call.data.get("url", url)
+        service_url = call.data.get("url") or url
         _LOGGER.info("Triggering Time Machine backup at %s", service_url)
         try:
             async with aiohttp.ClientSession() as session:

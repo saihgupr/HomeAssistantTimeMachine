@@ -143,14 +143,16 @@ Enhance your Home Assistant experience by adding the Time Machine companion inte
 6. Add the following to your `configuration.yaml`:
    ```yaml
    time_machine:
+     # Optional if installed as a Home Assistant Add-on
      url: "http://homeassistant-time-machine:54000" 
    
    sensor:
      - platform: time_machine
    ```
 
-> **IMPORTANT:** The `url` must be reachable **from both your browser and your Home Assistant instance**. 
-> - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` (internal hostname).
+> [!IMPORTANT]
+> The `url` can be automatically discovered if installed as an Official Add-on. If running via Docker or if discovery fails, the URL must be reachable **from both your browser and your Home Assistant instance**. 
+> - **HAOS Add-on:** Use `http://homeassistant-time-machine:54000` if auto-discovery fails.
 > - **Docker:** Use the internal IP or container name (e.g., `http://ha-time-machine:54000`) if they share a network, or your server's LAN IP if they are on separate hosts. 
 > - **Note:** If `sensor.time_machine_status` shows as `Offline`, it usually means Home Assistant cannot reach the Time Machine API at that address.
 
@@ -175,7 +177,7 @@ Trigger backups via service calls in your automations or scripts.
 
 | Parameter | Description | Example |
 | :--- | :--- | :--- |
-| `url` | The URL of your Time Machine instance (e.g., `http://192.168.1.4:54000`). | `http://192.168.1.4:54000` |
+| `url` | (Optional) The URL of your Time Machine instance. Uses the integration's configured URL if left blank. | `http://192.168.1.4:54000` |
 | `smart_backup_enabled` | Only backup if changes are detected compared to the last snapshot. | `true` |
 | `max_backups_enabled` | Whether to enforce the maximum number of backups to keep. | `true` |
 | `max_backups_count` | The number of backups to keep before removing oldest ones. | `100` |
@@ -214,11 +216,13 @@ Adjust the payload if you need different paths, theme, or want to enable/disable
 
 After starting the container, access the web interface at `http://localhost:54000` (or your server's IP/port).
 
-**Note:** The HA URL and token fields in settings will be read-only if configured via environment variables, or editable if configured through the web UI.
+> [!NOTE]
+> The HA URL and token fields in settings will be read-only if configured via environment variables, or editable if configured through the web UI.
 
 ## Usage
 
-> **Tip:** If you expose port `54000/tcp` (for example, via the add-on's Configuration tab), you can open the UI directly at `http://your-host:54000` without relying on ingress.
+> [!TIP]
+> If you expose port `54000/tcp` (for example, via the add-on's Configuration tab), you can open the UI directly at `http://your-host:54000` without relying on ingress.
 
 ### Home Assistant add-on
 
@@ -252,7 +256,8 @@ data:
   input: backup
 ```
 
-> **Note:** Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
+> [!NOTE]
+> Replace `0f6ec05b_homeassistant-time-machine` with your addon's slug if different.
 
 ## Backup to Remote Share
 
