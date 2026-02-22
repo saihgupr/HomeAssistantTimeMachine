@@ -5,3 +5,4 @@ node_modules/
 .env
 deploy.sh
 data/
+bump_version.sh

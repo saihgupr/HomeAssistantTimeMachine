@@ -1,6 +1,9 @@
-# v2.3.0
+# v2.3.1
 
-- **Manual Deletion & Export:** You can now delete individual backups or export them as .tar.gz archives directly via the context menu. Deletion is blocked for locked backups to ensure data safety.
+- **Integration Updates:** You can now configure the integration directly from the Home Assistant UI, and the `time_machine.backup_now` service call now supports all available parameters for granular control.
+- **Fixed Scope Bug:** Fixed a `ReferenceError: findFullRange is not defined` bug that occurred when restoring an individual automation or script.
+
+# v2.3.0
 - **Context Menu:** Introduced a right-click context menu for backups to easily Lock, Unlock, Export, or Delete them.
 - **Backup Lock:** Added a backup lock feature to prevent accidental deletion of backups. Protect your most important snapshots from being rotated out by auto-cleanup.
 - **HACS Integration:** Introduced the Home Assistant companion integration, enabling native sensors and service calls.
