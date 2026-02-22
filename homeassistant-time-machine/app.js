@@ -1798,6 +1798,61 @@ app.post('/api/get-live-script', async (req, res) => {
 });
 
 
+// Helper to find the full range of a YAML item including comments and structure
+function findFullRange(content, node, isListItem) {
+  let start = node.range[0];
+  let end = node.range[1];
+
+  // 1. Find the start of the item structure (dash or key)
+  if (isListItem) {
+    // Scan backwards for dash
+    while (start > 0 && content[start] !== '-') {
+      start--;
+    }
+  } else {
+    // For map item (script), node is the value. We need to find the key.
+    // Scan backwards for ':'
+    while (start > 0 && content[start] !== ':') {
+      start--;
+    }
+    // Now scan backwards for the key start (start of line or after whitespace)
+    if (start > 0) {
+      // Scan back to newline or start of file.
+      while (start > 0 && content[start - 1] !== '\n') {
+        start--;
+      }
+    }
+  }
+
+  // 2. Scan backwards for comments and empty lines
+  let current = start;
+  while (current > 0) {
+    const prevChar = content[current - 1];
+    if (prevChar === '\n') {
+      // Check the line before this newline
+      let lineEnd = current - 1;
+      let lineStart = lineEnd;
+      while (lineStart > 0 && content[lineStart - 1] !== '\n') {
+        lineStart--;
+      }
+      const line = content.substring(lineStart, lineEnd);
+      if (line.trim().startsWith('#') || line.trim() === '') {
+        // Include this line
+        current = lineStart;
+      } else {
+        // This line is content (previous item), stop.
+        break;
+      }
+    } else {
+      // Consume spaces/indentation before the item start
+      current--;
+    }
+  }
+  start = current;
+
+  return [start, end];
+}
+
 // Restore automation
 app.post('/api/restore-automation', async (req, res) => {
   try {
@@ -3493,58 +3548,5 @@ loadBackupState().then(() => {
     });
   });
 
-  // Helper to find the full range of a YAML item including comments and structure
-  function findFullRange(content, node, isListItem) {
-    let start = node.range[0];
-    let end = node.range[1];
 
-    // 1. Find the start of the item structure (dash or key)
-    if (isListItem) {
-      // Scan backwards for dash
-      while (start > 0 && content[start] !== '-') {
-        start--;
-      }
-    } else {
-      // For map item (script), node is the value. We need to find the key.
-      // Scan backwards for ':'
-      while (start > 0 && content[start] !== ':') {
-        start--;
-      }
-      // Now scan backwards for the key start (start of line or after whitespace)
-      if (start > 0) {
-        // Scan back to newline or start of file.
-        while (start > 0 && content[start - 1] !== '\n') {
-          start--;
-        }
-      }
-    }
-
-    // 2. Scan backwards for comments and empty lines
-    let current = start;
-    while (current > 0) {
-      const prevChar = content[current - 1];
-      if (prevChar === '\n') {
-        // Check the line before this newline
-        let lineEnd = current - 1;
-        let lineStart = lineEnd;
-        while (lineStart > 0 && content[lineStart - 1] !== '\n') {
-          lineStart--;
-        }
-        const line = content.substring(lineStart, lineEnd);
-        if (line.trim().startsWith('#') || line.trim() === '') {
-          // Include this line
-          current = lineStart;
-        } else {
-          // This line is content (previous item), stop.
-          break;
-        }
-      } else {
-        // Consume spaces/indentation before the item start
-        current--;
-      }
-    }
-    start = current;
-
-    return [start, end];
-  }
 });
