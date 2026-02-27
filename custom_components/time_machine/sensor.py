@@ -57,6 +57,8 @@ class TimeMachineHealthSensor(SensorEntity):
                     async with session.get(f"{self._url}{API_HEALTH}") as response:
                         if response.status == 200:
                             data = await response.json()
+                            if self._state != "Online":
+                                _LOGGER.info("Time Machine at %s is back online", self._url)
                             self._state = "Online"
                             _LOGGER.debug("Time Machine health data: %s", data)
                             self._attr_extra_state_attributes = {
@@ -70,12 +72,16 @@ class TimeMachineHealthSensor(SensorEntity):
                                 "last_backup_status": data.get("last_backup_status"),
                             }
                         else:
-                            _LOGGER.error(
-                                "Error fetching Time Machine health: %s", response.status
-                            )
+                            if self._state != "Error":
+                                _LOGGER.warning(
+                                    "Error fetching Time Machine health: %s. If you have uninstalled the Time Machine add-on, please also remove this integration.", 
+                                    response.status
+                                )
                             self._state = "Error"
         except Exception as err:
-            _LOGGER.error(
-                "Failed to connect to Time Machine at %s: %s", self._url, err
-            )
+            if self._state != "Offline":
+                _LOGGER.warning(
+                    "Failed to connect to Time Machine at %s: %s. If you have uninstalled the Time Machine add-on, please also remove this integration to stop these logs.", 
+                    self._url, err
+                )
             self._state = "Offline"
