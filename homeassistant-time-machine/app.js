@@ -1058,7 +1058,7 @@ async function saveDockerSettings(settings) {
 const SKIP_BACKUP_DIRS = new Set(['esphome', '.storage', 'packages']);
 
 // Recursive function to find backup directories
-async function getBackupDirs(dir, depth = 0) {
+async function getBackupDirs(dir, depth = 0, visitedPaths = new Set()) {
   let results = [];
   const indent = '  '.repeat(depth);
 
@@ -1067,11 +1067,26 @@ async function getBackupDirs(dir, depth = 0) {
 
     for (const dirent of list) {
       const fullPath = path.resolve(dir, dirent.name);
-      if (dirent.isDirectory()) {
+
+      // Get real path to handle symlinks and deduplicate
+      let realPath;
+      try {
+        realPath = await fs.realpath(fullPath);
+      } catch (err) {
+        realPath = fullPath;
+      }
+
+      if (dirent.isDirectory() || dirent.isSymbolicLink()) {
         // Skip known non-backup directories
         if (SKIP_BACKUP_DIRS.has(dirent.name)) {
           continue;
         }
+
+        // Avoid infinite recursion and duplicates
+        if (visitedPaths.has(realPath)) {
+          continue;
+        }
+
         const name = dirent.name;
         const dashedPattern = /^\d{4}-\d{2}-\d{2}-\d{6}$/;
         const numericPattern = /^\d{12}$/;
@@ -1100,12 +1115,13 @@ async function getBackupDirs(dir, depth = 0) {
           } catch (e) {
             // Not locked
           }
+          visitedPaths.add(realPath);
           results.push({ path: fullPath, folderName: name, mtime: stats.mtime, locked });
         }
 
         // Continue scanning deeper regardless to support nested structures like /year/month/backup
         try {
-          const nestedResults = await getBackupDirs(fullPath, depth + 1);
+          const nestedResults = await getBackupDirs(fullPath, depth + 1, visitedPaths);
           results = results.concat(nestedResults);
         } catch (err) {
           // Skip directories we can't read
