@@ -731,27 +731,13 @@ body[data-theme='light'] .modal-dialog {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   overflow-y: auto;
   max-height: calc(90vh - 40px);
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-.settings-card::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
 
 body[data-theme='light'] .settings-card {
   background-color: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(148, 163, 184, 0.25);
   box-shadow: 0 25px 55px -18px rgba(15, 23, 42, 0.28);
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE and Edge */
 }
 
 .settings-header {
