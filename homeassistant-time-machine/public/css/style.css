@@ -733,6 +733,11 @@ body[data-theme='light'] .modal-dialog {
   max-height: calc(90vh - 40px);
 }
 
+.settings-card::-webkit-scrollbar-track {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
 
 body[data-theme='light'] .settings-card {
   background-color: rgba(255, 255, 255, 0.95);
