@@ -1,12 +1,14 @@
 """Config flow for Home Assistant Time Machine integration."""
 import asyncio
 import logging
+import os
 
 import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN, CONF_URL, DEFAULT_PORT
 
@@ -14,43 +16,41 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_URL = f"http://homeassistant.local:{DEFAULT_PORT}"
 
-import os
-
-async def _async_test_connection(url: str) -> bool:
+async def _async_test_connection(hass, url: str) -> bool:
     """Return True if the Time Machine server is reachable."""
     try:
-        async with aiohttp.ClientSession() as session:
-            async with asyncio.timeout(5):
-                async with session.get(f"{url}/api/health") as resp:
-                    return resp.status == 200
+        session = async_get_clientsession(hass)
+        async with asyncio.timeout(5):
+            async with session.get(f"{url}/api/health") as resp:
+                return resp.status == 200
     except Exception:
         return False
 
-async def _async_discover_addon_url() -> str | None:
+async def _async_discover_addon_url(hass) -> str | None:
     """Discover the Add-on URL via the Supervisor API."""
     token = os.environ.get("SUPERVISOR_TOKEN")
     if not token:
         return None
         
     try:
-        async with aiohttp.ClientSession() as session:
-            headers = {"Authorization": f"Bearer {token}"}
-            async with asyncio.timeout(5):
-                async with session.get("http://supervisor/addons", headers=headers) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        addons = data.get("data", {}).get("addons", [])
-                        for addon in addons:
-                            if addon.get("name") == "Home Assistant Time Machine" or "time_machine" in addon.get("slug", ""):
-                                slug = addon["slug"]
-                                async with session.get(f"http://supervisor/addons/{slug}/info", headers=headers) as info_resp:
-                                    if info_resp.status == 200:
-                                        info_data = await info_resp.json()
-                                        hostname = info_data.get("data", {}).get("hostname")
-                                        if hostname:
-                                            url = f"http://{hostname}:54000"
-                                            if await _async_test_connection(url):
-                                                return url
+        session = async_get_clientsession(hass)
+        headers = {"Authorization": f"Bearer {token}"}
+        async with asyncio.timeout(5):
+            async with session.get("http://supervisor/addons", headers=headers) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    addons = data.get("data", {}).get("addons", [])
+                    for addon in addons:
+                        if addon.get("name") == "Home Assistant Time Machine" or "time_machine" in addon.get("slug", ""):
+                            slug = addon["slug"]
+                            async with session.get(f"http://supervisor/addons/{slug}/info", headers=headers) as info_resp:
+                                if info_resp.status == 200:
+                                    info_data = await info_resp.json()
+                                    hostname = info_data.get("data", {}).get("hostname")
+                                    if hostname:
+                                        url = f"http://{hostname}:54000"
+                                        if await _async_test_connection(hass, url):
+                                            return url
     except Exception:
         pass
     return None
@@ -81,13 +81,13 @@ class TimeMachineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         if self.discovered_url is None:
-            self.discovered_url = await _async_discover_addon_url()
+            self.discovered_url = await _async_discover_addon_url(self.hass)
             
         errors = {}
 
         if user_input is not None:
             url = user_input[CONF_URL].strip().rstrip("/")
-            reachable = await _async_test_connection(url)
+            reachable = await _async_test_connection(self.hass, url)
             if reachable:
                 await self.async_set_unique_id(url)
                 self._abort_if_unique_id_configured()
@@ -124,6 +124,7 @@ class TimeMachineOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
+        super().__init__(config_entry)
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
@@ -132,7 +133,7 @@ class TimeMachineOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             url = user_input[CONF_URL].strip().rstrip("/")
-            reachable = await _async_test_connection(url)
+            reachable = await _async_test_connection(self.hass, url)
             if reachable:
                 return self.async_create_entry(title="", data={CONF_URL: url})
             errors["base"] = "cannot_connect"
