@@ -1,14 +1,19 @@
 """Sensor platform for Home Assistant Time Machine."""
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import aiohttp
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, API_HEALTH, CONF_URL
 
@@ -24,7 +29,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up Time Machine sensor from a config entry."""
     url = entry.options.get(CONF_URL) or entry.data.get(CONF_URL, "")
-    async_add_entities([TimeMachineHealthSensor(url, entry.entry_id)], True)
+    
+    health_sensor = TimeMachineHealthSensor(url, entry.entry_id)
+    last_backup_sensor = TimeMachineLastBackupSensor(url, entry.entry_id)
+    
+    async_add_entities([health_sensor, last_backup_sensor], True)
 
 
 class TimeMachineHealthSensor(SensorEntity):
@@ -85,3 +94,47 @@ class TimeMachineHealthSensor(SensorEntity):
                     self._url, err
                 )
             self._state = "Offline"
+
+
+class TimeMachineLastBackupSensor(SensorEntity):
+    """Representation of the Last Backup Time sensor."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Last Backup"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, url: str, entry_id: str) -> None:
+        """Initialize the sensor."""
+        self._url = url
+        self._attr_unique_id = f"time_machine_{entry_id}_last_backup"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry_id)},
+            "name": "Time Machine",
+            "manufacturer": "Home Assistant Time Machine",
+        }
+        self._attr_native_value = None
+
+    async def async_update(self) -> None:
+        """Fetch new state data for the sensor."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with asyncio.timeout(5):
+                    async with session.get(f"{self._url}{API_HEALTH}") as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            last_backup_str = data.get("last_backup")
+                            
+                            if last_backup_str:
+                                try:
+                                    # Format: 2024-03-20_14-30-05
+                                    dt = datetime.strptime(last_backup_str, "%Y-%m-%d_%H-%M-%S")
+                                    # Set as local time
+                                    self._attr_native_value = dt_util.as_utc(dt)
+                                except (ValueError, TypeError):
+                                    self._attr_native_value = None
+                            else:
+                                self._attr_native_value = None
+                        else:
+                            self._attr_native_value = None
+        except Exception:
+            self._attr_native_value = None
