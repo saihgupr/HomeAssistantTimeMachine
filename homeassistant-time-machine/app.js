@@ -494,8 +494,8 @@ const YAML_EXTENSIONS = new Set(['.yaml', '.yml']);
  */
 async function getConfigFilePaths(configPath) {
   const configFile = path.join(configPath, 'configuration.yaml');
-  const automationPaths = [];
-  const scriptPaths = [];
+  let automationPaths = [];
+  let scriptPaths = [];
   const automationDirs = [];
   const scriptDirs = [];
 
@@ -506,53 +506,54 @@ async function getConfigFilePaths(configPath) {
     const lines = configContent.split('\n');
     for (const line of lines) {
       const trimmedLine = line.trim();
+      
+      // Skip comments
+      if (trimmedLine.startsWith('#')) continue;
 
-      // Match automation: !include filename.yaml
-      const autoIncludeMatch = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
-      if (autoIncludeMatch) {
-        const file = autoIncludeMatch[1].trim();
-        automationPaths.push(path.join(configPath, file));
-      }
-
-      // Match script: !include filename.yaml
-      const scriptIncludeMatch = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
-      if (scriptIncludeMatch) {
-        const file = scriptIncludeMatch[1].trim();
-        scriptPaths.push(path.join(configPath, file));
-      }
-
-      // Match automation: !include_dir_list dir_name or !include_dir_merge_list dir_name
-      const autoDirListMatch = trimmedLine.match(/^automation:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
-      if (autoDirListMatch) {
-        const dir = autoDirListMatch[1].trim();
-        const fullDir = path.join(configPath, dir);
-        automationDirs.push(fullDir);
-        try {
-          const files = await listYamlFilesRecursive(fullDir);
-          for (const file of files) {
-            automationPaths.push(path.join(fullDir, file));
-          }
-        } catch (err) {
-          debugLog(`[getConfigFilePaths] Could not read automation directory ${fullDir}:`, err.message);
+      // Handle various include styles for automation and scripts
+      // Supports:
+      // automation: !include automations.yaml
+      // automation mine: !include my_autos.yaml
+      // automation: !include_dir_list automations/
+      const includeMatch = trimmedLine.match(/^(automation|script)(?:\s+[^:]*)?:\s*(!include(?:_dir_(?:merge_)?(?:list|named))?)\s+(.+)$/);
+      
+      if (includeMatch) {
+        const type = includeMatch[1]; // automation or script
+        const tag = includeMatch[2]; // !include, !include_dir_list, etc.
+        let fileOrDir = includeMatch[3].split('#')[0].trim(); // strip trailing comments
+        
+        // Remove quotes if present
+        if ((fileOrDir.startsWith("'") && fileOrDir.endsWith("'")) || 
+            (fileOrDir.startsWith('"') && fileOrDir.endsWith('"'))) {
+          fileOrDir = fileOrDir.substring(1, fileOrDir.length - 1);
         }
-      }
-
-      // Match script: !include_dir_named dir_name or !include_dir_merge_named dir_name
-      const scriptDirNamedMatch = trimmedLine.match(/^script:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
-      if (scriptDirNamedMatch) {
-        const dir = scriptDirNamedMatch[1].trim();
-        const fullDir = path.join(configPath, dir);
-        scriptDirs.push(fullDir);
-        try {
-          const files = await listYamlFilesRecursive(fullDir);
-          for (const file of files) {
-            scriptPaths.push(path.join(fullDir, file));
+        
+        const fullPath = path.resolve(configPath, fileOrDir);
+        
+        if (tag === '!include') {
+          if (type === 'automation') automationPaths.push(fullPath);
+          else scriptPaths.push(fullPath);
+        } else {
+          // It's a directory include
+          const destPaths = type === 'automation' ? automationPaths : scriptPaths;
+          const destDirs = type === 'automation' ? automationDirs : scriptDirs;
+          
+          destDirs.push(fullPath);
+          try {
+            const files = await listYamlFilesRecursive(fullPath);
+            for (const f of files) {
+              destPaths.push(path.join(fullPath, f));
+            }
+          } catch (err) {
+            debugLog(`[getConfigFilePaths] Could not read ${type} directory ${fullPath}:`, err.message);
           }
-        } catch (err) {
-          debugLog(`[getConfigFilePaths] Could not read script directory ${fullDir}:`, err.message);
         }
       }
     }
+
+    // De-dupe paths
+    automationPaths = [...new Set(automationPaths)];
+    scriptPaths = [...new Set(scriptPaths)];
 
     // Default fallback if nothing found in config
     if (automationPaths.length === 0) {
@@ -593,7 +594,9 @@ async function listYamlFilesRecursive(rootDir) {
     }
 
     for (const entry of entries) {
-      if (entry.name.startsWith('._')) {
+      // Skip hidden files/directories (starting with .)
+      // This skips .esphome build artifacts and macOS metadata
+      if (entry.name.startsWith('.')) {
         continue;
       }
 
@@ -601,6 +604,17 @@ async function listYamlFilesRecursive(rootDir) {
       const fullPath = path.join(currentDir, entry.name);
 
       if (entry.isSymbolicLink()) {
+        const linkTarget = path.join(currentDir, entry.name);
+        try {
+          const stats = await fs.stat(linkTarget);
+          if (stats.isDirectory()) {
+            await walk(linkTarget, entryRelativePath);
+          } else if (stats.isFile() && YAML_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+            results.push(entryRelativePath);
+          }
+        } catch (e) {
+          // Skip dead links
+        }
         continue;
       }
 
@@ -784,9 +798,8 @@ async function getHomeAssistantAuth(optionsOverride, manualOverride) {
 async function isEsphomeEnabled() {
   try {
     const options = await getAddonOptions();
-    return !!(options?.esphome);
-  } catch (error) {
-    console.error('[esphome] Failed to determine ESPHome status:', error);
+    return !!options.esphome;
+  } catch (e) {
     return false;
   }
 }
@@ -794,1066 +807,443 @@ async function isEsphomeEnabled() {
 async function isPackagesEnabled() {
   try {
     const options = await getAddonOptions();
-    return !!(options?.packages);
-  } catch (error) {
-    console.error('[packages] Failed to determine Packages status:', error);
+    return !!options.packages;
+  } catch (e) {
     return false;
   }
 }
 
-// App settings endpoint (expose config to frontend, excluding sensitive data)
-app.get('/api/app-settings', async (req, res) => {
+/**
+ * Find a file in the backup chain if it's missing in the current snapshot
+ * (Used for Smart Backup mode)
+ */
+async function resolveFileInBackupChain(currentBackupPath, relativeFilePath) {
   try {
-    debugLog('[app-settings] --- Start ESPHome Flag Resolution ---');
+    const filePath = path.join(currentBackupPath, relativeFilePath);
+    await fs.access(filePath);
+    return filePath; // Found in current backup
+  } catch (err) {
+    // Not found, look in previous backups
+    const backupRoot = path.dirname(currentBackupPath);
+    const allBackups = await getAllBackupPaths(backupRoot);
+    const currentIndex = allBackups.indexOf(currentBackupPath);
+    
+    if (currentIndex === -1) throw err;
 
-    const options = await getAddonOptions();
-    debugLog('[app-settings] Addon options loaded:', {
-      esphome: options.esphome,
-      mode: options.mode
-    });
-
-    let esphomeEnabled = !!(options.esphome);
-    debugLog(`[app-settings] Initial esphomeEnabled from options: ${esphomeEnabled}`);
-
-    let storedSettings = null;
-    if (options.mode === 'addon') {
+    // Search older backups
+    for (let i = currentIndex + 1; i < allBackups.length; i++) {
+      const prevPath = path.join(allBackups[i], relativeFilePath);
       try {
-        storedSettings = await loadDockerSettings();
-        debugLog('[app-settings] Loaded stored settings (docker-app-settings.json):', {
-          esphomeEnabled: storedSettings.esphomeEnabled,
-          __loadedFromFile: storedSettings.__loadedFromFile
-        });
-      } catch (settingsError) {
-        debugLog('[app-settings] Failed to load saved settings for ESPHome flag:', settingsError.message);
-      }
+        await fs.access(prevPath);
+        debugLog(`[chain] Resolved ${relativeFilePath} from older backup: ${allBackups[i]}`);
+        return prevPath;
+      } catch (e) { /* Continue searching */ }
     }
-    const auth = await getHomeAssistantAuth(options);
-
-    const packagesEnabled = await isPackagesEnabled();
-    const baseResponse = {
-      mode: options.mode,
-      haUrl: options.home_assistant_url,
-      haToken: options.long_lived_access_token ? 'configured' : null,
-      haAuthMode: auth.source,
-      haAuthConfigured: !!auth.token,
-      haCredentialsSource: options.credentials_source || null,
-      theme: options.theme || 'dark',
-      esphomeEnabled,
-      packagesEnabled,
-      diffPalette: options.diffPalette || 1,
-    };
-    debugLog('[app-settings] Base response object created:', { esphomeEnabled: baseResponse.esphomeEnabled });
-
-    if (options.mode === 'addon') {
-      const savedSettings = storedSettings || await loadDockerSettings();
-      debugLog('[app-settings] Addon mode: final check of savedSettings for merge:', {
-        esphomeEnabled: savedSettings.esphomeEnabled
-      });
-
-      const finalEsphomeEnabled = baseResponse.esphomeEnabled;
-      debugLog(`[app-settings] Addon mode: finalEsphomeEnabled resolved to: ${finalEsphomeEnabled}`);
-
-      const finalPackagesEnabled = typeof savedSettings.packagesEnabled === 'boolean'
-        ? savedSettings.packagesEnabled
-        : packagesEnabled;
-
-      const mergedSettings = {
-        liveConfigPath: savedSettings.liveConfigPath || '/config',
-        backupFolderPath: savedSettings.backupFolderPath || '/media/backups/yaml',
-        theme: options.theme || savedSettings.theme || baseResponse.theme || 'dark',
-        esphomeEnabled: options.esphome ?? finalEsphomeEnabled,
-        packagesEnabled: finalPackagesEnabled,
-        smartBackupEnabled: savedSettings.smartBackupEnabled ?? false,
-        diffPalette: savedSettings.diffPalette || 1,
-        showOnlyChanges: savedSettings.showOnlyChanges ?? false,
-      };
-
-      global.dockerSettings = { ...global.dockerSettings, ...mergedSettings };
-      debugLog('[app-settings] Addon mode: global.dockerSettings updated:', { esphomeEnabled: global.dockerSettings.esphomeEnabled });
-
-      const finalResponse = {
-        ...baseResponse,
-        backupFolderPath: mergedSettings.backupFolderPath,
-        liveConfigPath: mergedSettings.liveConfigPath,
-        theme: mergedSettings.theme,
-        esphomeEnabled: mergedSettings.esphomeEnabled,
-        smartBackupEnabled: mergedSettings.smartBackupEnabled,
-        diffPalette: mergedSettings.diffPalette,
-        showOnlyChanges: mergedSettings.showOnlyChanges,
-      };
-      debugLog('[app-settings] Addon mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
-      debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
-      res.json(finalResponse);
-      return;
-    }
-
-    debugLog('[app-settings] Docker mode detected.');
-    const dockerSettings = await loadDockerSettings();
-    debugLog('[app-settings] Docker mode: loaded dockerSettings:', { esphomeEnabled: dockerSettings.esphomeEnabled });
-
-    const finalEsphomeEnabled = dockerSettings.esphomeEnabled ?? baseResponse.esphomeEnabled;
-    debugLog(`[app-settings] Docker mode: finalEsphomeEnabled resolved to: ${finalEsphomeEnabled}`);
-
-    const effectiveTheme = process.env.THEME || dockerSettings.theme || baseResponse.theme || 'dark';
-    const finalResponse = {
-      ...baseResponse,
-      backupFolderPath: dockerSettings.backupFolderPath || '/media/timemachine',
-      liveConfigPath: dockerSettings.liveConfigPath || '/config',
-      theme: effectiveTheme,
-      language: dockerSettings.language || 'en',
-      esphomeEnabled: finalEsphomeEnabled,
-      packagesEnabled: dockerSettings.packagesEnabled ?? false,
-      smartBackupEnabled: dockerSettings.smartBackupEnabled ?? false,
-      diffPalette: dockerSettings.diffPalette || 1,
-      showOnlyChanges: dockerSettings.showOnlyChanges ?? false,
-    };
-    debugLog('[app-settings] Docker mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
-    debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
-    res.json(finalResponse);
-  } catch (error) {
-    console.error('[app-settings] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Save Docker app settings
-app.post('/api/app-settings', async (req, res) => {
-  try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled, diffPalette, showOnlyChanges } = req.body;
-
-    const existingSettings = await loadDockerSettings();
-    const settings = {
-      liveConfigPath: liveConfigPath || existingSettings.liveConfigPath || '/config',
-      backupFolderPath: backupFolderPath || existingSettings.backupFolderPath || '/media/backups/yaml',
-      theme: theme || existingSettings.theme || 'dark',
-      language: language || existingSettings.language || 'en',
-      esphomeEnabled: typeof esphomeEnabled === 'boolean' ? esphomeEnabled : existingSettings.esphomeEnabled ?? false,
-      packagesEnabled: typeof packagesEnabled === 'boolean' ? packagesEnabled : existingSettings.packagesEnabled ?? false,
-      smartBackupEnabled: typeof smartBackupEnabled === 'boolean' ? smartBackupEnabled : existingSettings.smartBackupEnabled ?? false,
-      diffPalette: diffPalette || existingSettings.diffPalette || 1,
-      showOnlyChanges: typeof showOnlyChanges === 'boolean' ? showOnlyChanges : existingSettings.showOnlyChanges ?? false,
-    };
-
-    await saveDockerSettings(settings);
-    console.log('[save-docker-settings] Saved Docker app settings:', settings);
-
-    res.json({ success: true, message: 'Settings saved successfully' });
-  } catch (error) {
-    console.error('[save-docker-settings] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Save Docker HA credentials (fallback when env vars not set)
-app.post('/api/docker-ha-credentials', async (req, res) => {
-  try {
-    const { homeAssistantUrl, longLivedAccessToken } = req.body;
-
-    // Only allow saving credentials in Docker mode and when env vars aren't set
-    if (process.env.HOME_ASSISTANT_URL || process.env.LONG_LIVED_ACCESS_TOKEN) {
-      return res.status(400).json({ error: 'HA credentials are configured via environment variables' });
-    }
-
-    const credentials = {
-      home_assistant_url: homeAssistantUrl,
-      long_lived_access_token: longLivedAccessToken
-    };
-
-    // Ensure data directory exists
-    await fs.writeFile(path.join(DATA_DIR, 'docker-ha-credentials.json'), JSON.stringify(credentials, null, 2), 'utf-8');
-    console.log('[docker-ha-credentials] Saved Docker HA credentials to', path.join(DATA_DIR, 'docker-ha-credentials.json'));
-
-    res.json({ success: true, message: 'HA credentials saved successfully' });
-  } catch (error) {
-    console.error('[docker-ha-credentials] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// App settings endpoint (expose config to frontend, excluding sensitive data)
-async function loadDockerSettings() {
-  const cachedSettings = (global.dockerSettings && typeof global.dockerSettings === 'object') ? global.dockerSettings : {};
-  const defaultSettings = {
-    liveConfigPath: '/config',
-    backupFolderPath: '/media/timemachine',
-    theme: process.env.THEME || 'dark',
-    language: 'en',
-    esphomeEnabled: false,
-    packagesEnabled: false,
-    smartBackupEnabled: false,
-    diffPalette: 1,
-    showOnlyChanges: false,
-    ...cachedSettings
-  };
-
-  try {
-    const settingsPath = path.join(DATA_DIR, 'docker-app-settings.json');
-
-    // Check if settings file exists
-    try {
-      await fs.access(settingsPath);
-      const content = await fs.readFile(settingsPath, 'utf-8');
-      const parsed = JSON.parse(content);
-
-      // Merge with defaults to ensure all fields are present
-      const settings = { ...defaultSettings, ...parsed };
-
-      // Update in-memory settings
-      global.dockerSettings = settings;
-
-
-      debugLog('Loaded settings from file:', settings);
-      return settings;
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-
-      } else {
-        console.error('Error loading settings:', err);
-      }
-
-      // Ensure in-memory settings are set to defaults
-      global.dockerSettings = defaultSettings;
-      return defaultSettings;
-    }
-  } catch (error) {
-    console.error('Error in loadDockerSettings:', error);
-    // Ensure in-memory settings are set to defaults even if there's an error
-    global.dockerSettings = defaultSettings;
-    return defaultSettings;
+    throw err; // Not found in chain
   }
 }
 
-// Save Docker settings to file
-async function saveDockerSettings(settings) {
-  // Ensure all required fields are present with defaults
-  const settingsToSave = {
-    liveConfigPath: settings.liveConfigPath || '/config',
-    backupFolderPath: settings.backupFolderPath || '/media/timemachine',
-    theme: settings.theme || 'dark',
-    language: settings.language || 'en',
-    esphomeEnabled: settings.esphomeEnabled ?? false,
-    packagesEnabled: settings.packagesEnabled ?? false,
-    smartBackupEnabled: settings.smartBackupEnabled ?? false,
-    diffPalette: settings.diffPalette || 1,
-    showOnlyChanges: settings.showOnlyChanges ?? false
-  };
-
-  // Save to file
-  const settingsPath = path.join(DATA_DIR, 'docker-app-settings.json');
+// Get all backup paths sorted by date (newest first)
+async function getAllBackupPaths(backupRoot) {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
+    const entries = await fs.readdir(backupRoot, { withFileTypes: true });
+    const backupFolders = entries
+      .filter(entry => entry.isDirectory() && entry.name.match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(?:_.*)?$/))
+      .map(entry => path.join(backupRoot, entry.name))
+      .sort()
+      .reverse();
+    return backupFolders;
   } catch (error) {
-    console.error('[saveDockerSettings] Failed to ensure data directory exists:', error);
+    if (error.code === 'ENOENT') return [];
+    throw error;
   }
-  await fs.writeFile(settingsPath, JSON.stringify(settingsToSave, null, 2), 'utf-8');
-
-  console.log('Settings saved successfully to', settingsPath);
-
-  // Update the in-memory settings
-  global.dockerSettings = settingsToSave;
-
-  return settingsToSave;
 }
 
-const SKIP_BACKUP_DIRS = new Set(['esphome', '.storage', 'packages']);
-
-// Recursive function to find backup directories
-async function getBackupDirs(dir, depth = 0) {
-  let results = [];
-  const indent = '  '.repeat(depth);
-
+// API Endpoints for Automations
+app.get('/api/get-live-items', async (req, res) => {
   try {
-    const list = await fs.readdir(dir, { withFileTypes: true });
-
-    for (const dirent of list) {
-      const fullPath = path.resolve(dir, dirent.name);
-      if (dirent.isDirectory()) {
-        // Skip known non-backup directories
-        if (SKIP_BACKUP_DIRS.has(dirent.name)) {
-          continue;
-        }
-        const name = dirent.name;
-        const dashedPattern = /^\d{4}-\d{2}-\d{2}-\d{6}$/;
-        const numericPattern = /^\d{12}$/;
-        let isBackupFolder = dashedPattern.test(name) || numericPattern.test(name);
-
-        // Fallback: if folder contains common YAML backup files, treat as backup folder
-        if (!isBackupFolder) {
-          try {
-            const inner = await fs.readdir(fullPath);
-            const hasYaml = inner.some(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-            const hasKnownFiles = inner.includes('automations.yaml') || inner.includes('scripts.yaml');
-            if (hasYaml || hasKnownFiles) {
-              isBackupFolder = true;
-            }
-          } catch (err) {
-            // Skip directories we can't read
-          }
-        }
-
-        if (isBackupFolder) {
-          const stats = await fs.stat(fullPath);
-          let locked = false;
-          try {
-            await fs.access(path.join(fullPath, '.lock'));
-            locked = true;
-          } catch (e) {
-            // Not locked
-          }
-          results.push({ path: fullPath, folderName: name, mtime: stats.mtime, locked });
-        }
-
-        // Continue scanning deeper regardless to support nested structures like /year/month/backup
-        try {
-          const nestedResults = await getBackupDirs(fullPath, depth + 1);
-          results = results.concat(nestedResults);
-        } catch (err) {
-          // Skip directories we can't read
-        }
-      }
-    }
-  } catch (error) {
-    console.error(`${indent}[scan-backups] Error reading ${dir}:`, error.message);
-  }
-
-  return results.filter(result => !SKIP_BACKUP_DIRS.has(path.basename(result.path)));
-}
-
-// Scan backups
-app.post('/api/scan-backups', async (req, res) => {
-  try {
-    // Accept backupRootPath from request body or use default
-    const backupRootPath = req.body?.backupRootPath || '/media/timemachine';
-    const mode = req.body?.mode; // Optional mode filter: automations, scripts, lovelace, esphome, packages
-    console.log('[scan-backups] Scanning backup directory:', backupRootPath, mode ? `for mode: ${mode}` : '');
-
-    // Basic security check
-    if (backupRootPath.includes('..')) {
-      return res.status(400).json({ error: 'Invalid path' });
-    }
-
-    let backups = await getBackupDirs(backupRootPath);
-
-    // Sort descending to show newest first
-    backups.sort((a, b) => b.folderName.localeCompare(a.folderName));
-
-    // If mode is specified, filter backups to only include those with relevant files
-    if (mode) {
-      const filteredBackups = [];
-      for (const backup of backups) {
-        try {
-          const manifestPath = path.join(backup.path, '.backup_manifest.json');
-          const manifestData = await fs.readFile(manifestPath, 'utf8');
-          const manifest = JSON.parse(manifestData);
-
-          let hasRelevantFiles = false;
-
-          switch (mode) {
-            case 'automations':
-              // Check if automations.yaml is in root files
-              hasRelevantFiles = manifest.files?.root?.includes('automations.yaml') ?? false;
-              break;
-            case 'scripts':
-              // Check if scripts.yaml is in root files
-              hasRelevantFiles = manifest.files?.root?.includes('scripts.yaml') ?? false;
-              break;
-            case 'lovelace':
-              // Check if any lovelace files are in storage
-              hasRelevantFiles = (manifest.files?.storage?.some(f => f.startsWith('lovelace'))) ?? false;
-              break;
-            case 'esphome':
-              // Check if any esphome files exist
-              hasRelevantFiles = (manifest.files?.esphome?.length > 0) ?? false;
-              break;
-            case 'packages':
-              // Check if any packages files exist
-              hasRelevantFiles = (manifest.files?.packages?.length > 0) ?? false;
-              break;
-            default:
-              // Unknown mode, include the backup
-              hasRelevantFiles = true;
-          }
-
-          if (hasRelevantFiles) {
-            filteredBackups.push(backup);
-          }
-        } catch (manifestErr) {
-          // No manifest or error reading it - this is an old-style full backup
-          // Include it to be safe (assume it has all files)
-          filteredBackups.push(backup);
-        }
-      }
-      backups = filteredBackups;
-      console.log('[scan-backups] Filtered to', backups.length, 'backups with', mode, 'files');
-    }
-
-    console.log('[scan-backups] Found backups:', backups.length);
-    res.json({ backups });
-  } catch (error) {
-    console.error('[scan-backups] Error:', error);
-    if (error.code === 'ENOENT') {
-      return res.status(404).json({
-        error: `Directory not found: ${error.path}`,
-        code: 'DIR_NOT_FOUND'
-      });
-    }
-    res.status(500).json({ error: 'Failed to scan backup directory.', details: error.message });
-  }
-});
-
-// Check if a snapshot has any changes compared to live config
-app.post('/api/check-snapshot-changes', async (req, res) => {
-  try {
-    const { backupPath, liveConfigPath, mode } = req.body;
+    const { liveConfigPath } = req.query;
     const configPath = liveConfigPath || '/config';
-
-    if (!backupPath) {
-      return res.status(400).json({ error: 'backupPath is required' });
+    const { automationPaths, scriptPaths } = await getConfigFilePaths(configPath);
+    
+    let allAutomations = [];
+    for (const p of automationPaths) {
+      try {
+        const data = await loadYamlWithCache(p);
+        if (Array.isArray(data)) {
+          allAutomations = allAutomations.concat(data);
+        }
+      } catch (err) {
+        debugLog(`[api] Could not read automation file ${p}:`, err.message);
+      }
+    }
+    
+    let allScripts = [];
+    for (const p of scriptPaths) {
+      try {
+        const data = await loadYamlWithCache(p);
+        allScripts = allScripts.concat(processScriptData(data));
+      } catch (err) {
+        debugLog(`[api] Could not read script file ${p}:`, err.message);
+      }
     }
 
-    const hasChanges = await checkSnapshotHasChanges(backupPath, configPath, mode || 'automations');
-    res.json({ hasChanges });
+    res.json({ automations: allAutomations, scripts: allScripts });
   } catch (error) {
-    console.error('[check-snapshot-changes] Error:', error);
+    console.error('[api] Error getting live items:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Clear cache after filtering to free memory
-app.post('/api/clear-cache', (req, res) => {
-  clearBackupCacheEntries();
-  res.json({ success: true, message: 'Cache cleared' });
-});
-
-// Batch check multiple snapshots for changes (more efficient)
-app.post('/api/check-snapshots-batch', async (req, res) => {
-  try {
-    const { backupPaths, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
-
-    if (!backupPaths || !Array.isArray(backupPaths)) {
-      return res.status(400).json({ error: 'backupPaths array is required' });
-    }
-
-    // Check all snapshots in parallel (limit concurrency to avoid overwhelming)
-    const BATCH_SIZE = 10;
-    const results = {};
-
-    for (let i = 0; i < backupPaths.length; i += BATCH_SIZE) {
-      const batch = backupPaths.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(
-        batch.map(async (backupPath) => {
-          try {
-            const hasChanges = await checkSnapshotHasChanges(backupPath, configPath);
-            return { path: backupPath, hasChanges };
-          } catch (err) {
-            // On error, include the backup to be safe
-            return { path: backupPath, hasChanges: true };
-          }
-        })
-      );
-      batchResults.forEach(r => { results[r.path] = r.hasChanges; });
-    }
-
-    res.json({ results });
-  } catch (error) {
-    console.error('[check-snapshots-batch] Error:', error);
-    res.status(500).json({ error: error.message });
+// Helper to process script data (handling both old and new formats)
+function processScriptData(data) {
+  if (!data || typeof data !== 'object') return [];
+  
+  if (Array.isArray(data)) {
+    return data;
   }
-});
-
-// Helper function to check if a single snapshot has changes (mode-aware)
-async function checkSnapshotHasChanges(backupPath, configPath, mode) {
-  // Check only the relevant files based on mode
-  if (mode === 'automations') {
-    return await checkAutomationsChanges(backupPath, configPath);
-  } else if (mode === 'scripts') {
-    return await checkScriptsChanges(backupPath, configPath);
-  } else if (mode === 'lovelace') {
-    return await checkLovelaceChanges(backupPath, configPath);
-  } else if (mode === 'esphome') {
-    return await checkEsphomeChanges(backupPath, configPath);
-  } else if (mode === 'packages') {
-    return await checkPackagesChanges(backupPath, configPath);
-  }
-
-  // Default: check automations
-  return await checkAutomationsChanges(backupPath, configPath);
+  
+  // Object format (standard scripts.yaml)
+  return Object.entries(data).map(([id, content]) => {
+    return {
+      id,
+      ...content
+    };
+  });
 }
 
-// Check automations for changes (supports split configs)
-async function checkAutomationsChanges(backupPath, configPath) {
-  try {
-    // Get all automation file paths from configuration.yaml
-    const { automationPaths } = await getConfigFilePaths(configPath);
-
-    // Load backup automations (check both root automations.yaml and any backed-up directories/files)
-    // We search all files in the backup that match the automation file pattern
-    let backupArray = [];
-    const manifestPath = path.join(backupPath, '.backup_manifest.json');
-    try {
-      const manifestData = await fs.readFile(manifestPath, 'utf8');
-      const manifest = JSON.parse(manifestData);
-      let autoFiles = null;
-      if (manifest.automation_files) {
-        autoFiles = manifest.automation_files;
-      } else if (manifest.files && manifest.files.root) {
-        autoFiles = manifest.files.root.filter(f =>
-          f === 'automations.yaml' ||
-          f.startsWith('automations/') ||
-          f.match(/^[^/]+\/.*\.ya?ml$/)
-        );
-      }
-
-      if (autoFiles) {
-        for (const file of autoFiles) {
-          try {
-            const filePath = path.join(backupPath, file);
-            const fileData = await loadYamlWithCache(filePath);
-            if (Array.isArray(fileData)) {
-              backupArray = backupArray.concat(fileData);
-            }
-          } catch (err) { /* Skip */ }
-        }
-      }
-    } catch (e) {
-      // Fallback for old backups
-      try {
-        const backupFile = path.join(backupPath, 'automations.yaml');
-        const backupData = await loadYamlWithCache(backupFile);
-        backupArray = Array.isArray(backupData) ? backupData : [];
-      } catch (err) { /* No backup file */ }
-    }
-
-    // Load all live automations from all configured paths
-    let liveArray = [];
-    for (const filePath of automationPaths) {
-      try {
-        const fileData = await loadYamlWithCache(filePath);
-        if (Array.isArray(fileData)) {
-          liveArray = liveArray.concat(fileData);
-        }
-      } catch (err) { /* File not found, skip */ }
-    }
-
-    // Only check for deleted or modified items (not new items, since UI only shows backup items)
-    for (const backupItem of backupArray) {
-      const key = backupItem.id || backupItem.alias;
-      if (!key) continue;
-
-      const liveItem = liveArray.find(l => l.id === key || l.alias === key);
-      if (!liveItem) return true; // Deleted
-
-      if (jsyaml.dump(backupItem) !== jsyaml.dump(liveItem)) return true; // Modified
-    }
-
-    return false;
-  } catch (err) {
-    return false;
-  }
-}
-
-
-// Check scripts for changes (supports split configs)
-async function checkScriptsChanges(backupPath, configPath) {
-  try {
-    // Get all script file paths from configuration.yaml
-    const { scriptPaths } = await getConfigFilePaths(configPath);
-
-    // Load backup scripts
-    let backupScripts = {};
-    const manifestPath = path.join(backupPath, '.backup_manifest.json');
-    try {
-      const manifestData = await fs.readFile(manifestPath, 'utf8');
-      const manifest = JSON.parse(manifestData);
-      let scriptFiles = null;
-      if (manifest.script_files) {
-        scriptFiles = manifest.script_files;
-      } else if (manifest.files && manifest.files.root) {
-        scriptFiles = manifest.files.root.filter(f =>
-          f === 'scripts.yaml' ||
-          f.startsWith('scripts/') ||
-          f.match(/^[^/]+\/.*\.ya?ml$/)
-        );
-      }
-
-      if (scriptFiles) {
-        for (const file of scriptFiles) {
-          try {
-            const filePath = path.join(backupPath, file);
-            const fileData = await loadYamlWithCache(filePath);
-            if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
-              Object.assign(backupScripts, fileData);
-            }
-          } catch (err) { /* Skip */ }
-        }
-      }
-    } catch (e) {
-      // Fallback for old backups
-      try {
-        const backupFile = path.join(backupPath, 'scripts.yaml');
-        const backupRaw = await loadYamlWithCache(backupFile);
-        backupScripts = (backupRaw && typeof backupRaw === 'object' && !Array.isArray(backupRaw)) ? backupRaw : {};
-      } catch (err) { /* No backup file */ }
-    }
-
-    // Load all live scripts from all configured paths
-    let liveScripts = {};
-    for (const filePath of scriptPaths) {
-      try {
-        const fileData = await loadYamlWithCache(filePath);
-        if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
-          // Merge scripts from this file
-          Object.assign(liveScripts, fileData);
-        }
-      } catch (err) { /* File not found, skip */ }
-    }
-
-    // Only check for deleted or modified items (not new items, since UI only shows backup items)
-    for (const scriptId of Object.keys(backupScripts)) {
-      if (!liveScripts[scriptId]) return true; // Deleted
-      if (jsyaml.dump(backupScripts[scriptId]) !== jsyaml.dump(liveScripts[scriptId])) return true; // Modified
-    }
-
-    return false;
-  } catch (err) {
-    return false;
-  }
-}
-
-
-// Check lovelace files for changes
-async function checkLovelaceChanges(backupPath, configPath) {
-  try {
-    // Lovelace files are in .storage directory
-    const backupStorageDir = path.join(backupPath, '.storage');
-    const liveStorageDir = path.join(configPath, '.storage');
-
-    // Get list of lovelace files from backup
-    const backupFiles = await fs.readdir(backupStorageDir).catch(() => []);
-    const lovelaceFiles = backupFiles.filter(f => f.startsWith('lovelace'));
-
-    for (const file of lovelaceFiles) {
-      const backupFile = path.join(backupStorageDir, file);
-      const liveFile = path.join(liveStorageDir, file);
-
-      try {
-        const [backupContent, liveContent] = await Promise.all([
-          fs.readFile(backupFile, 'utf-8').catch(() => null),
-          fs.readFile(liveFile, 'utf-8').catch(() => null)
-        ]);
-
-        if (backupContent === null && liveContent !== null) return true; // Added
-        if (backupContent !== null && liveContent === null) return true; // Deleted
-        if (backupContent !== liveContent) return true; // Modified
-      } catch (err) {
-        // Continue checking other files
-      }
-    }
-
-    // Also check for NEW lovelace files in live
-    const liveFiles = await fs.readdir(liveStorageDir).catch(() => []);
-    const liveLovelaceFiles = liveFiles.filter(f => f.startsWith('lovelace'));
-    for (const file of liveLovelaceFiles) {
-      if (!lovelaceFiles.includes(file)) return true; // New file added
-    }
-
-    return false;
-  } catch (err) {
-    return false;
-  }
-}
-
-// Check esphome files for changes
-async function checkEsphomeChanges(backupPath, configPath) {
-  try {
-    const backupEsphomeDir = path.join(backupPath, 'esphome');
-    const liveEsphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
-
-    const backupFiles = await fs.readdir(backupEsphomeDir).catch(() => []);
-    const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-    for (const file of yamlFiles) {
-      const backupFile = path.join(backupEsphomeDir, file);
-      const liveFile = path.join(liveEsphomeDir, file);
-
-      try {
-        const [backupContent, liveContent] = await Promise.all([
-          fs.readFile(backupFile, 'utf-8').catch(() => null),
-          fs.readFile(liveFile, 'utf-8').catch(() => null)
-        ]);
-
-        if (backupContent === null && liveContent !== null) return true;
-        if (backupContent !== null && liveContent === null) return true;
-        if (backupContent !== liveContent) return true;
-      } catch (err) {
-        // Continue
-      }
-    }
-
-    return false;
-  } catch (err) {
-    return false;
-  }
-}
-
-// Check packages files for changes
-async function checkPackagesChanges(backupPath, configPath) {
-  try {
-    const backupPackagesDir = path.join(backupPath, 'packages');
-    const livePackagesDir = path.join(configPath, 'packages');
-
-    const backupFiles = await fs.readdir(backupPackagesDir).catch(() => []);
-    const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-    for (const file of yamlFiles) {
-      const backupFile = path.join(backupPackagesDir, file);
-      const liveFile = path.join(livePackagesDir, file);
-
-      try {
-        const [backupContent, liveContent] = await Promise.all([
-          fs.readFile(backupFile, 'utf-8').catch(() => null),
-          fs.readFile(liveFile, 'utf-8').catch(() => null)
-        ]);
-
-        if (backupContent === null && liveContent !== null) return true;
-        if (backupContent !== null && liveContent === null) return true;
-        if (backupContent !== liveContent) return true;
-      } catch (err) {
-        // Continue
-      }
-    }
-
-    return false;
-  } catch (err) {
-    return false;
-  }
-}
-
-// Get backup automations (supports split configs)
 app.post('/api/get-backup-automations', async (req, res) => {
   try {
     const { backupPath } = req.body;
     let allAutomations = [];
-
-    // Check manifest for split config files
+    
+    // Check manifest first
+    let autoFiles = null;
     try {
       const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
-
-      let autoFiles = null;
+      
       if (manifest.automation_files) {
         autoFiles = manifest.automation_files;
       } else if (manifest.files && manifest.files.root) {
-        autoFiles = manifest.files.root.filter(f =>
-          f === 'automations.yaml' ||
-          f.startsWith('automations/') ||
-          f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "auto_dir/lights.yaml"
+        // Fallback for older backups
+        autoFiles = manifest.files.root.filter(f => 
+          f === 'automations.yaml' || 
+          f.startsWith('automations/') || 
+          f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "automation_dir/outside.yaml"
         );
       }
-
+      
       if (autoFiles) {
         for (const file of autoFiles) {
           try {
-            const filePath = path.join(backupPath, file);
+            const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
             if (Array.isArray(fileData)) {
               allAutomations = allAutomations.concat(fileData);
             }
           } catch (err) { /* File not found, skip */ }
         }
-
+        
         if (allAutomations.length > 0) {
           return res.json({ automations: allAutomations });
         }
-
+        
         // If no automation files in manifest, return empty
         if (manifest.automation_files || autoFiles.includes('automations.yaml')) {
-          // If we have explicit list OR it included standard file, we return what we found (even if empty)
-          // unless it's an old manifest without explicit list and didn't include automations.yaml
           return res.json({ automations: allAutomations });
         }
       }
     } catch (e) {
-      // Manifest missing -> assume old full backup -> proceed to resolve
+      // Fallback to searching physical directory if manifest fails
     }
 
-    // Fallback: try standard automations.yaml
-    try {
-      const automationsFile = await resolveFileInBackupChain(backupPath, 'automations.yaml');
-      const automations = await loadYamlWithCache(automationsFile) || [];
-      allAutomations = Array.isArray(automations) ? automations : [];
-    } catch (err) { /* No automations.yaml */ }
+    // Physical search fallback
+    const files = await fs.readdir(backupPath);
+    const yamlFiles = files.filter(f => f === 'automations.yaml' || f.startsWith('automations/') || f.endsWith('.yaml'));
+    
+    for (const f of yamlFiles) {
+      try {
+        const filePath = path.join(backupPath, f);
+        const data = await loadYamlWithCache(filePath);
+        if (Array.isArray(data)) {
+          allAutomations = allAutomations.concat(data);
+        }
+      } catch (err) { /* Skip */ }
+    }
 
     res.json({ automations: allAutomations });
   } catch (error) {
-    console.error('[get-backup-automations] Error:', error);
+    console.error('[api] Error getting backup items:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-
-// Get backup scripts (supports split configs)
 app.post('/api/get-backup-scripts', async (req, res) => {
   try {
     const { backupPath } = req.body;
     let allScripts = [];
-
-    // Helper function to process script data
-    const processScriptData = (data) => {
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        return Object.keys(data).map(scriptId => ({
-          id: scriptId,
-          ...data[scriptId]
-        }));
-      } else if (Array.isArray(data)) {
-        return data;
-      }
-      return [];
-    };
-
-    // Check manifest for split config files
+    
+    // Check manifest first
+    let scriptFiles = null;
     try {
       const manifestPath = path.join(backupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
-
-      let scriptFiles = null;
+      
       if (manifest.script_files) {
         scriptFiles = manifest.script_files;
       } else if (manifest.files && manifest.files.root) {
-        scriptFiles = manifest.files.root.filter(f =>
-          f === 'scripts.yaml' ||
-          f.startsWith('scripts/') ||
+        scriptFiles = manifest.files.root.filter(f => 
+          f === 'scripts.yaml' || 
+          f.startsWith('scripts/') || 
           f.match(/^[^/]+\/.*\.ya?ml$/) // e.g., "script_dir/utilities.yaml"
         );
       }
-
+      
       if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
-            const filePath = path.join(backupPath, file);
+            const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
-            allScripts = allScripts.concat(processScriptData(fileData));
+            const processed = processScriptData(fileData);
+            allScripts = allScripts.concat(processed);
           } catch (err) { /* File not found, skip */ }
         }
-
+        
         if (allScripts.length > 0) {
           return res.json({ scripts: allScripts });
         }
-
+        
         // If no script files in manifest, return empty
         if (manifest.script_files || scriptFiles.includes('scripts.yaml')) {
           return res.json({ scripts: allScripts });
         }
       }
     } catch (e) {
-      // Manifest missing -> assume old full backup -> proceed to resolve
+      // Fallback
     }
 
-    // Fallback: try standard scripts.yaml
-    try {
-      const scriptsFile = await resolveFileInBackupChain(backupPath, 'scripts.yaml');
-      const scriptsData = await loadYamlWithCache(scriptsFile);
-      allScripts = processScriptData(scriptsData);
-    } catch (err) { /* No scripts.yaml */ }
+    // Physical search fallback
+    const files = await fs.readdir(backupPath);
+    const yamlFiles = files.filter(f => f === 'scripts.yaml' || f.startsWith('scripts/') || f.endsWith('.yaml'));
+    
+    for (const f of yamlFiles) {
+      try {
+        const filePath = path.join(backupPath, f);
+        const data = await loadYamlWithCache(filePath);
+        allScripts = allScripts.concat(processScriptData(data));
+      } catch (err) { /* Skip */ }
+    }
 
     res.json({ scripts: allScripts });
   } catch (error) {
-    console.error('[get-backup-scripts] Error:', error);
+    console.error('[api] Error getting backup items:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-
-// Get live items (automations or scripts) - supports split configs
-app.post('/api/get-live-items', async (req, res) => {
+app.post('/api/get-backup-automation-content', async (req, res) => {
   try {
-    const { itemIdentifiers, mode, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
-
-    // Get all file paths from configuration.yaml
-    const { automationPaths, scriptPaths } = await getConfigFilePaths(configPath);
-    const filePaths = mode === 'automations' ? automationPaths : scriptPaths;
-
-    // Load all items from all configured paths
-    let allItems = [];
-    for (const filePath of filePaths) {
-      try {
-        const fileData = await loadYamlWithCache(filePath);
-        if (mode === 'automations') {
-          if (Array.isArray(fileData)) {
-            allItems = allItems.concat(fileData);
-          }
-        } else if (mode === 'scripts') {
-          // Handle scripts dictionary format
-          if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
-            const scriptItems = Object.keys(fileData).map(scriptId => ({
-              id: scriptId,
-              ...fileData[scriptId]
-            }));
-            allItems = allItems.concat(scriptItems);
-          } else if (Array.isArray(fileData)) {
-            allItems = allItems.concat(fileData);
-          }
-        }
-      } catch (err) { /* File not found, skip */ }
-    }
-
-    const liveItems = {};
-    itemIdentifiers.forEach(identifier => {
-      const item = allItems.find(i => (i.id === identifier || i.alias === identifier));
-      if (item) {
-        liveItems[identifier] = item;
+    const { backupPath, automationIdentifier } = req.body;
+    
+    // Check manifest for file list
+    let autoFiles = null;
+    try {
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      
+      if (manifest.automation_files) {
+        autoFiles = manifest.automation_files;
+      } else if (manifest.files && manifest.files.root) {
+        autoFiles = manifest.files.root.filter(f => 
+          f === 'automations.yaml' || 
+          f.startsWith('automations/') || 
+          f.match(/^[^/]+\/.*\.ya?ml$/)
+        );
       }
-    });
-
-    res.json({ liveItems });
-  } catch (error) {
-    console.error('[get-live-items] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// Get live automation (supports split configs)
-app.post('/api/get-live-automation', async (req, res) => {
-  try {
-    const { automationIdentifier, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
-
-    // Get all automation file paths from configuration.yaml
-    const { automationPaths } = await getConfigFilePaths(configPath);
-
-    // Search all automation files for the requested automation
-    let automation = null;
-    for (const filePath of automationPaths) {
-      try {
-        const automations = await loadYamlWithCache(filePath) || [];
-        if (Array.isArray(automations)) {
-          automation = automations.find(a => a.id === automationIdentifier || a.alias === automationIdentifier);
-          if (automation) break;
-        }
-      } catch (err) { /* File not found, continue */ }
-    }
-
-    if (!automation) {
-      return res.status(404).json({ error: 'Automation not found' });
-    }
-
-    res.json({ automation });
-  } catch (error) {
-    console.error('[get-live-automation] Error:', error);
-    res.status(404).json({ error: error.message });
-  }
-});
-
-
-// Get live script (supports split configs)
-app.post('/api/get-live-script', async (req, res) => {
-  try {
-    const { automationIdentifier, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
-
-    // Get all script file paths from configuration.yaml
-    const { scriptPaths } = await getConfigFilePaths(configPath);
-
-    // Search all script files for the requested script
-    let script = null;
-    for (const filePath of scriptPaths) {
-      try {
-        const scriptsData = await loadYamlWithCache(filePath);
-        // Scripts can be in dictionary format (key: script_id, value: script object)
-        if (scriptsData && typeof scriptsData === 'object' && !Array.isArray(scriptsData)) {
-          if (scriptsData[automationIdentifier]) {
-            script = { id: automationIdentifier, ...scriptsData[automationIdentifier] };
-            break;
-          }
-          // Also search by alias
-          for (const [id, scriptObj] of Object.entries(scriptsData)) {
-            if (scriptObj.alias === automationIdentifier) {
-              script = { id, ...scriptObj };
-              break;
+      
+      if (autoFiles) {
+        for (const file of autoFiles) {
+          try {
+            const filePath = await resolveFileInBackupChain(backupPath, file);
+            const data = await loadYamlWithCache(filePath);
+            if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
+              const content = await fs.readFile(filePath, 'utf-8');
+              return res.json({ content });
             }
-          }
-          if (script) break;
-        } else if (Array.isArray(scriptsData)) {
-          // Fallback for array format
-          script = scriptsData.find(s => s.id === automationIdentifier || s.alias === automationIdentifier);
-          if (script) break;
+          } catch (err) { /* Skip */ }
         }
-      } catch (err) { /* File not found, continue */ }
+      }
+    } catch (e) { /* Fallback */ }
+
+    // Fallback search
+    const files = await fs.readdir(backupPath);
+    const yamlFiles = files.filter(f => f === 'automations.yaml' || f.endsWith('.yaml'));
+    
+    for (const f of yamlFiles) {
+      try {
+        const filePath = path.join(backupPath, f);
+        const data = await loadYamlWithCache(filePath);
+        if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
+          const content = await fs.readFile(filePath, 'utf-8');
+          return res.json({ content });
+        }
+      } catch (err) { /* Skip */ }
     }
 
-    if (!script) {
-      return res.status(404).json({ error: 'Script not found' });
-    }
-
-    res.json({ script });
+    res.status(404).json({ error: 'Automation not found in backup' });
   } catch (error) {
-    console.error('[get-live-script] Error:', error);
-    res.status(404).json({ error: error.message });
+    console.error('[api] Error getting backup automation content:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-
-// Helper to find the full range of a YAML item including comments and structure
-function findFullRange(content, node, isListItem) {
-  let start = node.range[0];
-  let end = node.range[1];
-
-  // 1. Find the start of the item structure (dash or key)
-  if (isListItem) {
-    // Scan backwards for dash
-    while (start > 0 && content[start] !== '-') {
-      start--;
-    }
-  } else {
-    // For map item (script), node is the value. We need to find the key.
-    // Scan backwards for ':'
-    while (start > 0 && content[start] !== ':') {
-      start--;
-    }
-    // Now scan backwards for the key start (start of line or after whitespace)
-    if (start > 0) {
-      // Scan back to newline or start of file.
-      while (start > 0 && content[start - 1] !== '\n') {
-        start--;
+app.post('/api/get-backup-script-content', async (req, res) => {
+  try {
+    const { backupPath, automationIdentifier: scriptIdentifier } = req.body;
+    
+    // Check manifest for file list
+    let scriptFiles = null;
+    try {
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      
+      if (manifest.script_files) {
+        scriptFiles = manifest.script_files;
+      } else if (manifest.files && manifest.files.root) {
+        scriptFiles = manifest.files.root.filter(f => 
+          f === 'scripts.yaml' || 
+          f.startsWith('scripts/') || 
+          f.match(/^[^/]+\/.*\.ya?ml$/)
+        );
       }
+      
+      if (scriptFiles) {
+        for (const file of scriptFiles) {
+          try {
+            const filePath = await resolveFileInBackupChain(backupPath, file);
+            const data = await loadYamlWithCache(filePath);
+            if (data && typeof data === 'object' && !Array.isArray(data)) {
+              if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
+                const content = await fs.readFile(filePath, 'utf-8');
+                return res.json({ content });
+              }
+            }
+          } catch (err) { /* Skip */ }
+        }
+      }
+    } catch (e) { /* Fallback */ }
+
+    // Fallback search
+    const files = await fs.readdir(backupPath);
+    const yamlFiles = files.filter(f => f === 'scripts.yaml' || f.endsWith('.yaml'));
+    
+    for (const f of yamlFiles) {
+      try {
+        const filePath = path.join(backupPath, f);
+        const data = await loadYamlWithCache(filePath);
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
+            const content = await fs.readFile(filePath, 'utf-8');
+            return res.json({ content });
+          }
+        }
+      } catch (err) { /* Skip */ }
     }
+
+    res.status(404).json({ error: 'Script not found in backup' });
+  } catch (error) {
+    console.error('[api] Error getting backup script content:', error);
+    res.status(500).json({ error: error.message });
   }
+});
 
-  // 2. Scan backwards for comments and empty lines
-  let current = start;
-  while (current > 0) {
-    const prevChar = content[current - 1];
-    if (prevChar === '\n') {
-      // Check the line before this newline
-      let lineEnd = current - 1;
-      let lineStart = lineEnd;
-      while (lineStart > 0 && content[lineStart - 1] !== '\n') {
-        lineStart--;
-      }
-      const line = content.substring(lineStart, lineEnd);
-      if (line.trim().startsWith('#') || line.trim() === '') {
-        // Include this line
-        current = lineStart;
+app.get('/api/get-live-automation-content', async (req, res) => {
+  try {
+    const { automationIdentifier, liveConfigPath } = req.query;
+    const configPath = liveConfigPath || '/config';
+    const { automationPaths } = await getConfigFilePaths(configPath);
+    
+    for (const p of automationPaths) {
+      try {
+        const data = await loadYamlWithCache(p);
+        if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
+          const content = await fs.readFile(p, 'utf-8');
+          return res.json({ content });
+        }
+      } catch (err) { /* Skip */ }
+    }
+
+    res.status(404).json({ error: 'Automation not found in live configuration' });
+  } catch (error) {
+    console.error('[api] Error getting live automation content:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/get-live-script-content', async (req, res) => {
+  try {
+    const { automationIdentifier: scriptIdentifier, liveConfigPath } = req.query;
+    const configPath = liveConfigPath || '/config';
+    const { scriptPaths } = await getConfigFilePaths(configPath);
+    
+    for (const p of scriptPaths) {
+      try {
+        const data = await loadYamlWithCache(p);
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
+            const content = await fs.readFile(p, 'utf-8');
+            return res.json({ content });
+          }
+        }
+      } catch (err) { /* Skip */ }
+    }
+
+    res.status(404).json({ error: 'Script not found in live configuration' });
+  } catch (error) {
+    console.error('[api] Error getting live script content:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Find the full range of a YAML item including preceding comments
+ */
+function findFullRange(content, node, includeComments = true) {
+  if (!node || !node.range) return [0, 0];
+  
+  let start = node.range[0];
+  const end = node.range[1];
+  
+  if (includeComments) {
+    // Look backwards for comments and blank lines
+    const before = content.substring(0, start);
+    const lines = before.split('\n');
+    let commentLines = 0;
+    
+    for (let i = lines.length - 2; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (line.startsWith('#') || line === '') {
+        commentLines++;
       } else {
-        // This line is content (previous item), stop.
         break;
       }
-    } else {
-      // Consume spaces/indentation before the item start
-      current--;
+    }
+    
+    if (commentLines > 0) {
+      // Adjust start to include these lines
+      const linesToInclude = lines.slice(lines.length - 1 - commentLines);
+      start -= linesToInclude.join('\n').length;
     }
   }
-  start = current;
-
+  
   return [start, end];
 }
 
-// Restore automation
 app.post('/api/restore-automation', async (req, res) => {
   try {
     const { backupPath, automationIdentifier, timezone, liveConfigPath, smartBackupEnabled } = req.body;
@@ -1886,6 +1276,7 @@ app.post('/api/restore-automation', async (req, res) => {
       if (manifest.automation_files) {
         autoFiles = manifest.automation_files;
       } else if (manifest.files && manifest.files.root) {
+        // Fallback for older backups
         autoFiles = manifest.files.root.filter(f =>
           f === 'automations.yaml' ||
           f.startsWith('automations/') ||
@@ -1896,7 +1287,7 @@ app.post('/api/restore-automation', async (req, res) => {
       if (autoFiles) {
         for (const file of autoFiles) {
           try {
-            const potentialBackupPath = path.join(backupPath, file);
+            const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
             if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
               relativeFilePath = file;
@@ -2014,7 +1405,7 @@ app.post('/api/restore-script', async (req, res) => {
       if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
-            const potentialBackupPath = path.join(backupPath, file);
+            const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
             if (data && typeof data === 'object' && !Array.isArray(data)) {
               if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
@@ -2035,7 +1426,7 @@ app.post('/api/restore-script', async (req, res) => {
     const liveFilePath = path.join(configPath, relativeFilePath);
     const backupContent = await fs.readFile(backupFilePath, 'utf-8');
 
-    // Read live contents
+    // For scripts, we replace or append to the top-level object
     let liveContent = '';
     try {
       liveContent = await fs.readFile(liveFilePath, 'utf-8');
@@ -2044,31 +1435,41 @@ app.post('/api/restore-script', async (req, res) => {
       liveContent = '{}';
     }
 
-    // Parse documents (preserves ranges)
     const liveDoc = YAML.parseDocument(liveContent);
     const backupDoc = YAML.parseDocument(backupContent);
 
-    // Find backup node
-    const backupNode = backupDoc.get(scriptIdentifier);
-    if (!backupNode) {
+    // Find snippet in backup
+    let backupSnippet = '';
+    const backupMap = backupDoc.contents;
+    if (backupMap && backupMap.items) {
+      const item = backupMap.items.find(i => i.key.toJSON() === scriptIdentifier);
+      if (item) {
+        const [start, end] = findFullRange(backupContent, item, true);
+        backupSnippet = backupContent.substring(start, end);
+      }
+    }
+
+    if (!backupSnippet) {
       return res.status(404).json({ error: 'Script not found in backup' });
     }
-    const [backupStart, backupEnd] = findFullRange(backupContent, backupNode, false);
-    const backupSnippet = backupContent.substring(backupStart, backupEnd);
 
-    // Find live node
-    const liveNode = liveDoc.get(scriptIdentifier);
-
+    // Replace in live
     let newLiveContent;
-    if (liveNode) {
-      const [liveStart, liveEnd] = findFullRange(liveContent, liveNode, false);
-      newLiveContent = liveContent.substring(0, liveStart) + backupSnippet + liveContent.substring(liveEnd);
+    const liveMap = liveDoc.contents;
+    let liveItemIndex = -1;
+    if (liveMap && liveMap.items) {
+      liveItemIndex = liveMap.items.findIndex(i => i.key.toJSON() === scriptIdentifier);
+    }
+
+    if (liveItemIndex !== -1) {
+      const item = liveMap.items[liveItemIndex];
+      const [start, end] = findFullRange(liveContent, item, true);
+      newLiveContent = liveContent.substring(0, start) + backupSnippet + liveContent.substring(end);
     } else {
       const prefix = (liveContent.length > 0 && !liveContent.endsWith('\n')) ? '\n' : '';
       newLiveContent = liveContent + prefix + backupSnippet;
     }
 
-    // Write back
     await fs.writeFile(liveFilePath, newLiveContent, 'utf-8');
 
     res.json({ success: true, message: `Script restored successfully to ${relativeFilePath}` });
@@ -2078,561 +1479,359 @@ app.post('/api/restore-script', async (req, res) => {
   }
 });
 
-// Reload Home Assistant
-app.post('/api/reload-home-assistant', async (req, res) => {
+// Settings & Options
+app.get('/api/get-options', async (req, res) => {
   try {
-    const { service } = req.body;
-
-    if (!service) {
-      return res.status(400).json({ error: 'Missing required parameter: service' });
-    }
-
-    const auth = await getHomeAssistantAuth();
-
-    if (!auth.baseUrl || !auth.token) {
-      return res.status(400).json({ error: 'Home Assistant access is not configured for this environment.' });
-    }
-
-    const serviceUrl = `${auth.baseUrl}/services/${service.replace('.', '/')}`;
-    const headers = {
-      'Authorization': `Bearer ${auth.token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    if (auth.source === 'supervisor') {
-      headers['X-Supervisor-Token'] = auth.token;
-    }
-
-    // Make async call to HA (don't wait for response)
-    fetch(serviceUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({})
-    }).catch(err => console.error('[reload-home-assistant] Background error:', err));
-
-    res.json({ message: 'Home Assistant reload initiated successfully' });
+    const options = await getAddonOptions();
+    res.json(options);
   } catch (error) {
-    console.error('[reload-home-assistant] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Helper to check if directory contains backups (recursively)
-async function hasBackupsRecursive(dir, depth = 0, maxDepth = 5) {
-  if (depth > maxDepth) return false;
-
+app.post('/api/save-credentials', async (req, res) => {
   try {
-    const list = await fs.readdir(dir, { withFileTypes: true });
-
-    // Check for YAML files in current directory
-    const hasYaml = list.some(item => !item.isDirectory() && (item.name.endsWith('.yaml') || item.name.endsWith('.yml')));
-    if (hasYaml) return true;
-
-    // Check for backup-pattern directories
-    const hasBackupPattern = list.some(item => {
-      if (!item.isDirectory()) return false;
-      const name = item.name;
-      return /^\d{4}-\d{2}-\d{2}-\d{6}$/.test(name) || /^\d{12}$/.test(name);
-    });
-    if (hasBackupPattern) return true;
-
-    // Recursively check subdirectories
-    for (const item of list) {
-      if (item.isDirectory()) {
-        const fullPath = path.resolve(dir, item.name);
-        const hasNested = await hasBackupsRecursive(fullPath, depth + 1, maxDepth);
-        if (hasNested) return true;
-      }
+    const { haUrl, haToken } = req.body;
+    if (!haUrl || !haToken) {
+      return res.status(400).json({ error: 'URL and Token are required' });
     }
 
-    return false;
+    const creds = {
+      home_assistant_url: haUrl,
+      long_lived_access_token: haToken,
+      updated_at: new Date().toISOString()
+    };
+
+    await fs.writeFile(path.join(DATA_DIR, 'docker-ha-credentials.json'), JSON.stringify(creds, null, 2));
+    res.json({ success: true });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const DOCKER_SETTINGS_FILE = path.join(DATA_DIR, 'docker-app-settings.json');
+
+async function loadDockerSettings() {
+  try {
+    const data = await fs.readFile(DOCKER_SETTINGS_FILE, 'utf-8');
+    const settings = JSON.parse(data);
+    return { ...settings, __loadedFromFile: true };
+  } catch (e) {
+    return {
+      theme: 'dark',
+      language: 'en',
+      esphomeEnabled: false,
+      packagesEnabled: false,
+      backupFolderPath: '/media/timemachine',
+      liveConfigPath: '/config',
+      smartBackupEnabled: false,
+      __loadedFromFile: false
+    };
+  }
+}
+
+async function saveDockerSettings(settings) {
+  try {
+    const current = await loadDockerSettings();
+    const updated = { ...current, ...settings };
+    delete updated.__loadedFromFile; // Don't persist the flag
+    await fs.writeFile(DOCKER_SETTINGS_FILE, JSON.stringify(updated, null, 2));
+    return true;
+  } catch (e) {
+    console.error('[settings] Failed to save settings:', e.message);
     return false;
   }
 }
 
-// Validate backup path
-app.post('/api/validate-backup-path', async (req, res) => {
+app.post('/api/save-settings', async (req, res) => {
   try {
-    const { path: folderPath } = req.body;
+    const { theme, language, esphomeEnabled, packagesEnabled, backupFolderPath, liveConfigPath, smartBackupEnabled } = req.body;
 
-    if (!folderPath) {
-      return res.status(400).json({ isValid: false, error: 'Path is required' });
+    // Validate paths if provided
+    if (backupFolderPath) {
+      try {
+        await fs.access(backupFolderPath);
+      } catch (e) {
+        return res.status(400).json({ error: `Backup folder path is inaccessible: ${backupFolderPath}` });
+      }
     }
 
-    const stats = await fs.stat(folderPath);
-
-    if (!stats.isDirectory()) {
-      return res.status(400).json({ isValid: false, error: 'Provided path is not a directory' });
+    if (liveConfigPath) {
+      try {
+        await fs.access(liveConfigPath);
+      } catch (e) {
+        return res.status(400).json({ error: `Config folder path is inaccessible: ${liveConfigPath}` });
+      }
     }
 
-    // Check recursively for backups or YAML files
-    const hasBackups = await hasBackupsRecursive(folderPath);
+    const success = await saveDockerSettings({
+      theme,
+      language,
+      esphomeEnabled,
+      packagesEnabled,
+      backupFolderPath,
+      liveConfigPath,
+      smartBackupEnabled
+    });
 
-    if (!hasBackups) {
-      return res.status(400).json({
-        isValid: false,
-        error: 'No backup folders or YAML files found in directory tree (searched 5 levels deep)'
-      });
+    if (success) {
+      res.json({ success: true });
+    } else {
+      res.status(500).json({ error: 'Failed to save settings' });
     }
-
-    res.json({ isValid: true });
   } catch (error) {
-    if (error.code === 'ENOENT') {
-      return res.status(400).json({ isValid: false, error: 'Directory does not exist' });
-    }
-    if (error.code === 'EACCES') {
-      return res.status(400).json({ isValid: false, error: 'Permission denied - cannot access directory' });
-    }
-    res.status(500).json({ isValid: false, error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Test Home Assistant connection
-app.post('/api/test-home-assistant-connection', async (req, res) => {
+app.post('/api/test-connection', async (req, res) => {
   try {
-    // Allow overriding with request body for testing before saving (Docker mode)
-    const providedHaUrl = req.body.haUrl;
-    const providedHaToken = req.body.haToken;
-
-    const manualOverride = (providedHaUrl && providedHaToken)
-      ? { haUrl: providedHaUrl, haToken: providedHaToken }
-      : null;
-
-    const auth = await getHomeAssistantAuth(null, manualOverride);
+    const { haUrl, haToken } = req.body;
+    const auth = await getHomeAssistantAuth(null, { haUrl, haToken });
 
     if (!auth.baseUrl || !auth.token) {
-      res.status(400).json({ success: false, message: 'Home Assistant access is not configured. For Docker deployments without ingress, supply a URL and long-lived token.' });
-      return;
+      return res.status(400).json({ error: 'Missing credentials' });
     }
 
-    const headers = {
-      'Authorization': `Bearer ${auth.token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
+    const agent = new https.Agent({
+      rejectUnauthorized: false // Allow self-signed certs for local HA
+    });
 
-    if (auth.source === 'supervisor') {
-      headers['X-Supervisor-Token'] = auth.token;
-    }
-
-    const endpoint = `${auth.baseUrl}/states`;
-    const fetchOptions = { headers };
-    let tlsFallbackUsed = false;
-    let response;
-
-    try {
-      response = await fetch(endpoint, fetchOptions);
-    } catch (fetchError) {
-      if (auth.baseUrl.startsWith('https://') && isTlsCertificateError(fetchError)) {
-        tlsFallbackUsed = true;
-        console.warn('[test-connection] TLS verification failed, retrying with relaxed validation:', {
-          endpoint,
-          code: fetchError.code,
-          message: fetchError.message,
-          causeCode: fetchError.cause?.code,
-        });
-        const insecureAgent = new https.Agent({ rejectUnauthorized: false });
-        response = await fetch(endpoint, { ...fetchOptions, agent: insecureAgent });
-      } else {
-        throw fetchError;
-      }
-    }
+    const response = await fetch(`${auth.baseUrl}/config`, {
+      headers: {
+        'Authorization': `Bearer ${auth.token}`,
+        'Content-Type': 'application/json'
+      },
+      agent: auth.baseUrl.startsWith('https') ? agent : undefined
+    });
 
     if (response.ok) {
-      res.json({
-        success: true,
-        message: 'Connected to Home Assistant successfully.',
-        authMode: auth.source,
-        tlsFallback: tlsFallbackUsed ? 'insecure' : 'strict',
-      });
+      const data = await response.json();
+      res.json({ success: true, version: data.version });
     } else {
       const errorText = await response.text();
-      console.error('[test-connection] HA response error', {
-        status: response.status,
-        authMode: auth.source,
-        baseUrl: auth.baseUrl,
-        errorText,
-      });
-      res.status(response.status).json({
-        success: false,
-        message: `Connection failed: ${response.status} - ${errorText}`,
-        tlsFallback: tlsFallbackUsed ? 'insecure' : 'strict',
-      });
+      res.status(response.status).json({ error: errorText || 'Connection failed' });
     }
   } catch (error) {
-    console.error('[test-connection] Error:', error);
-    res.status(500).json({ success: false, message: `Connection failed: ${error.message}` });
+    const isCertError = isTlsCertificateError(error);
+    console.error('[test-connection] Error:', error.message, isCertError ? '(TLS Certificate Error)' : '');
+
+    res.status(500).json({
+      error: error.message,
+      isTlsError: isCertError
+    });
   }
 });
 
-// Schedule backup endpoints
-let scheduledJobs = {};
-const SCHEDULE_FILE = path.join(DATA_DIR, 'scheduled-jobs.json');
-
-// Load scheduled jobs from file
-async function loadScheduledJobs() {
-  try {
-    const content = await fs.readFile(SCHEDULE_FILE, 'utf-8');
-    const data = JSON.parse(content);
-
-    // Normalize: ensure we only have { jobs: {...} } structure
-    // Remove any legacy top-level job keys
-    if (!data.jobs) {
-      data.jobs = {};
-    }
-
-    // Clean up: return only the jobs wrapper
-    return { jobs: data.jobs };
-  } catch (error) {
-    return { jobs: {} };
-  }
-}
-
-// Save scheduled jobs to file
-async function saveScheduledJobs(jobs) {
-  await fs.writeFile(SCHEDULE_FILE, JSON.stringify(jobs, null, 2));
-}
-
-// Get schedule
-app.get('/api/schedule-backup', async (req, res) => {
-  try {
-    const jobs = await loadScheduledJobs();
-    res.json(jobs);
-  } catch (error) {
-    console.error('[get-schedule] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Set schedule
-app.post('/api/schedule-backup', async (req, res) => {
-  try {
-    const { id, cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, smartBackupEnabled } = req.body;
-
-    const jobs = await loadScheduledJobs();
-    jobs.jobs = jobs.jobs || {};
-    jobs.jobs[id] = { cronExpression, enabled, timezone, liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, smartBackupEnabled };
-    console.log('[scheduler] New schedule saved:', jobs.jobs[id]);
-
-    // Clean structure: only save { jobs: {...} }
-    const cleanJobs = { jobs: jobs.jobs };
-    await saveScheduledJobs(cleanJobs);
-
-    // Stop existing cron job if any
-    if (scheduledJobs[id]) {
-      scheduledJobs[id].stop();
-      delete scheduledJobs[id];
-    }
-
-    // Start new cron job if enabled
-    const jobConfig = jobs.jobs[id];
-    if (enabled) {
-      console.log(`[scheduler] Setting up schedule "${id}" with cron "${cronExpression}" and timezone "${timezone}"`);
-      scheduledJobs[id] = cron.schedule(cronExpression, async () => {
-        console.log(`[cron] Triggered backup job: ${id} at ${new Date().toISOString()}`);
-        try {
-          const effectiveLivePath = jobConfig.liveConfigPath || '/config';
-          const effectiveBackupPath = jobConfig.backupFolderPath || '/media/timemachine';
-          console.log(`[cron] Using live path "${effectiveLivePath}" and backup path "${effectiveBackupPath}".`);
-          try {
-            const response = await fetch(`http://localhost:${PORT}/api/backup-now`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                liveConfigPath: effectiveLivePath,
-                backupFolderPath: effectiveBackupPath,
-                maxBackupsEnabled: jobConfig.maxBackupsEnabled,
-                maxBackupsCount: jobConfig.maxBackupsCount,
-                timezone: jobConfig.timezone,
-                smartBackupEnabled: jobConfig.smartBackupEnabled
-              })
-            });
-            const result = await response.json();
-            if (response.ok) {
-              console.log(`[cron] Backup triggered successfully: ${result.message}`);
-            } else {
-              console.error(`[cron] Backup trigger failed: ${result.error}`);
-            }
-          } catch (error) {
-            console.error(`[cron] Error triggering backup:`, error);
-          }
-        } catch (error) {
-          console.error(`[cron] Error during scheduled backup for job ${id}:`, error);
-        }
-      }, { timezone });
-    }
-
-    res.json({ success: true, message: 'Schedule updated successfully' });
-  } catch (error) {
-    console.error('[set-schedule] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Validate path
 app.post('/api/validate-path', async (req, res) => {
   try {
-    const { path: requestedPath, type } = req.body;
-
-    if (!requestedPath) {
-      return res.json({ errorCode: 'directory_not_found' });
-    }
+    const { path: folderPath, type } = req.body;
+    if (!folderPath) return res.status(400).json({ error: 'Path is required' });
 
     try {
-      const stats = await fs.stat(requestedPath);
-      if (!stats.isDirectory()) {
-        return res.json({ errorCode: 'not_directory', path: requestedPath });
-      }
+      await fs.access(folderPath);
 
       if (type === 'live') {
-        // Check if config has automations (either standard or split config)
-        const { automationPaths } = await getConfigFilePaths(requestedPath);
+        // Check for configuration.yaml
+        try {
+          await fs.access(path.join(folderPath, 'configuration.yaml'));
+        } catch (e) {
+          return res.json({ success: false, reason: 'missing_configuration' });
+        }
 
-        // Check if at least one automation file exists
-        let hasAutomations = false;
-        for (const autoPath of automationPaths) {
+        // Check for automations.yaml using the robust parser
+        const { automationPaths } = await getConfigFilePaths(folderPath);
+        let automationsFound = false;
+        for (const p of automationPaths) {
           try {
-            await fs.access(autoPath);
-            hasAutomations = true;
+            await fs.access(p);
+            automationsFound = true;
             break;
-          } catch (err) {
-            // File doesn't exist, try next
-          }
+          } catch (e) { /* Check next */ }
         }
 
-        if (!hasAutomations) {
-          return res.json({ errorCode: 'missing_automations', path: requestedPath });
+        if (!automationsFound) {
+          return res.json({ success: false, reason: 'missing_automations' });
         }
       }
 
-      return res.json({ success: true });
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        return res.json({ errorCode: 'directory_not_found', path: requestedPath });
-      }
-      return res.json({ errorCode: 'cannot_access', path: requestedPath, details: err.message });
+      res.json({ success: true });
+    } catch (e) {
+      res.json({ success: false, reason: 'inaccessible' });
     }
   } catch (error) {
-    console.error('[validate-path] Error:', error);
-    res.status(500).json({ error: error.message, errorCode: 'unknown' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-
-// Helper function to get all backup paths in reverse chronological order
-async function getAllBackupPaths(backupRoot) {
-  const allBackups = [];
+app.get('/api/backups', async (req, res) => {
   try {
-    const years = await fs.readdir(backupRoot);
-    const yearDirs = years.filter(y => /^\d{4}$/.test(y));
-    yearDirs.sort().reverse();
+    const options = await getAddonOptions();
+    const settings = await loadDockerSettings();
+    const backupRoot = options.backupFolderPath || settings.backupFolderPath || '/media/timemachine';
 
-    for (const year of yearDirs) {
-      const yearPath = path.join(backupRoot, year);
-      const months = await fs.readdir(yearPath);
-      const monthDirs = months.filter(m => /^\d{2}$/.test(m));
-      monthDirs.sort().reverse();
+    const backupFolders = await getAllBackupPaths(backupRoot);
 
-      for (const month of monthDirs) {
-        const monthPath = path.join(yearPath, month);
-        const backups = await fs.readdir(monthPath);
-        const backupDirs = backups.filter(b => /^\d{4}-\d{2}-\d{2}-\d{6}$/.test(b));
-        backupDirs.sort().reverse();
+    const backups = await Promise.all(backupFolders.map(async (folderPath) => {
+      const stats = await fs.stat(folderPath);
+      const name = path.basename(folderPath);
 
-        for (const backup of backupDirs) {
-          allBackups.push(path.join(monthPath, backup));
+      // Check for lock
+      let locked = false;
+      try {
+        await fs.access(path.join(folderPath, '.lock'));
+        locked = true;
+      } catch (e) { /* Not locked */ }
+
+      // Check for changes (diff) if available
+      let hasChanges = true;
+      try {
+        const manifestPath = path.join(folderPath, '.backup_manifest.json');
+        const manifestData = await fs.readFile(manifestPath, 'utf8');
+        const manifest = JSON.parse(manifestData);
+        if (typeof manifest.has_changes === 'boolean') {
+          hasChanges = manifest.has_changes;
         }
-      }
-    }
-    return allBackups;
-  } catch (err) {
-    console.log('[smart-backup] Error getting backup paths:', err.message);
-    return [];
-  }
-}
+      } catch (e) { /* Default to true if manifest missing/old */ }
 
-// Helper function to find the most recent version of a file by walking the backup chain
-async function findFileInBackupChain(backupPaths, relativeFilePath) {
-  for (const backupPath of backupPaths) {
-    const filePath = path.join(backupPath, relativeFilePath);
-    try {
-      await fs.access(filePath);
-      return filePath; // Found the file
-    } catch (err) {
-      // File doesn't exist in this backup, continue to older backup
-    }
-  }
-  return null; // File not found in any backup
-}
+      return {
+        name,
+        path: folderPath,
+        mtime: stats.mtime,
+        locked,
+        hasChanges
+      };
+    }));
 
-// Helper function to check if a file has changed compared to the backup chain
-async function hasFileChanged(sourceFile, backupPaths, relativeFilePath) {
+    res.json(backups);
+  } catch (error) {
+    console.error('[api] Error listing backups:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/backup-state', async (req, res) => {
+  res.json(LAST_BACKUP_STATE);
+});
+
+app.post('/api/backup-now', async (req, res) => {
   try {
-    const sourceContent = await fs.readFile(sourceFile, 'utf-8');
+    const { liveConfigPath, backupFolderPath, timezone, smartBackupEnabled } = req.body;
+    const options = await getAddonOptions();
+    const settings = await loadDockerSettings();
 
-    // Find the most recent backed-up version of this file
-    const backupFilePath = await findFileInBackupChain(backupPaths, relativeFilePath);
+    // Max backups setting
+    const scheduledJobsData = await loadScheduledJobs();
+    const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+    const maxBackupsEnabled = defaultJob.maxBackupsEnabled ?? false;
+    const maxBackupsCount = defaultJob.maxBackupsCount ?? 100;
 
-    if (!backupFilePath) {
-      // File doesn't exist in any backup, it's "new"
-      return true;
+    // Smart backup setting
+    const effectiveSmartBackup = typeof smartBackupEnabled === 'boolean' ?
+      smartBackupEnabled :
+      (defaultJob.smartBackupEnabled ?? settings.smartBackupEnabled ?? false);
+
+    const backupPath = await performBackup(
+      liveConfigPath || options.liveConfigPath || settings.liveConfigPath || '/config',
+      backupFolderPath || options.backupFolderPath || settings.backupFolderPath || '/media/timemachine',
+      'manual',
+      maxBackupsEnabled,
+      maxBackupsCount,
+      timezone,
+      effectiveSmartBackup
+    );
+
+    if (backupPath === null) {
+      res.json({ success: true, message: 'No changes detected since last backup.', skipped: true });
+    } else {
+      res.json({ success: true, backupPath, skipped: false });
     }
-
-    const backupContent = await fs.readFile(backupFilePath, 'utf-8');
-    return sourceContent !== backupContent;
-  } catch (err) {
-    // If source can't be read, skip it
+  } catch (error) {
+    console.error('[api] Backup failed:', error);
+    res.status(500).json({ error: error.message });
   }
-}
+});
 
-// Helper function to find the correct version of a file in the backup chain, starting from a specific backup.
-async function resolveFileInBackupChain(targetBackupPath, relativeFilePath) {
+/**
+ * Checks if a file has changed since the last backup
+ * @returns {boolean} True if changed or no previous backup exists
+ */
+async function hasFileChanged(sourcePath, allBackupPaths, relativePath) {
+  if (allBackupPaths.length === 0) return true;
+
   try {
-    // Determine backup root by going up 3 levels (backup -> MM -> YYYY -> root)
-    let rootPath = targetBackupPath;
-    for (let i = 0; i < 3; i++) rootPath = path.dirname(rootPath);
+    const sourceStats = await fs.stat(sourcePath);
 
-    const allBackups = await getAllBackupPaths(rootPath);
-    const targetBase = path.basename(targetBackupPath);
-
-    // Find index of the target backup in the sorted list (newest first)
-    // Note: backup folder names are timestamps, so they are unique
-    const startIndex = allBackups.findIndex(p => path.basename(p) === targetBase);
-
-    if (startIndex === -1) {
-      // Fallback: just check the target path if not in list
-      return path.join(targetBackupPath, relativeFilePath);
-    }
-
-    // Iterate from startIndex onwards (covering target and older backups)
-    for (let i = startIndex; i < allBackups.length; i++) {
-      const potentialPath = path.join(allBackups[i], relativeFilePath);
+    // Check last N backups (usually just the latest is enough, but we check up to 3 to be safe)
+    for (let i = 0; i < Math.min(allBackupPaths.length, 3); i++) {
+      const lastBackupPath = path.join(allBackupPaths[i], relativePath);
       try {
-        await fs.access(potentialPath);
-        return potentialPath; // Found it!
+        const lastStats = await fs.stat(lastBackupPath);
+        // Compare size and mtime
+        // We use a small threshold for mtime (1s) to account for filesystem differences
+        if (sourceStats.size === lastStats.size && Math.abs(sourceStats.mtimeMs - lastStats.mtimeMs) < 1000) {
+          return false; // Unchanged
+        }
+
+        // If stats differ, do a content comparison for small files
+        if (sourceStats.size < 1024 * 1024) { // < 1MB
+          const [sourceBuf, lastBuf] = await Promise.all([
+            fs.readFile(sourcePath),
+            fs.readFile(lastBackupPath)
+          ]);
+          if (sourceBuf.equals(lastBuf)) {
+            return false;
+          }
+        }
       } catch (e) {
-        // Not here, continue to older backup
+        // File might not exist in this backup, continue to next older backup
       }
     }
 
-    // If not found in history, return the path in target backup (let caller handle ENOENT)
-    return path.join(targetBackupPath, relativeFilePath);
-
+    return true; // Changed or not found
   } catch (err) {
-    console.error('[resolveFileInBackupChain] Error:', err);
-    // Fallback
-    return path.join(targetBackupPath, relativeFilePath);
+    return true; // Error reading source, assume changed/needs backup
   }
 }
 
-// Reusable backup function
-async function performBackup(liveConfigPath, backupFolderPath, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null, smartBackupEnabled = false) {
-  const configPath = liveConfigPath || '/config';
-  const backupRoot = backupFolderPath || '/media/timemachine';
+async function performBackup(configPath, backupRoot, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null, smartBackupEnabled = false) {
+  // Use a lock to prevent concurrent backups
+  if (LAST_BACKUP_STATE.status === 'running') {
+    throw new Error('A backup is already in progress');
+  }
 
+  // Update state to running
   LAST_BACKUP_STATE = {
-    status: 'in_progress',
-    timestamp: Date.now(),
+    status: 'running',
+    timestamp: new Date().toISOString(),
     error: null,
-    source: source
+    source
   };
+  await saveBackupState();
 
-  console.log(`[backup-${source}] Starting backup...`);
-  console.log(`[backup-${source}] Config path:`, configPath);
-  console.log(`[backup-${source}] Backup root:`, backupRoot);
-  console.log(`[backup-${source}] Max backups enabled:`, maxBackupsEnabled, 'count:', maxBackupsCount);
-  console.log(`[backup-${source}] Smart backup enabled:`, smartBackupEnabled);
+  const now = timezone ?
+    new Date(new Date().toLocaleString('en-US', { timeZone: timezone })) :
+    new Date();
 
-  try {
-    // Check if backup root exists and is writable
-    await fs.access(backupRoot, fs.constants.R_OK | fs.constants.W_OK);
-    console.log(`[backup-${source}] Backup root is accessible and writable`);
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      try {
-        await fs.mkdir(backupRoot, { recursive: true });
-        console.log(`[backup-${source}] Backup root did not exist. Created: ${backupRoot}`);
-        // Verify access after creation
-        await fs.access(backupRoot, fs.constants.R_OK | fs.constants.W_OK);
-      } catch (mkdirErr) {
-        console.error(`[backup-${source}] Failed to create backup root:`, mkdirErr.message);
-        const createError = new Error('backup_dir_create_failed');
-        createError.code = 'BACKUP_DIR_CREATE_FAILED';
-        createError.meta = { path: backupRoot };
-        throw createError;
-      }
-    } else {
-      console.error(`[backup-${source}] Backup root access check failed:`, err.message);
-      const accessError = new Error('backup_dir_unwritable');
-      accessError.code = 'BACKUP_DIR_UNWRITABLE';
-      accessError.meta = { path: backupRoot };
-      throw accessError;
-    }
-  }
+  const timestamp = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + '_' +
+    String(now.getHours()).padStart(2, '0') + '-' +
+    String(now.getMinutes()).padStart(2, '0') + '-' +
+    String(now.getSeconds()).padStart(2, '0');
 
-  // Create backup folder with timestamp
-  let now = new Date();
-  let YYYY, MM, DD, HH, mm, ss;
-
-  if (timezone) {
-    // Use the specified timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-      hourCycle: 'h23'
-    });
-
-    const parts = formatter.formatToParts(now);
-    YYYY = parts.find(p => p.type === 'year').value;
-    MM = parts.find(p => p.type === 'month').value;
-    DD = parts.find(p => p.type === 'day').value;
-    HH = parts.find(p => p.type === 'hour').value;
-    if (HH === '24') {
-      HH = '00';
-    }
-    mm = parts.find(p => p.type === 'minute').value;
-    ss = parts.find(p => p.type === 'second').value;
-  } else {
-    // Use server's local time (fallback)
-    YYYY = String(now.getFullYear());
-    MM = String(now.getMonth() + 1).padStart(2, '0');
-    DD = String(now.getDate()).padStart(2, '0');
-    HH = String(now.getHours()).padStart(2, '0');
-    mm = String(now.getMinutes()).padStart(2, '0');
-    ss = String(now.getSeconds()).padStart(2, '0');
-  }
-
-  const timestamp = `${YYYY}-${MM}-${DD}-${HH}${mm}${ss}`;
-
-  const backupPath = path.join(backupRoot, YYYY, MM, timestamp);
-
-  // Get all backup paths for smart backup comparison BEFORE creating new directory
-  let allBackupPaths = [];
-  if (smartBackupEnabled) {
-    allBackupPaths = await getAllBackupPaths(backupRoot);
-    if (allBackupPaths.length > 0) {
-      console.log(`[backup-${source}] Smart backup: found ${allBackupPaths.length} previous backups to compare against`);
-    } else {
-      console.log(`[backup-${source}] Smart backup: no previous backups found, performing full backup`);
-    }
-  }
-
-  console.log(`[backup-${source}] Creating directory:`, backupPath);
+  const backupPath = path.join(backupRoot, timestamp);
+  const allBackupPaths = await getAllBackupPaths(backupRoot);
 
   const manifest = {
-    version: 1,
-    generatedAt: new Date().toISOString(),
+    version: '1.1.0',
+    timestamp: new Date().toISOString(),
+    source,
+    smart_backup: !!smartBackupEnabled,
+    has_changes: true,
     files: {
       root: [],
-      storage: [],
+      lovelace: [],
       esphome: [],
       packages: []
     },
@@ -2695,43 +1894,35 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   let skippedSplitCount = 0;
 
   for (const dirPath of splitDirs) {
+    const relativeDir = path.relative(configPath, dirPath);
+    const destDir = path.join(backupPath, relativeDir);
+
     try {
-      const dirName = path.relative(configPath, dirPath);
-      const backupDirPath = path.join(backupPath, dirName);
+      const dirFiles = await listYamlFilesRecursive(dirPath);
+      for (const f of dirFiles) {
+        const relativeFile = path.join(relativeDir, f);
+        const sourceFile = path.join(dirPath, f);
+        const destFile = path.join(destDir, f);
 
-      const dirFiles = await fs.readdir(dirPath);
-      const yamlDirFiles = dirFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-      if (yamlDirFiles.length > 0) {
-        await fs.mkdir(backupDirPath, { recursive: true });
-
-        for (const file of yamlDirFiles) {
-          const srcFile = path.join(dirPath, file);
-          const destFile = path.join(backupDirPath, file);
-          const relativePath = path.join(dirName, file);
-
-          try {
-            // Smart backup mode: only copy if file has changed
-            if (smartBackupEnabled && allBackupPaths.length > 0) {
-              const changed = await hasFileChanged(srcFile, allBackupPaths, relativePath);
-              if (!changed) {
-                skippedSplitCount++;
-                continue;
-              }
+        try {
+          if (smartBackupEnabled && allBackupPaths.length > 0) {
+            const changed = await hasFileChanged(sourceFile, allBackupPaths, relativeFile);
+            if (!changed) {
+              skippedSplitCount++;
+              continue;
             }
-
-            await fs.copyFile(srcFile, destFile);
-            manifest.files.root.push(relativePath);
-            copiedSplitCount++;
-          } catch (err) {
-            console.error(`[backup-${source}] Error copying split config ${relativePath}:`, err.message);
           }
+
+          await fs.mkdir(path.dirname(destFile), { recursive: true });
+          await fs.copyFile(sourceFile, destFile);
+          manifest.files.root.push(relativeFile);
+          copiedSplitCount++;
+        } catch (fErr) {
+          console.error(`[backup-${source}] Error copying split config file ${relativeFile}:`, fErr.message);
         }
       }
     } catch (err) {
-      if (err.code !== 'ENOENT') {
-        console.error(`[backup-${source}] Error reading split config directory ${dirPath}:`, err.message);
-      }
+      console.error(`[backup-${source}] Error processing split config directory ${relativeDir}:`, err.message);
     }
   }
 
@@ -2785,43 +1976,42 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
   const storagePath = path.join(configPath, '.storage');
   const backupStoragePath = path.join(backupPath, '.storage');
-  let storageDirectoryCreated = false;
-  let copiedLovelaceCount = 0;
-  let skippedLovelaceCount = 0;
 
   try {
     const storageFiles = await fs.readdir(storagePath);
-    const lovelaceFiles = storageFiles.filter(file => file.startsWith('lovelace'));
-    console.log(`[backup-${source}] Found ${lovelaceFiles.length} Lovelace files to check.`);
-    for (const file of lovelaceFiles) {
-      const sourcePath = path.join(storagePath, file);
-      const destPath = path.join(backupStoragePath, file);
-      try {
-        // Smart backup mode: only copy if file has changed
-        if (smartBackupEnabled && allBackupPaths.length > 0) {
-          const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('.storage', file));
-          if (!changed) {
-            skippedLovelaceCount++;
-            continue;
+    const lovelaceFiles = storageFiles.filter(f =>
+      f === 'lovelace' || f === 'lovelace_resources' || f.startsWith('lovelace.')
+    );
+
+    let copiedLovelaceCount = 0;
+    let skippedLovelaceCount = 0;
+    if (lovelaceFiles.length > 0) {
+      await fs.mkdir(backupStoragePath, { recursive: true });
+      for (const file of lovelaceFiles) {
+        const sourceFile = path.join(storagePath, file);
+        const destFile = path.join(backupStoragePath, file);
+        const relativeStoragePath = path.join('.storage', file);
+
+        try {
+          if (smartBackupEnabled && allBackupPaths.length > 0) {
+            const changed = await hasFileChanged(sourceFile, allBackupPaths, relativeStoragePath);
+            if (!changed) {
+              skippedLovelaceCount++;
+              continue;
+            }
+          }
+
+          await fs.copyFile(sourceFile, destFile);
+          manifest.files.lovelace.push(file);
+          copiedLovelaceCount++;
+        } catch (err) {
+          if (err.code !== 'ENOENT') {
+            console.error(`[backup-${source}] Error copying Lovelace file ${file}:`, err.message);
           }
         }
-
-        // Create directory only when first file needs to be copied
-        if (!storageDirectoryCreated) {
-          await fs.mkdir(backupStoragePath, { recursive: true });
-          storageDirectoryCreated = true;
-        }
-
-        await fs.copyFile(sourcePath, destPath);
-        manifest.files.storage.push(file); // Only add to manifest if file was actually copied
-        copiedLovelaceCount++;
-      } catch (err) {
-        if (err.code !== 'ENOENT') {
-          console.error(`[backup-${source}] Error copying Lovelace file ${file}:`, err.message);
-        }
       }
+      console.log(`[backup-${source}] Copied ${copiedLovelaceCount} Lovelace files${smartBackupEnabled ? `, skipped ${skippedLovelaceCount} unchanged` : ''}.`);
     }
-    console.log(`[backup-${source}] Copied ${copiedLovelaceCount} Lovelace files${smartBackupEnabled ? `, skipped ${skippedLovelaceCount} unchanged` : ''}.`);
   } catch (err) {
     console.error(`[backup-${source}] Error reading .storage directory:`, err.message);
   }
@@ -2866,25 +2056,22 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       }
       console.log(`[backup-${source}] Copied ${copiedEsphomeCount} ESPHome files${smartBackupEnabled ? `, skipped ${skippedEsphomeCount} unchanged` : ''}.`);
     } catch (err) {
-      console.error(`[backup-${source}] Error reading esphome directory:`, err.message);
+      console.error(`[backup-${source}] Error reading ESPHome directory:`, err.message);
     }
-  } else {
-    console.log(`[backup-${source}] Skipping ESPHome backups (feature disabled).`);
   }
 
   if (packagesEnabled) {
-    // Backup Packages files
+    // Backup Packages
     const packagesPath = path.join(configPath, 'packages');
     const backupPackagesPath = path.join(backupPath, 'packages');
 
     try {
-      const packagesYamlFiles = await listYamlFilesRecursive(packagesPath);
-      console.log(`[backup-${source}] Found ${packagesYamlFiles.length} Packages YAML files to copy.`);
-      for (const relativePath of packagesYamlFiles) {
+      const packageFiles = await listYamlFilesRecursive(packagesPath);
+      console.log(`[backup-${source}] Found ${packageFiles.length} Package YAML files to copy.`);
+      for (const relativePath of packageFiles) {
         const sourcePath = path.join(packagesPath, relativePath);
         const destPath = path.join(backupPackagesPath, relativePath);
         try {
-          // Smart backup mode: only copy if file has changed
           if (smartBackupEnabled && allBackupPaths.length > 0) {
             const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('packages', relativePath));
             if (!changed) {
@@ -2895,314 +2082,225 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
-          manifest.files.packages.push(relativePath); // Only add to manifest if file was actually copied
+          manifest.files.packages.push(relativePath);
           copiedPackagesCount++;
         } catch (err) {
           if (err.code !== 'ENOENT') {
-            console.error(`[backup-${source}] Error copying Packages file ${relativePath}:`, err.message);
+            console.error(`[backup-${source}] Error copying Package file ${relativePath}:`, err.message);
           }
         }
       }
-      console.log(`[backup-${source}] Copied ${copiedPackagesCount} Packages files${smartBackupEnabled ? `, skipped ${skippedPackagesCount} unchanged` : ''}.`);
+      console.log(`[backup-${source}] Copied ${copiedPackagesCount} Package files${smartBackupEnabled ? `, skipped ${skippedPackagesCount} unchanged` : ''}.`);
     } catch (err) {
-      console.error(`[backup-${source}] Error reading packages directory:`, err.message);
+      if (err.code !== 'ENOENT') {
+        console.error(`[backup-${source}] Error reading packages directory:`, err.message);
+      }
     }
-  } else {
-    console.log(`[backup-${source}] Skipping Packages backups (feature disabled).`);
   }
 
-  // In smart backup mode, check if any files were actually copied
-  // If not, delete the empty backup folder and return early
-  if (smartBackupEnabled && allBackupPaths.length > 0) {
-    const totalCopied = copiedYamlCount + copiedLovelaceCount + copiedEsphomeCount + copiedPackagesCount;
-    if (totalCopied === 0) {
-      console.log(`[backup-${source}] No files changed since last backup. Removing empty backup folder.`);
-      try {
-        await fs.rm(backupPath, { recursive: true, force: true });
+  // Dedupe manifest files
+  manifest.files.root = [...new Set(manifest.files.root)];
+  manifest.files.lovelace = [...new Set(manifest.files.lovelace)];
+  manifest.files.esphome = [...new Set(manifest.files.esphome)];
+  manifest.files.packages = [...new Set(manifest.files.packages)];
 
-        // Also clean up empty parent directories (MM and YYYY) if they're now empty
-        const monthPath = path.dirname(backupPath);
-        const yearPath = path.dirname(monthPath);
+  // Determine if there were any changes
+  const totalCopied = copiedYamlCount + copiedSplitCount + copiedIndividualCount + copiedLovelaceCount + copiedEsphomeCount + copiedPackagesCount;
+  manifest.has_changes = totalCopied > 0;
 
-        try {
-          const monthContents = await fs.readdir(monthPath);
-          if (monthContents.length === 0) {
-            await fs.rmdir(monthPath);
-            console.log(`[backup-${source}] Removed empty month directory: ${monthPath}`);
+  // If smart backup is enabled and no files were copied, and this is NOT a pre-restore backup,
+  // we can skip creating the backup folder and just return null
+  if (smartBackupEnabled && totalCopied === 0 && source !== 'pre-restore') {
+    try {
+      await fs.rm(backupPath, { recursive: true, force: true });
+    } catch (e) { /* ignore */ }
 
-            // Check if year directory is also empty now
-            const yearContents = await fs.readdir(yearPath);
-            if (yearContents.length === 0) {
-              await fs.rmdir(yearPath);
-              console.log(`[backup-${source}] Removed empty year directory: ${yearPath}`);
-            }
+    LAST_BACKUP_STATE = {
+      status: 'success',
+      timestamp: new Date().toISOString(),
+      error: null,
+      source
+    };
+    await saveBackupState();
+    return null;
+  }
+
+  // Write manifest
+  try {
+    await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
+  } catch (err) {
+    console.error(`[backup-${source}] Error writing manifest:`, err.message);
+  }
+
+  // Max backups cleanup
+  if (maxBackupsEnabled) {
+    try {
+      const backupFolders = await getAllBackupPaths(backupRoot);
+      if (backupFolders.length > maxBackupsCount) {
+        const toDelete = backupFolders.slice(maxBackupsCount);
+        console.log(`[backup-${source}] Cleanup: deleting ${toDelete.length} old backups...`);
+        for (const folder of toDelete) {
+          // Check for lock
+          const lockFile = path.join(folder, '.lock');
+          if (fsSync.existsSync(lockFile)) {
+            console.log(`[backup-${source}] Skipping deletion of locked backup: ${folder}`);
+            continue;
           }
-        } catch (cleanupErr) {
-          // Ignore errors cleaning up parent directories
-        }
-      } catch (rmErr) {
-        console.error(`[backup-${source}] Failed to remove empty backup folder:`, rmErr.message);
-      }
-
-      // Even when no snapshot is created, still enforce retention policy.
-      if (maxBackupsEnabled && maxBackupsCount > 0) {
-        try {
-          console.log(`[backup-${source}] No new snapshot, but enforcing max backups (${maxBackupsCount})...`);
-          await cleanupOldBackups(backupRoot, maxBackupsCount);
-        } catch (cleanupError) {
-          console.error(`[backup-${source}] Error during cleanup:`, cleanupError.message);
-          // Don't fail the backup flow if cleanup fails
+          await rmWithRetry(folder);
         }
       }
-
-      LAST_BACKUP_STATE.status = 'no_changes';
-      LAST_BACKUP_STATE.timestamp = Date.now();
-      await saveBackupState();
-      return null; // Indicate no backup was created
-    }
-  }
-
-  // Write Manifest only if smart backup is enabled
-  if (smartBackupEnabled) {
-    try {
-      await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
     } catch (err) {
-      console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
+      console.error(`[backup-${source}] Error during cleanup:`, err.message);
     }
   }
 
-  console.log(`[backup-${source}] Backup completed successfully at:`, backupPath);
-
-  // Cleanup old backups if maxBackups is enabled
-  if (maxBackupsEnabled && maxBackupsCount > 0) {
-    try {
-      console.log(`[backup-${source}] Cleaning up old backups, keeping max ${maxBackupsCount}...`);
-      await cleanupOldBackups(backupRoot, maxBackupsCount);
-    } catch (cleanupError) {
-      console.error(`[backup-${source}] Error during cleanup:`, cleanupError.message);
-      // Don't fail the backup if cleanup fails
-    }
-  }
-
-  LAST_BACKUP_STATE.status = 'success';
-  LAST_BACKUP_STATE.timestamp = Date.now();
+  LAST_BACKUP_STATE = {
+    status: 'success',
+    timestamp: new Date().toISOString(),
+    error: null,
+    source
+  };
   await saveBackupState();
+
   return backupPath;
 }
 
-// Cleanup old backups function
-async function cleanupOldBackups(backupRoot, maxBackupsCount) {
+// Scheduled jobs persistence
+const SCHEDULED_JOBS_FILE = path.join(DATA_DIR, 'scheduled-jobs.json');
+
+async function loadScheduledJobs() {
   try {
-    console.log(`[cleanup] Scanning backup directory: ${backupRoot}`);
-    const allBackups = await getBackupDirs(backupRoot);
-
-    // Sort by folderName descending (newest first)
-    allBackups.sort((a, b) => b.folderName.localeCompare(a.folderName));
-
-    // Filter out locked backups
-    const candidates = allBackups.filter(b => !b.locked);
-    console.log(`[cleanup] Found ${allBackups.length} total backups, ${allBackups.length - candidates.length} are locked.`);
-
-    if (candidates.length <= maxBackupsCount) {
-      console.log(`[cleanup] No cleanup needed - only ${candidates.length} unlockable backups exist`);
-      return;
-    }
-
-    // Get backups to delete (all beyond maxBackupsCount)
-    const backupsToDelete = candidates.slice(maxBackupsCount);
-    console.log(`[cleanup] Will delete ${backupsToDelete.length} old backups`);
-
-    for (const backup of backupsToDelete) {
-      try {
-        console.log(`[cleanup] Deleting old backup: ${backup.path}`);
-        await fs.rm(backup.path, { recursive: true, force: true });
-        console.log(`[cleanup] Successfully deleted: ${backup.path}`);
-      } catch (deleteError) {
-        console.error(`[cleanup] Error deleting ${backup.path}:`, deleteError.message);
-        // Continue with other deletions even if one fails
-      }
-    }
-
-    console.log(`[cleanup] Cleanup completed. Kept ${Math.min(allBackups.length, maxBackupsCount)} backups.`);
-  } catch (error) {
-    console.error('[cleanup] Error during cleanup:', error.message);
-    throw error;
+    const data = await fs.readFile(SCHEDULED_JOBS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    return {
+      jobs: {}
+    };
   }
 }
 
-// Backup now
-app.post('/api/backup-now', async (req, res) => {
+async function saveScheduledJobs(data) {
   try {
-    const { liveConfigPath, backupFolderPath, maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled } = req.body;
-
-    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
-    let effectiveSmartBackup = smartBackupEnabled;
-    let effectiveMaxBackupsEnabled = maxBackupsEnabled;
-    let effectiveMaxBackupsCount = maxBackupsCount;
-    let effectiveTimezone = timezone;
-
-    if (typeof smartBackupEnabled === 'undefined') {
-      const scheduledJobsData = await loadScheduledJobs();
-      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
-      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
-      effectiveMaxBackupsEnabled = maxBackupsEnabled ?? defaultJob.maxBackupsEnabled ?? false;
-      effectiveMaxBackupsCount = maxBackupsCount ?? defaultJob.maxBackupsCount ?? 100;
-      effectiveTimezone = timezone ?? defaultJob.timezone ?? null;
-      console.log(`[backup-now] Using saved settings - Smart backup: ${effectiveSmartBackup}`);
-    }
-
-    const backupPath = await performBackup(liveConfigPath, backupFolderPath, 'manual', effectiveMaxBackupsEnabled, effectiveMaxBackupsCount, effectiveTimezone, effectiveSmartBackup);
-
-    // null means no changes detected in smart backup mode
-    if (backupPath === null) {
-      return res.json({ success: true, noChanges: true, message: 'No changes detected since last backup.' });
-    }
-
-    res.json({ success: true, path: backupPath, message: `Backup created successfully at ${backupPath}` });
-  } catch (error) {
-    console.error('[backup-now] Error:', error);
-    LAST_BACKUP_STATE.status = 'failed';
-    LAST_BACKUP_STATE.timestamp = Date.now();
-    LAST_BACKUP_STATE.error = error.message;
-    await saveBackupState();
-    res.status(500).json({
-      error: error.message,
-      errorCode: error.code || 'BACKUP_FAILED',
-      meta: error.meta || null
-    });
+    await fs.writeFile(SCHEDULED_JOBS_FILE, JSON.stringify(data, null, 2));
+    return true;
+  } catch (e) {
+    console.error('[schedule] Failed to save scheduled jobs:', e.message);
+    return false;
   }
-});
+}
 
-// Lovelace endpoints
-app.post('/api/get-backup-lovelace', async (req, res) => {
-  try {
-    const { backupPath } = req.body;
+// Global variable to store active cron jobs
+const activeCronJobs = new Map();
 
-    // Check manifest
-    try {
-      const manifestPath = path.join(backupPath, '.backup_manifest.json');
-      const manifestData = await fs.readFile(manifestPath, 'utf8');
-      const manifest = JSON.parse(manifestData);
-      if (manifest.files && manifest.files.storage) {
-        // Use manifest list (already relative to .storage if it was just filenames)
-        // Wait, logic in performBackup: manifest.files.storage.push(file) where file is just filename
-        // Filter for 'lovelace' prefix
-        const lovelaceFiles = manifest.files.storage.filter(f => f.startsWith('lovelace'));
-        return res.json({ lovelaceFiles });
-      }
-    } catch (e) {
-      // Fallback to directory scan
-    }
+async function initScheduledBackups() {
+  const data = await loadScheduledJobs();
+  const jobs = data.jobs || {};
 
-    const lovelaceDir = path.join(backupPath, '.storage');
-    const files = await fs.readdir(lovelaceDir);
-    const lovelaceFiles = files.filter(f => f.startsWith('lovelace'));
-
-    res.json({ lovelaceFiles });
-  } catch (error) {
-    console.error('[get-backup-lovelace] Error:', error);
-    res.status(500).json({ error: error.message });
+  // Stop existing jobs
+  for (const [id, cronJob] of activeCronJobs.entries()) {
+    cronJob.stop();
+    activeCronJobs.delete(id);
   }
-});
 
-app.post('/api/get-backup-lovelace-file', async (req, res) => {
-  try {
-    const { backupPath, fileName } = req.body;
+  for (const [id, job] of Object.entries(jobs)) {
+    if (job.enabled) {
+      console.log(`[schedule] Starting job "${id}" with frequency "${job.frequency}" at "${job.time}"`);
 
-    // Use chain resolution
-    const filePath = await resolveFileInBackupChain(backupPath, path.join('.storage', fileName));
+      let cronExpression;
+      const [hour, minute] = (job.time || '00:00').split(':');
 
-    console.log(`[get-backup-lovelace-file] Request for file: ${fileName} in backup: ${backupPath} -> Resolved: ${filePath}`);
-
-    res.sendFile(filePath, (err) => {
-      if (err) {
-        console.error('[get-backup-lovelace-file] Error sending file:', err);
-        res.status(err.status || 500).json({ error: err.message });
+      if (job.frequency === 'hourly') {
+        cronExpression = `${minute} * * * *`;
+      } else if (job.frequency === 'daily') {
+        cronExpression = `${minute} ${hour} * * *`;
+      } else if (job.frequency === 'weekly') {
+        const day = job.dayOfWeek || 0;
+        cronExpression = `${minute} ${hour} * * ${day}`;
       }
-    });
-  } catch (error) {
-    console.error('[get-backup-lovelace-file] Error:', error);
-    res.status(500).json({ error: error.message });
+
+      if (cronExpression) {
+        const cronJob = cron.schedule(cronExpression, async () => {
+          console.log(`[schedule] Running scheduled backup job: ${id}`);
+          try {
+            const options = await getAddonOptions();
+            const settings = await loadDockerSettings();
+            await performBackup(
+              options.liveConfigPath || settings.liveConfigPath || '/config',
+              options.backupFolderPath || settings.backupFolderPath || '/media/timemachine',
+              'schedule',
+              job.maxBackupsEnabled,
+              job.maxBackupsCount,
+              job.timezone,
+              job.smartBackupEnabled
+            );
+          } catch (error) {
+            console.error(`[schedule] Backup job ${id} failed:`, error.message);
+          }
+        });
+        activeCronJobs.set(id, cronJob);
+      }
+    }
   }
-});
+}
 
-const getLiveLovelaceFile = async (req, res) => {
+app.post('/api/save-schedule', async (req, res) => {
   try {
-    const payload = req.method === 'GET' ? req.query : req.body;
-    const fileName = payload?.fileName;
-    const liveConfigPath = payload?.liveConfigPath;
+    const { enabled, frequency, time, dayOfWeek, maxBackupsEnabled, maxBackupsCount, timezone, smartBackupEnabled } = req.body;
 
-    if (!fileName) {
-      return res.status(400).json({ error: 'fileName is required' });
-    }
+    const data = await loadScheduledJobs();
+    data.jobs = data.jobs || {};
 
-    const configPath = liveConfigPath || '/config';
-    const filePath = path.join(configPath, '.storage', fileName);
+    data.jobs['default-backup-job'] = {
+      enabled: !!enabled,
+      frequency: frequency || 'daily',
+      time: time || '00:00',
+      dayOfWeek: dayOfWeek || 0,
+      maxBackupsEnabled: !!maxBackupsEnabled,
+      maxBackupsCount: maxBackupsCount || 100,
+      timezone: timezone || null,
+      smartBackupEnabled: !!smartBackupEnabled
+    };
 
-    console.log(`[get-live-lovelace-file] Request for file: ${fileName} in config: ${configPath}`);
-
-    res.sendFile(filePath, (err) => {
-      if (err) {
-        console.error('[get-live-lovelace-file] Error sending file:', err);
-        res.status(err.status || 404).json({ error: 'File not found' });
-      }
-    });
-  } catch (error) {
-    console.error('[get-live-lovelace-file] Error:', error);
-    res.status(404).json({ error: 'File not found' });
-  }
-};
-
-app.get('/api/get-live-lovelace-file', getLiveLovelaceFile);
-app.post('/api/get-live-lovelace-file', getLiveLovelaceFile);
-
-app.post('/api/restore-lovelace-file', async (req, res) => {
-  try {
-    const { fileName, backupPath, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
-
-    if (!fileName) {
-      return res.status(400).json({ error: 'fileName is required' });
-    }
-
-    if (!backupPath && typeof content === 'undefined') {
-      return res.status(400).json({ error: 'backupPath or content is required' });
-    }
-
-    // Perform a backup before restoring - respect Smart Backup setting
-    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
-    let effectiveSmartBackup = smartBackupEnabled;
-    if (typeof smartBackupEnabled === 'undefined') {
-      const scheduledJobsData = await loadScheduledJobs();
-      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
-      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
-    }
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
-
-    const configPath = liveConfigPath || '/config';
-    const targetFilePath = path.join(configPath, '.storage', fileName);
-    await fs.mkdir(path.dirname(targetFilePath), { recursive: true });
-
-    if (backupPath) {
-      const sourceFilePath = path.join(backupPath, '.storage', fileName);
-      try {
-        await fs.copyFile(sourceFilePath, targetFilePath);
-      } catch (copyError) {
-        console.error('[restore-lovelace-file] Copy from backup failed, falling back to write:', copyError.message);
-        const backupContent = await fs.readFile(sourceFilePath, 'utf-8');
-        await fs.writeFile(targetFilePath, backupContent, 'utf-8');
-      }
+    const success = await saveScheduledJobs(data);
+    if (success) {
+      await initScheduledBackups();
+      res.json({ success: true });
     } else {
-      const contentToWrite = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
-      await fs.writeFile(targetFilePath, contentToWrite, 'utf-8');
+      res.status(500).json({ error: 'Failed to save schedule' });
     }
-
-    // Check if HA config is available to determine if a restart is needed
-    const auth = await getHomeAssistantAuth();
-    const needsRestart = !!(auth.baseUrl && auth.token);
-
-    res.json({ success: true, message: 'Lovelace file restored successfully', needsRestart });
   } catch (error) {
-    console.error('[restore-lovelace-file] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/get-schedule', async (req, res) => {
+  try {
+    const data = await loadScheduledJobs();
+    const job = data.jobs?.['default-backup-job'] || {
+      enabled: false,
+      frequency: 'daily',
+      time: '00:00',
+      dayOfWeek: 0,
+      maxBackupsEnabled: false,
+      maxBackupsCount: 100,
+      smartBackupEnabled: false
+    };
+    res.json(job);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Diff Viewer
+app.post('/api/get-diff', async (req, res) => {
+  try {
+    const { livePath, backupPath } = req.body;
+    const [liveContent, backupContent] = await Promise.all([
+      fs.readFile(livePath, 'utf-8').catch(() => ''),
+      fs.readFile(backupPath, 'utf-8').catch(() => '')
+    ]);
+    res.json({ liveContent, backupContent });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -3243,9 +2341,8 @@ app.post('/api/get-backup-esphome-file', async (req, res) => {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
     const { backupPath, fileName } = req.body;
-
+    
     // Use chain resolution
-    // fileName is relative to esphome directory, so join 'esphome'
     const filePath = await resolveFileInBackupChain(backupPath, path.join('esphome', fileName));
 
     const content = await fs.readFile(filePath, 'utf-8');
@@ -3274,8 +2371,11 @@ app.post('/api/get-live-esphome-file', async (req, res) => {
     if (error.code === 'INVALID_PATH') {
       return res.status(400).json({ error: 'Invalid file path' });
     }
+    if (error.code === 'ENOENT') {
+      return res.status(404).json({ error: 'File not found' });
+    }
     console.error('[get-live-esphome-file] Error:', error);
-    res.status(404).json({ error: 'File not found' });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -3285,6 +2385,7 @@ app.post('/api/restore-esphome-file', async (req, res) => {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
     const { fileName, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+
     // Perform a backup before restoring - respect Smart Backup setting
     // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
     let effectiveSmartBackup = smartBackupEnabled;
@@ -3311,6 +2412,117 @@ app.post('/api/restore-esphome-file', async (req, res) => {
     res.json({ success: true, message: 'ESPHome file restored successfully', needsRestart });
   } catch (error) {
     console.error('[restore-esphome-file] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Lovelace endpoints
+app.post('/api/get-backup-lovelace', async (req, res) => {
+  try {
+    const { backupPath } = req.body;
+
+    // Check manifest
+    try {
+      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestData = await fs.readFile(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestData);
+      if (manifest.files && manifest.files.lovelace) {
+        return res.json({ lovelaceFiles: manifest.files.lovelace });
+      }
+    } catch (e) {
+      // Fallback
+    }
+
+    const storageDir = path.join(backupPath, '.storage');
+    try {
+      const files = await fs.readdir(storageDir);
+      const lovelaceFiles = files.filter(f =>
+        f === 'lovelace' || f === 'lovelace_resources' || f.startsWith('lovelace.')
+      );
+      res.json({ lovelaceFiles });
+    } catch (e) {
+      res.json({ lovelaceFiles: [] });
+    }
+  } catch (error) {
+    console.error('[get-backup-lovelace] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/get-backup-lovelace-file', async (req, res) => {
+  try {
+    const { backupPath, fileName } = req.body;
+    
+    // Use chain resolution
+    const filePath = await resolveFileInBackupChain(backupPath, path.join('.storage', fileName));
+
+    const content = await fs.readFile(filePath, 'utf-8');
+    res.json({ content });
+  } catch (error) {
+    console.error('[get-backup-lovelace-file] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/get-live-lovelace-file', async (req, res) => {
+  try {
+    const { fileName, liveConfigPath } = req.body;
+    const configPath = liveConfigPath || '/config';
+    const filePath = path.join(configPath, '.storage', fileName);
+    const content = await fs.readFile(filePath, 'utf-8');
+    res.json({ content });
+  } catch (error) {
+    console.error('[get-live-lovelace-file] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/restore-lovelace-file', async (req, res) => {
+  try {
+    const { fileName, backupPath, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+
+    if (!fileName) {
+      return res.status(400).json({ error: 'fileName is required' });
+    }
+
+    if (!backupPath && typeof content === 'undefined') {
+      return res.status(400).json({ error: 'backupPath or content is required' });
+    }
+
+    // Perform a backup before restoring - respect Smart Backup setting
+    // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
+    let effectiveSmartBackup = smartBackupEnabled;
+    if (typeof smartBackupEnabled === 'undefined') {
+      const scheduledJobsData = await loadScheduledJobs();
+      const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
+      effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
+    }
+    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
+
+    const configPath = liveConfigPath || '/config';
+    const targetFilePath = path.join(configPath, '.storage', fileName);
+    await fs.mkdir(path.dirname(targetFilePath), { recursive: true });
+
+    if (backupPath) {
+      try {
+        const sourceFilePath = await resolveFileInBackupChain(backupPath, path.join('.storage', fileName));
+        await fs.copyFile(sourceFilePath, targetFilePath);
+      } catch (copyError) {
+        console.error('[restore-lovelace-file] Restore failed:', copyError.message);
+        throw copyError;
+      }
+    } else {
+      const contentToWrite = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+      await fs.writeFile(targetFilePath, contentToWrite, 'utf-8');
+    }
+
+    // Check if HA config is available to determine if a restart is needed
+    const auth = await getHomeAssistantAuth();
+    const needsRestart = !!(auth.baseUrl && auth.token);
+
+    res.json({ success: true, message: 'Lovelace file restored successfully', needsRestart });
+  } catch (error) {
+    console.error('[restore-lovelace-file] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -3467,86 +2679,38 @@ app.get('/api/health', async (req, res) => {
         used_pct: (((total - free) / total) * 100).toFixed(1)
       };
     } catch (e) {
-      debugLog('[health] Could not get disk stats:', e.message);
+      debugLog('[health] Could not get disk usage:', e.message);
     }
 
-    // Schedules
-    const jobs = await loadScheduledJobs();
-    const active_schedules = Object.values(jobs.jobs || {}).filter(j => j.enabled).length;
+    // Get active schedule
+    const scheduledJobsData = await loadScheduledJobs();
+    const activeSchedules = Object.values(scheduledJobsData.jobs || {})
+      .filter(job => job.enabled)
+      .map(job => job.frequency);
 
     res.json({
-      ok: true,
+      status: 'ok',
       version,
-      mode: options.mode,
       backup_count: allBackups.length,
       last_backup: lastBackup,
-      disk_usage: disk_info,
-      active_schedules,
       last_backup_status: LAST_BACKUP_STATE.status,
-      last_backup_error: LAST_BACKUP_STATE.error
+      disk_usage: disk_info,
+      active_schedules: activeSchedules
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
 // Start server
-loadBackupState().then(() => {
-  app.listen(PORT, HOST, () => {
-    console.log('='.repeat(60));
-    console.log(`Home Assistant Time Machine v${version}`);
-    console.log('='.repeat(60));
-    console.log(`Server running at http://${HOST}:${PORT}`);
-    if (INGRESS_PATH) {
-      console.log(`[ingress] Ingress path detected: ${INGRESS_PATH}`);
-    }
+app.listen(PORT, HOST, async () => {
+  console.log(`[INIT] Home Assistant Time Machine v${version}`);
+  console.log(`[INIT] Server listening on http://${HOST}:${PORT}`);
+  console.log(`[INIT] HA Config Path: /config`);
+  console.log(`[INIT] Backup Root Path: /media/timemachine`);
 
-    // Initialize scheduled jobs
-    loadScheduledJobs().then(jobs => {
-      console.log('[scheduler] Loaded schedules:', jobs.jobs);
-      console.log('[scheduler] Initializing schedules on startup...');
-      Object.entries(jobs.jobs || {}).forEach(([id, job]) => {
-        if (job.enabled) {
-          console.log(`[scheduler] Setting up schedule "${id}" with cron "${job.cronExpression}" and timezone "${job.timezone}"`);
-          scheduledJobs[id] = cron.schedule(job.cronExpression, async () => {
-            console.log(`[cron] Triggered backup job: ${id} at ${new Date().toISOString()}`);
-            try {
-              console.log(`[cron] Fetching addon options for job ${id}...`);
-              const options = await getAddonOptions();
-              const sanitizedOptions = JSON.parse(JSON.stringify(options));
-              if (sanitizedOptions.long_lived_access_token) {
-                sanitizedOptions.long_lived_access_token = 'REDACTED';
-              }
-              console.log(`[cron] Addon options for job ${id}:`, sanitizedOptions);
-              try {
-                const response = await fetch(`http://localhost:${PORT}/api/backup-now`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    liveConfigPath: job.liveConfigPath || options.liveConfigPath || '/config',
-                    backupFolderPath: job.backupFolderPath || options.backupFolderPath || '/media/timemachine',
-                    maxBackupsEnabled: job.maxBackupsEnabled,
-                    maxBackupsCount: job.maxBackupsCount
-                  })
-                });
-                const result = await response.json();
-                if (response.ok) {
-                  console.log(`[cron] Backup triggered successfully: ${result.message}`);
-                } else {
-                  console.error(`[cron] Backup trigger failed: ${result.error}`);
-                }
-              } catch (error) {
-                console.error(`[cron] Error triggering backup:`, error);
-              }
-            } catch (error) {
-              console.error(`[cron] Error during scheduled backup for job ${id}:`, error);
-            }
-          }, { timezone: job.timezone });
-        }
-      });
-      console.log('[scheduler] Initialization complete.');
-    });
-  });
-
-
+  // Initial load of state and schedules
+  await loadBackupState();
+  await loadDockerSettings();
+  await initScheduledBackups();
 });
