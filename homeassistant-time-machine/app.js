@@ -503,28 +503,45 @@ async function getConfigFilePaths(configPath) {
     const configContent = await fs.readFile(configFile, 'utf-8');
     debugLog('[getConfigFilePaths] Found configuration.yaml, parsing...');
 
+    let currentSection = null;
     const lines = configContent.split('\n');
     for (const line of lines) {
-      const trimmedLine = line.trim();
+      // Strip comments
+      const commentIdx = line.indexOf('#');
+      const cleanLine = commentIdx !== -1 ? line.substring(0, commentIdx) : line;
+      const trimmedLine = cleanLine.trim();
+      if (!trimmedLine) continue;
 
-      // Match automation: !include filename.yaml
-      const autoIncludeMatch = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
-      if (autoIncludeMatch) {
-        const file = autoIncludeMatch[1].trim();
+      // Track current section by looking at unindented lines ending with :
+      const isUnindented = /^[a-zA-Z0-9_-]+:/.test(line);
+      if (isUnindented) {
+        if (trimmedLine.startsWith('automation:')) {
+          currentSection = 'automation';
+        } else if (trimmedLine.startsWith('script:')) {
+          currentSection = 'script';
+        } else {
+          currentSection = null;
+        }
+      }
+
+      // Check for inline inclusions
+      const inlineAutoInclude = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
+      if (inlineAutoInclude) {
+        const file = inlineAutoInclude[1].trim();
         automationPaths.push(path.join(configPath, file));
+        continue;
       }
 
-      // Match script: !include filename.yaml
-      const scriptIncludeMatch = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
-      if (scriptIncludeMatch) {
-        const file = scriptIncludeMatch[1].trim();
+      const inlineScriptInclude = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
+      if (inlineScriptInclude) {
+        const file = inlineScriptInclude[1].trim();
         scriptPaths.push(path.join(configPath, file));
+        continue;
       }
 
-      // Match automation: !include_dir_list dir_name or !include_dir_merge_list dir_name
-      const autoDirListMatch = trimmedLine.match(/^automation:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
-      if (autoDirListMatch) {
-        const dir = autoDirListMatch[1].trim();
+      const inlineAutoDir = trimmedLine.match(/^automation:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
+      if (inlineAutoDir) {
+        const dir = inlineAutoDir[1].trim();
         const fullDir = path.join(configPath, dir);
         automationDirs.push(fullDir);
         try {
@@ -535,12 +552,12 @@ async function getConfigFilePaths(configPath) {
         } catch (err) {
           debugLog(`[getConfigFilePaths] Could not read automation directory ${fullDir}:`, err.message);
         }
+        continue;
       }
 
-      // Match script: !include_dir_named dir_name or !include_dir_merge_named dir_name
-      const scriptDirNamedMatch = trimmedLine.match(/^script:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
-      if (scriptDirNamedMatch) {
-        const dir = scriptDirNamedMatch[1].trim();
+      const inlineScriptDir = trimmedLine.match(/^script:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
+      if (inlineScriptDir) {
+        const dir = inlineScriptDir[1].trim();
         const fullDir = path.join(configPath, dir);
         scriptDirs.push(fullDir);
         try {
@@ -550,6 +567,52 @@ async function getConfigFilePaths(configPath) {
           }
         } catch (err) {
           debugLog(`[getConfigFilePaths] Could not read script directory ${fullDir}:`, err.message);
+        }
+        continue;
+      }
+
+      // If we are inside a section, match generic inclusions
+      if (currentSection === 'automation') {
+        const includeMatch = trimmedLine.match(/!include\s+(.+)$/);
+        if (includeMatch) {
+          const file = includeMatch[1].trim();
+          automationPaths.push(path.join(configPath, file));
+        }
+
+        const dirMatch = trimmedLine.match(/!include_dir_(?:merge_)?list\s+(.+)$/);
+        if (dirMatch) {
+          const dir = dirMatch[1].trim();
+          const fullDir = path.join(configPath, dir);
+          automationDirs.push(fullDir);
+          try {
+            const files = await listYamlFilesRecursive(fullDir);
+            for (const file of files) {
+              automationPaths.push(path.join(fullDir, file));
+            }
+          } catch (err) {
+            debugLog(`[getConfigFilePaths] Could not read automation directory ${fullDir}:`, err.message);
+          }
+        }
+      } else if (currentSection === 'script') {
+        const includeMatch = trimmedLine.match(/!include\s+(.+)$/);
+        if (includeMatch) {
+          const file = includeMatch[1].trim();
+          scriptPaths.push(path.join(configPath, file));
+        }
+
+        const dirMatch = trimmedLine.match(/!include_dir_(?:merge_)?named\s+(.+)$/);
+        if (dirMatch) {
+          const dir = dirMatch[1].trim();
+          const fullDir = path.join(configPath, dir);
+          scriptDirs.push(fullDir);
+          try {
+            const files = await listYamlFilesRecursive(fullDir);
+            for (const file of files) {
+              scriptPaths.push(path.join(fullDir, file));
+            }
+          } catch (err) {
+            debugLog(`[getConfigFilePaths] Could not read script directory ${fullDir}:`, err.message);
+          }
         }
       }
     }
@@ -593,7 +656,9 @@ async function listYamlFilesRecursive(rootDir) {
     }
 
     for (const entry of entries) {
-      if (entry.name.startsWith('._')) {
+      // Skip hidden files/directories (starting with .)
+      // This skips .esphome build artifacts and macOS metadata
+      if (entry.name.startsWith('.')) {
         continue;
       }
 
@@ -1308,7 +1373,7 @@ async function checkAutomationsChanges(backupPath, configPath) {
       if (autoFiles) {
         for (const file of autoFiles) {
           try {
-            const filePath = path.join(backupPath, file);
+            const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
             if (Array.isArray(fileData)) {
               backupArray = backupArray.concat(fileData);
@@ -1380,7 +1445,7 @@ async function checkScriptsChanges(backupPath, configPath) {
       if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
-            const filePath = path.join(backupPath, file);
+            const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
             if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
               Object.assign(backupScripts, fileData);
@@ -1556,7 +1621,7 @@ app.post('/api/get-backup-automations', async (req, res) => {
       if (autoFiles) {
         for (const file of autoFiles) {
           try {
-            const filePath = path.join(backupPath, file);
+            const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
             if (Array.isArray(fileData)) {
               allAutomations = allAutomations.concat(fileData);
@@ -1633,7 +1698,7 @@ app.post('/api/get-backup-scripts', async (req, res) => {
       if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
-            const filePath = path.join(backupPath, file);
+            const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
             allScripts = allScripts.concat(processScriptData(fileData));
           } catch (err) { /* File not found, skip */ }
@@ -1896,7 +1961,7 @@ app.post('/api/restore-automation', async (req, res) => {
       if (autoFiles) {
         for (const file of autoFiles) {
           try {
-            const potentialBackupPath = path.join(backupPath, file);
+            const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
             if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
               relativeFilePath = file;
@@ -2014,7 +2079,7 @@ app.post('/api/restore-script', async (req, res) => {
       if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
-            const potentialBackupPath = path.join(backupPath, file);
+            const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
             if (data && typeof data === 'object' && !Array.isArray(data)) {
               if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
@@ -2380,6 +2445,21 @@ app.post('/api/validate-path', async (req, res) => {
       return res.json({ errorCode: 'directory_not_found' });
     }
 
+    if (type === 'backup') {
+      try {
+        const options = await getAddonOptions();
+        if (options.mode === 'addon') {
+          const allowedRoots = ['/backup', '/media', '/share', '/ssl', '/config', '/addons'];
+          const isAllowed = allowedRoots.some(root => requestedPath === root || requestedPath.startsWith(root + '/'));
+          if (!isAllowed) {
+            return res.json({ errorCode: 'invalid_addon_backup_path', path: requestedPath });
+          }
+        }
+      } catch (err) {
+        // Fallback: proceed to fs check
+      }
+    }
+
     try {
       const stats = await fs.stat(requestedPath);
       if (!stats.isDirectory()) {
@@ -2663,6 +2743,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     const destPath = path.join(backupPath, file);
 
     try {
+      // Always add to manifest
+      manifest.files.root.push(file);
+
       // Smart backup mode: only copy if file has changed
       if (smartBackupEnabled && allBackupPaths.length > 0) {
         const changed = await hasFileChanged(sourcePath, allBackupPaths, file);
@@ -2673,7 +2756,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       }
 
       await fs.copyFile(sourcePath, destPath);
-      manifest.files.root.push(file); // Only add to manifest if file was actually copied
       copiedYamlCount++;
     } catch (err) {
       console.error(`[backup-${source}] Error copying ${file}:`, err.message);
@@ -2711,6 +2793,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
           const relativePath = path.join(dirName, file);
 
           try {
+            // Always add to manifest
+            manifest.files.root.push(relativePath);
+
             // Smart backup mode: only copy if file has changed
             if (smartBackupEnabled && allBackupPaths.length > 0) {
               const changed = await hasFileChanged(srcFile, allBackupPaths, relativePath);
@@ -2721,7 +2806,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
             }
 
             await fs.copyFile(srcFile, destFile);
-            manifest.files.root.push(relativePath);
             copiedSplitCount++;
           } catch (err) {
             console.error(`[backup-${source}] Error copying split config ${relativePath}:`, err.message);
@@ -2755,6 +2839,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     const destFile = path.join(backupPath, relativePath);
 
     try {
+      // Always add to manifest
+      manifest.files.root.push(relativePath);
+
       // Smart backup mode: only copy if file has changed
       if (smartBackupEnabled && allBackupPaths.length > 0) {
         const changed = await hasFileChanged(srcFile, allBackupPaths, relativePath);
@@ -2768,7 +2855,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       await fs.mkdir(path.dirname(destFile), { recursive: true });
 
       await fs.copyFile(srcFile, destFile);
-      manifest.files.root.push(relativePath);
       copiedIndividualCount++;
     } catch (err) {
       if (err.code !== 'ENOENT') {
@@ -2797,6 +2883,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       const sourcePath = path.join(storagePath, file);
       const destPath = path.join(backupStoragePath, file);
       try {
+        // Always add to manifest
+        manifest.files.storage.push(file);
+
         // Smart backup mode: only copy if file has changed
         if (smartBackupEnabled && allBackupPaths.length > 0) {
           const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('.storage', file));
@@ -2813,7 +2902,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         }
 
         await fs.copyFile(sourcePath, destPath);
-        manifest.files.storage.push(file); // Only add to manifest if file was actually copied
         copiedLovelaceCount++;
       } catch (err) {
         if (err.code !== 'ENOENT') {
@@ -2845,6 +2933,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         const sourcePath = path.join(esphomePath, relativePath);
         const destPath = path.join(backupEsphomePath, relativePath);
         try {
+          // Always add to manifest
+          manifest.files.esphome.push(relativePath);
+
           // Smart backup mode: only copy if file has changed
           if (smartBackupEnabled && allBackupPaths.length > 0) {
             const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('esphome', relativePath));
@@ -2856,7 +2947,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
-          manifest.files.esphome.push(relativePath); // Only add to manifest if file was actually copied
           copiedEsphomeCount++;
         } catch (err) {
           if (err.code !== 'ENOENT') {
@@ -2884,6 +2974,9 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
         const sourcePath = path.join(packagesPath, relativePath);
         const destPath = path.join(backupPackagesPath, relativePath);
         try {
+          // Always add to manifest
+          manifest.files.packages.push(relativePath);
+
           // Smart backup mode: only copy if file has changed
           if (smartBackupEnabled && allBackupPaths.length > 0) {
             const changed = await hasFileChanged(sourcePath, allBackupPaths, path.join('packages', relativePath));
@@ -2895,7 +2988,6 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
 
           await fs.mkdir(path.dirname(destPath), { recursive: true });
           await fs.copyFile(sourcePath, destPath);
-          manifest.files.packages.push(relativePath); // Only add to manifest if file was actually copied
           copiedPackagesCount++;
         } catch (err) {
           if (err.code !== 'ENOENT') {
@@ -2911,10 +3003,16 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     console.log(`[backup-${source}] Skipping Packages backups (feature disabled).`);
   }
 
+  // Dedupe manifest files
+  manifest.files.root = [...new Set(manifest.files.root)];
+  manifest.files.storage = [...new Set(manifest.files.storage)];
+  manifest.files.esphome = [...new Set(manifest.files.esphome)];
+  manifest.files.packages = [...new Set(manifest.files.packages)];
+
   // In smart backup mode, check if any files were actually copied
   // If not, delete the empty backup folder and return early
   if (smartBackupEnabled && allBackupPaths.length > 0) {
-    const totalCopied = copiedYamlCount + copiedLovelaceCount + copiedEsphomeCount + copiedPackagesCount;
+    const totalCopied = copiedYamlCount + copiedSplitCount + copiedIndividualCount + copiedLovelaceCount + copiedEsphomeCount + copiedPackagesCount;
     if (totalCopied === 0) {
       console.log(`[backup-${source}] No files changed since last backup. Removing empty backup folder.`);
       try {

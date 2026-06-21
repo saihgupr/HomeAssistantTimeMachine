@@ -550,6 +550,14 @@ window.STRINGS = {
         nl: "We konden {path} niet vinden. Maak het aan of kies de juiste map.",
         it: "Impossibile trovare {path}. Crealo o scegli la cartella corretta."
       },
+      invalidAddonBackupPath: {
+        en: "In Add-on mode, backup folder must be in /backup, /media, /share, /ssl, /config, or /addons. Paths like /data or /data/mounts are not supported.",
+        es: "En modo Add-on, la carpeta de copia debe estar en /backup, /media, /share, /ssl, /config o /addons. Las rutas como /data o /data/mounts no son compatibles.",
+        de: "Im Add-on-Modus muss der Backup-Ordner in /backup, /media, /share, /ssl, /config oder /addons liegen. Pfade wie /data oder /data/mounts werden nicht unterstützt.",
+        fr: "En mode Add-on, le dossier de sauvegarde doit être dans /backup, /media, /share, /ssl, /config ou /addons. Les chemins comme /data ou /data/mounts ne sont pas pris en charge.",
+        nl: "In Add-on-modus moet de back-upmap in /backup, /media, /share, /ssl, /config of /addons staan. Paden zoals /data of /data/mounts worden niet ondersteund.",
+        it: "In modalità Add-on, la cartella di backup deve trovarsi in /backup, /media, /share, /ssl, /config o /addons. I percorsi come /data o /data/mounts non sono supportati."
+      },
       notDirectory: {
         en: "{path} isn't a folder. Choose a directory instead.",
         es: "{path} no es una carpeta. Elige un directorio en su lugar.",

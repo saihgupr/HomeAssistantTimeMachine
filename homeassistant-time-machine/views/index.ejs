@@ -349,6 +349,7 @@
 
     const SETTINGS_MESSAGE_LOOKUP = {
       directory_not_found: 'ui.settingsMessages.directoryNotFound',
+      invalid_addon_backup_path: 'ui.settingsMessages.invalidAddonBackupPath',
       not_directory: 'ui.settingsMessages.notDirectory',
       missing_automations: 'ui.settingsMessages.missingAutomations',
       cannot_access: 'ui.settingsMessages.cannotAccess',
@@ -660,6 +661,16 @@
       }
     }
 
+    // Get the current system timezone safely
+    function getTimezone() {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      } catch (e) {
+        console.warn('Error getting timezone:', e);
+        return 'UTC';
+      }
+    }
+
     // Format backup folder name to date/time
     // Handles format: YYYY-MM-DD-HHMMSS (e.g., 2025-10-17-085000)
     function formatFolderName(folderName, mtime) {
@@ -692,15 +703,21 @@
         return folderName; // Invalid date, return original name
       }
 
-      // Use a single Intl.DateTimeFormat call for full date and time formatting
-      return new Intl.DateTimeFormat(currentLanguage, {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true // This will handle AM/PM and 'at' for English, and appropriate for other locales
-      }).format(date);
+      // Use a single Intl.DateTimeFormat call for full date and time formatting with fallback
+      const locale = currentLanguage || 'en';
+      try {
+        return new Intl.DateTimeFormat(locale, {
+          month: 'short',
+          day: '2-digit',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true // This will handle AM/PM and 'at' for English, and appropriate for other locales
+        }).format(date);
+      } catch (e) {
+        console.warn('Intl formatting failed:', e);
+        return date.toLocaleString();
+      }
     }
 
     // Format backup name
@@ -1279,7 +1296,7 @@
         const body = {
           backupPath: currentBackupPath,
           automationIdentifier: identifier,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timezone: getTimezone(),
           liveConfigPath: haConfig.liveConfigPath
         };
 
@@ -1646,7 +1663,7 @@
           body: JSON.stringify({
             fileName: selectedLovelaceFile.name,
             content: lovelaceBackupContent,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timezone: getTimezone(),
             liveConfigPath: haConfig.liveConfigPath
           })
         });
@@ -1873,7 +1890,7 @@
         const response = await fetch(url('/api/restore-esphome-file'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: selectedEsphomeFile.name, content: esphomeBackupContent, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, liveConfigPath: haConfig.liveConfigPath })
+          body: JSON.stringify({ fileName: selectedEsphomeFile.name, content: esphomeBackupContent, timezone: getTimezone(), liveConfigPath: haConfig.liveConfigPath })
         });
         if (!response.ok) throw new Error('Restore failed');
         const data = await response.json(); // Get the response data
@@ -2074,7 +2091,7 @@
         const response = await fetch(url('/api/restore-packages-file'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: selectedPackagesFile.name, content: packagesBackupContent, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, liveConfigPath: haConfig.liveConfigPath })
+          body: JSON.stringify({ fileName: selectedPackagesFile.name, content: packagesBackupContent, timezone: getTimezone(), liveConfigPath: haConfig.liveConfigPath })
         });
         if (!response.ok) throw new Error('Restore failed');
         const data = await response.json(); // Get the response data
@@ -2406,7 +2423,7 @@
       const smartBackupEnabled = document.getElementById('smartBackupEnabled').checked;
 
       const cronExpression = scheduleToCron(scheduleFrequency, scheduleTime, scheduleDay);
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const timezone = getTimezone();
 
       await fetch(url('/api/schedule-backup'), {
         method: 'POST',
@@ -2506,7 +2523,7 @@
       try {
         const liveConfigPath = document.getElementById('liveConfigPath').value || '/config';
         const backupFolderPath = document.getElementById('backupFolderPath').value || '/backup';
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timezone = getTimezone();
         console.log('[backup-now-ui] Starting backup with paths:', { liveConfigPath, backupFolderPath, timezone });
 
         const response = await fetch(url('/api/backup-now'), {
