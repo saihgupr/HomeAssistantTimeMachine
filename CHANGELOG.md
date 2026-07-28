@@ -1,3 +1,7 @@
+## [Unreleased]
+
+- **Fixed:** Automatically resolve relative backup mount names (e.g. `HA_TM_NAS`) to Supervisor network mount paths (`/data/mounts/...`).
+
 # v2.3.1
 
 - **Integration Updates:** You can now configure the integration directly from the Home Assistant UI, and the `time_machine.backup_now` service call now supports all available parameters for granular control.
