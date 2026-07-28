@@ -2607,10 +2607,46 @@ async function resolveFileInBackupChain(targetBackupPath, relativeFilePath) {
   }
 }
 
+// Resolves backup root path, converting relative mount names (e.g. 'HA_TM_NAS') to absolute Supervisor/system paths
+function resolveBackupRootPath(backupFolderPath) {
+  if (!backupFolderPath || typeof backupFolderPath !== 'string' || backupFolderPath.trim() === '') {
+    return '/media/timemachine';
+  }
+  const trimmed = backupFolderPath.trim();
+  if (trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  // Check Home Assistant Supervisor network mounts path (/data/mounts/<name>)
+  const supervisorMountPath = path.join('/data/mounts', trimmed);
+  try {
+    if (fs.existsSync(supervisorMountPath)) {
+      return supervisorMountPath;
+    }
+  } catch (e) {}
+
+  // Check /share/<name> and /media/<name>
+  const sharePath = path.join('/share', trimmed);
+  try {
+    if (fs.existsSync(sharePath)) {
+      return sharePath;
+    }
+  } catch (e) {}
+
+  const mediaPath = path.join('/media', trimmed);
+  try {
+    if (fs.existsSync(mediaPath)) {
+      return mediaPath;
+    }
+  } catch (e) {}
+
+  // Default to Supervisor network mount path for non-absolute folder names
+  return supervisorMountPath;
+}
+
 // Reusable backup function
 async function performBackup(liveConfigPath, backupFolderPath, source = 'manual', maxBackupsEnabled = false, maxBackupsCount = 100, timezone = null, smartBackupEnabled = false) {
   const configPath = liveConfigPath || '/config';
-  const backupRoot = backupFolderPath || '/media/timemachine';
+  const backupRoot = resolveBackupRootPath(backupFolderPath);
 
   LAST_BACKUP_STATE = {
     status: 'in_progress',
@@ -3540,7 +3576,7 @@ app.post('/api/restore-packages-file', async (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const options = await getAddonOptions();
-    const backupRoot = options.backupFolderPath || '/media/timemachine';
+    const backupRoot = resolveBackupRootPath(options.backupFolderPath);
     let allBackups = [];
     try {
       allBackups = await getAllBackupPaths(backupRoot);
