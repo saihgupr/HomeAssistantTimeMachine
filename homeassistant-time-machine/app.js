@@ -1767,10 +1767,37 @@ app.post('/api/get-live-items', async (req, res) => {
     }
 
     const liveItems = {};
-    itemIdentifiers.forEach(identifier => {
-      const item = allItems.find(i => (i.id === identifier || i.alias === identifier));
-      if (item) {
-        liveItems[identifier] = item;
+    const usedIndices = new Set();
+
+    (itemIdentifiers || []).forEach(itemReq => {
+      let descriptor = typeof itemReq === 'object' && itemReq !== null
+        ? itemReq
+        : { _uid: itemReq, id: itemReq, alias: itemReq };
+
+      const key = descriptor._uid || descriptor.id || descriptor.alias;
+      if (!key) return;
+
+      // 1. Try matching by id
+      let matchIdx = -1;
+      if (descriptor.id) {
+        matchIdx = allItems.findIndex((i, idx) => !usedIndices.has(idx) && i.id === descriptor.id);
+      }
+
+      // 2. Try matching by alias
+      if (matchIdx === -1 && descriptor.alias) {
+        matchIdx = allItems.findIndex((i, idx) => !usedIndices.has(idx) && i.alias === descriptor.alias);
+      }
+
+      // 3. Fallback: match by position index
+      if (matchIdx === -1 && typeof descriptor.index === 'number' && descriptor.index < allItems.length) {
+        if (!usedIndices.has(descriptor.index)) {
+          matchIdx = descriptor.index;
+        }
+      }
+
+      if (matchIdx !== -1) {
+        usedIndices.add(matchIdx);
+        liveItems[key] = allItems[matchIdx];
       }
     });
 

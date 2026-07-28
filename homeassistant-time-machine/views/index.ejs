@@ -994,7 +994,11 @@
         });
 
         const data = await response.json();
-        allItems = data.automations || data.scripts || [];
+        const rawItems = data.automations || data.scripts || [];
+        allItems = rawItems.map((item, idx) => ({
+          ...item,
+          _uid: item.id ? item.id : (item.alias ? `${item.alias}__idx_${idx}` : `item__idx_${idx}`)
+        }));
 
         if (allItems.length === 0) {
           document.getElementById('itemsList').innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noItems', { mode: currentMode })}</p>`;
@@ -1021,7 +1025,12 @@
     // Load live items
     async function loadLiveItems() {
       try {
-        const itemIdentifiers = allItems.map(item => item.id || item.alias).filter(Boolean);
+        const itemIdentifiers = allItems.map((item, index) => ({
+          _uid: item._uid,
+          id: item.id || null,
+          alias: item.alias || null,
+          index: index
+        }));
 
         const response = await fetch(url('/api/get-live-items'), {
           method: 'POST',
@@ -1035,15 +1044,18 @@
         // Calculate statuses
         itemStatuses = {};
         allItems.forEach(item => {
-          const key = item.id || item.alias || '';
+          const key = item._uid || item.id || item.alias || '';
           if (!key) return;
 
           const liveItem = liveItemsMap[key];
           if (!liveItem) {
             itemStatuses[key] = 'deleted';
           } else {
-            const backupYaml = jsyaml.dump(item);
-            const liveYaml = jsyaml.dump(liveItem);
+            // Strip out internal _uid field when dumping YAML for clean comparison
+            const { _uid, ...cleanItem } = item;
+            const { _uid: liveUid, ...cleanLiveItem } = liveItem;
+            const backupYaml = jsyaml.dump(cleanItem);
+            const liveYaml = jsyaml.dump(cleanLiveItem);
             itemStatuses[key] = backupYaml === liveYaml ? 'unchanged' : 'changed';
           }
         });
@@ -1142,7 +1154,7 @@
       // If showOnlyChanges is enabled, also filter to show only changed/deleted items
       if (showOnlyChanges) {
         filtered = filtered.filter(item => {
-          const key = item.id || item.alias || '';
+          const key = item._uid || item.id || item.alias || '';
           const status = itemStatuses[key];
           return status === 'changed' || status === 'deleted';
         });
@@ -1163,7 +1175,7 @@
 
       filteredItemsGlobal = items;
       itemsList.innerHTML = items.map((item, idx) => {
-        const key = item.id || item.alias || '';
+        const key = item._uid || item.id || item.alias || '';
         const status = itemStatuses[key] || '';
         const isSelected = currentItemIndex === idx && activePanel === 'items';
         const isLightMode = currentTheme === 'light';
@@ -1233,11 +1245,13 @@
     // Show diff viewer
     async function showDiffViewer(item) {
       selectedItem = item;
-      const key = item.id || item.alias || '';
+      const key = item._uid || item.id || item.alias || '';
       const liveItem = liveItemsMap[key];
       const status = itemStatuses[key];
-      const backupYaml = jsyaml.dump(item);
-      const liveYaml = liveItem ? jsyaml.dump(liveItem) : null;
+      const { _uid, ...cleanItem } = item;
+      const cleanLiveItem = liveItem ? (({ _uid: liveUid, ...rest }) => rest)(liveItem) : null;
+      const backupYaml = jsyaml.dump(cleanItem);
+      const liveYaml = cleanLiveItem ? jsyaml.dump(cleanLiveItem) : null;
       const noChanges = backupYaml === liveYaml;
 
       document.getElementById('diffTitle').textContent = item.alias || item.id || 'Item';
