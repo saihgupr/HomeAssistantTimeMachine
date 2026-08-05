@@ -10,5 +10,6 @@
     "requirements": [],
     "version": "1.2.1",
     "iot_class": "local_polling",
+    "icon": "mdi:history",
     "config_flow": true
 }
