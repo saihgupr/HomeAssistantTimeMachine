@@ -2549,20 +2549,14 @@ body[data-theme='light'] .mobile-tab-bar {
     overflow: hidden;
   }
 
-  /* Header Optimization */
+  /* Hide Desktop Header on Mobile — HA Ingress already shows its own title */
   .header {
-    margin-bottom: 0;
-    padding: max(10px, env(safe-area-inset-top, 10px)) 16px 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-
-  body[data-theme='light'] .header {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
   }
 
   .header-content {
@@ -2786,7 +2780,7 @@ body[data-theme='light'] .mobile-tab-bar {
 
   .search-input {
     font-size: 16px !important;
-    padding: 10px 36px 10px 14px;
+    padding: 10px 36px 10px 44px;
     border-radius: 10px;
     min-height: 44px;
     height: 44px;
@@ -2859,9 +2853,7 @@ body[data-theme='light'] .mobile-tab-bar {
     border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
   }
 
-  #diffModal .close-btn {
-    display: none !important;
-  }
+  /* close-btn removed from diffModal HTML — no rule needed */
 
   #diffModal .modal-body--diff {
     flex: 1 1 auto !important;

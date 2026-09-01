@@ -56,7 +56,6 @@
           <h2 id="diffTitle">Compare Configuration</h2>
           <p id="diffSubtitle" style="font-size: 14px; color: #9ca3af;"></p>
         </div>
-        <button id="closeDiff" class="close-btn">&times;</button>
       </div>
       <div class="modal-body modal-body--diff" id="diffModalBody">
         <!-- Content will be dynamically inserted based on status -->
@@ -2770,12 +2769,6 @@
     }
 
     // Diff modal handlers
-    document.getElementById('closeDiff').addEventListener('click', () => {
-      const modal = document.getElementById('diffModal');
-      modal.style.display = 'none';
-      modal.classList.remove('active');
-    });
-
     document.getElementById('cancelDiff').addEventListener('click', () => {
       const modal = document.getElementById('diffModal');
       modal.style.display = 'none';
@@ -2811,7 +2804,7 @@
             if (overlay) {
               if (overlay.id === 'settingsModal') closeSettings();
               else if (overlay.id === 'diffModal') {
-                document.getElementById('closeDiff')?.click();
+                document.getElementById('cancelDiff')?.click();
               } else if (overlay.id === 'confirmModal') {
                 document.getElementById('confirmCancelBtn')?.click();
               } else {
