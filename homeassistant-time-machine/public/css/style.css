@@ -2353,529 +2353,557 @@ body[data-theme='light'] #backupList .list-item {
 }
 
 /* ==========================================================================
-   Mobile Responsive & Touch-Optimized Design System (< 640px / < 480px)
+   Apple iOS HIG Responsive Design System & Mobile Refactoring
    ========================================================================== */
 
-@media (max-width: 640px) {
-  html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
-  }
+/* --- UI Controls & Inset Grouping --- */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
+.sheet-drag-handle {
+  display: none;
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.28);
+  margin: 10px auto 6px;
+  flex-shrink: 0;
+  cursor: grab;
+}
+
+body[data-theme='light'] .sheet-drag-handle {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.mobile-back-btn {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #007AFF;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 6px 10px 6px 0;
+  margin-right: 4px;
+  cursor: pointer;
+  border-radius: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.mobile-back-btn:active {
+  opacity: 0.6;
+  transform: scale(0.96);
+}
+
+.mobile-quick-backup-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  padding: 0;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+body[data-theme='light'] .mobile-quick-backup-btn {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.mobile-quick-backup-btn:active {
+  transform: scale(0.92);
+}
+
+/* --- iOS Glassmorphic Bottom Navigation Tab Bar --- */
+.mobile-tab-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(23, 23, 23, 0.88);
+  backdrop-filter: blur(25px) saturate(190%);
+  -webkit-backdrop-filter: blur(25px) saturate(190%);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  z-index: 900;
+  align-items: center;
+  justify-content: space-around;
+}
+
+body[data-theme='light'] .mobile-tab-bar {
+  background: rgba(248, 248, 250, 0.9);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.mobile-tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #8e8e93;
+  padding: 6px 0 4px;
+  cursor: pointer;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s cubic-bezier(0.32, 0.72, 0, 1), transform 0.15s cubic-bezier(0.32, 0.72, 0, 1);
+  user-select: none;
+}
+
+.mobile-tab-item:active {
+  transform: scale(0.90);
+  opacity: 0.8;
+}
+
+.mobile-tab-item.active {
+  color: #007AFF;
+}
+
+.mobile-tab-icon {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 2px;
+  stroke-width: 2.2;
+}
+
+.mobile-tab-label {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+/* ==========================================================================
+   TABLET BREAKPOINT (769px – 1024px)
+   ========================================================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
   body {
-    height: auto;
-    min-height: 100vh;
-    min-height: 100dvh;
-    overflow-y: auto;
-    padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px)) 12px;
-    -webkit-text-size-adjust: 100%;
+    padding: max(16px, env(safe-area-inset-top, 16px)) max(16px, env(safe-area-inset-right, 16px)) max(16px, env(safe-area-inset-bottom, 16px)) max(16px, env(safe-area-inset-left, 16px));
   }
 
   .container {
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     max-width: 100%;
+    padding: 0;
   }
 
-  /* Header & Navigation */
-  .header {
-    margin-bottom: 16px;
-    gap: 12px;
+  .content {
+    display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    gap: 12px;
+  }
+
+  #leftPanelContainer {
+    width: 360px !important;
+    min-width: 320px !important;
+    max-width: 420px !important;
+    flex-shrink: 0;
+  }
+
+  #rightPanelContainer {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ==========================================================================
+   MOBILE BREAKPOINT (<= 768px) - iOS Native HIG Experience
+   ========================================================================== */
+@media (max-width: 768px) {
+  body {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) calc(56px + env(safe-area-inset-bottom, 0px)) env(safe-area-inset-left, 0px);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: #171717;
+  }
+
+  body[data-theme='light'] {
+    background: #f3f4f6;
+  }
+
+  .container {
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header Optimization */
+  .header {
+    margin-bottom: 0;
+    padding: max(10px, env(safe-area-inset-top, 10px)) 16px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  body[data-theme='light'] .header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
 
   .header-content {
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
     flex: 1;
   }
 
   .logo {
-    width: 42px;
-    height: 42px;
-    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
   }
 
   .header h1 {
-    font-size: 18px;
-    line-height: 1.25;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .version {
-    font-size: 13px;
+  .version, #heroSubtitle {
+    display: none !important;
+  }
+
+  .mobile-quick-backup-btn {
+    display: inline-flex;
   }
 
   #settingsBtn {
-    min-height: 40px;
-    height: 40px;
-    padding: 0 14px;
-    font-size: 14px;
-    flex-shrink: 0;
-    border-radius: 10px;
+    display: none !important;
   }
 
-  /* Category Navigation Tabs */
+  /* Hide Desktop Top Tabs on Mobile */
   .tabs {
-    width: 100%;
+    display: none !important;
+  }
+
+  /* Show Bottom Navigation Bar */
+  .mobile-tab-bar {
     display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    gap: 6px;
-    padding: 4px;
-    margin-bottom: 16px;
-    border-radius: 14px;
-    box-sizing: border-box;
   }
 
-  .tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab {
-    flex: 0 0 auto;
-    min-height: 44px;
-    height: 44px;
-    padding: 0 16px;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 10px;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  /* Panels & Main Layout */
+  /* Master-Detail Single Screen Container */
   .content {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    display: block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .resizer {
+    display: none !important;
+  }
+
+  /* Left Panel (Master List) - Full Page Edge-to-Edge */
+  #leftPanelContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100%;
+    border-radius: 0;
+    background: #171717;
+    border: none;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease;
+    z-index: 5;
     display: flex;
     flex-direction: column;
-    height: auto;
-    gap: 16px;
+    overflow: hidden;
   }
 
-  .panel {
-    border-radius: 16px;
-    height: auto;
-    max-height: none;
+  body[data-theme='light'] #leftPanelContainer {
+    background: #f3f4f6;
+  }
+
+  /* Right Panel (Detail View) - Full Page Edge-to-Edge */
+  #rightPanelContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100%;
+    border-radius: 0;
+    background: #171717;
+    border: none;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  body[data-theme='light'] #rightPanelContainer {
+    background: #f3f4f6;
+  }
+
+  /* Master-Detail Slide Transition */
+  .content.mobile-detail-active #leftPanelContainer {
+    transform: translateX(-24%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .content.mobile-detail-active #rightPanelContainer {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .content.mobile-detail-active .mobile-back-btn {
+    display: inline-flex;
   }
 
   .panel-header {
-    padding: 14px 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+
+  body[data-theme='light'] .panel-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .panel-header-info {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .panel-header-info h2 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .panel-header-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   .panel-header-actions {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .panel-header-actions .select,
-  .search-input {
-    width: 100%;
-    min-height: 44px;
-    height: 44px;
-    font-size: 16px; /* Prevents iOS auto-zoom on input focus */
-    border-radius: 10px;
+    width: auto;
   }
 
   .search-section {
     width: 100%;
+    margin-top: 4px;
   }
 
   .list {
-    max-height: 420px;
+    flex: 1;
+    height: auto;
+    max-height: none;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 8px 10px;
+    padding: 10px 14px;
   }
 
-  /* List Items & Badges */
+  /* Touch-Optimized Cards & Items */
   .list-item {
     min-height: 48px;
-    padding: 10px 12px;
-    border-radius: 12px;
+    padding: 12px 14px;
     margin-bottom: 8px;
-    gap: 8px;
+    border-radius: 12px;
     -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.15s ease;
   }
 
-  .item-content {
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
+  .list-item:active {
+    transform: scale(0.985);
   }
 
-  .item-content > span,
-  .item-name,
-  .backup-name {
-    font-size: 14px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .item-badges {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    margin-left: auto;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .badge {
-    padding: 4px 8px;
-    font-size: 11.5px;
-    border-radius: 9999px;
-    line-height: 1.2;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .lock-indicator {
-    min-width: 44px;
+  /* Touch Targets (min 44px) */
+  input[type="text"],
+  input[type="password"],
+  input[type="time"],
+  input[type="number"],
+  select,
+  .btn,
+  .btn-primary,
+  .btn-secondary {
     min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: -10px -8px -10px auto;
+    font-size: 16px; /* Prevents iOS Safari input auto-zooming */
   }
 
-  .notification {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    width: calc(100% - 32px);
-    max-width: 360px;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  .search-input {
+    font-size: 16px !important;
+    padding: 10px 36px 10px 14px;
+    border-radius: 10px;
+    min-height: 44px;
+    height: 44px;
   }
 
-  /* Modals: Mobile Full-Height Screen / Bottom Sheet */
+  /* --- iOS Native Bottom Sheets for Modals --- */
   .modal {
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background: rgba(0, 0, 0, 0.55);
     z-index: 1000;
-    overflow: hidden;
+    transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
+  .modal[style*="display: flex"],
+  .modal.active {
+    display: flex !important;
   }
 
-  #diffModal .modal-dialog {
-    position: fixed !important;
-    inset: 0 !important;
+  .modal-dialog,
+  .settings-card {
+    position: relative !important;
+    inset: auto !important;
     width: 100% !important;
     max-width: 100% !important;
-    height: 100% !important;
-    max-height: 100vh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
+    max-height: 90vh !important;
+    max-height: 90dvh !important;
     margin: 0 !important;
-    border: none !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4) !important;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    background: #1e1e1e !important;
     display: flex !important;
     flex-direction: column !important;
-    box-shadow: none !important;
-    background: rgba(23, 23, 23, 0.98) !important;
+    overflow: hidden !important;
   }
 
-  body[data-theme='light'] #diffModal .modal-dialog {
-    background: rgba(248, 250, 252, 0.98) !important;
+  body[data-theme='light'] .modal-dialog,
+  body[data-theme='light'] .settings-card {
+    background: #ffffff !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .modal[style*="display: flex"] .modal-dialog,
+  .modal[style*="display: flex"] .settings-card,
+  .modal.active .modal-dialog,
+  .modal.active .settings-card {
+    transform: translateY(0) !important;
+  }
+
+  .sheet-drag-handle {
+    display: block;
   }
 
   .modal-header {
-    padding: 14px 16px;
+    padding: 8px 18px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
   }
 
   body[data-theme='light'] .modal-header {
-    border-bottom: 1px solid rgba(203, 213, 225, 0.6);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
 
-  #diffTitle {
-    font-size: 16px;
-  }
-
-  #diffSubtitle {
-    font-size: 13px;
-  }
-
-  .close-btn {
-    min-width: 44px;
-    min-height: 44px;
-    width: 44px;
-    height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    padding: 0;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.08);
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  body[data-theme='light'] .close-btn {
-    background: rgba(0, 0, 0, 0.06);
-  }
-
-  /* Diff Viewer Modal Body & Stacked Layout */
   .modal-body--diff {
-    flex: 1 1 auto;
+    padding: 12px 16px;
+    max-height: calc(88vh - 140px);
     overflow-y: auto;
-    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding: 12px 10px;
   }
 
-  .diff-banners-grid,
-  .diff-banners-grid--standalone {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    margin: 0 0 10px 0;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .diff-state-banner--header {
-    height: 38px;
-    border-radius: 0;
-    width: 100%;
-    font-size: 13px;
-  }
-
-  .diff-state-banner-current {
-    border-radius: 10px 10px 0 0 !important;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  body[data-theme='light'] .diff-state-banner-current {
-    border-bottom: 1px solid rgba(203, 213, 225, 0.7);
-  }
-
-  .diff-state-banner-changed {
-    border-radius: 0 0 10px 10px !important;
-  }
-
-  .diff-state-banner-empty {
-    display: none;
-  }
-
-  .diff-palette-bar {
-    width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 2px;
-    margin-bottom: 8px;
-  }
-
-  .diff-palette-bar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .diff-palette-btn {
-    min-width: 34px;
-    min-height: 34px;
-    flex-shrink: 0;
-  }
-
-  .diff-viewer-shell {
-    margin: 0;
-    width: 100%;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .diff-viewer-split {
-    width: 100%;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  /* Unified / Stacked Diff Flow on Mobile */
-  .diff-row {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .diff-cell {
-    width: 100%;
-    min-width: 0;
-    border-top: none;
-  }
-
-  .diff-cell-left {
-    border-right: none;
-  }
-
-  .diff-cell:has(.diff-line-empty),
-  .diff-line-empty {
-    display: none !important;
-  }
-
-  /* In context rows, left & right are identical so display left only */
-  .diff-row-context .diff-cell-right {
-    display: none !important;
-  }
-
-  .diff-line {
-    width: 100%;
-    min-width: 0;
-    padding: 6px 8px;
-    min-height: 34px;
-    gap: 6px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .diff-line-marker {
-    width: 16px;
-    font-size: 13px;
-    flex-shrink: 0;
-    line-height: 1.4;
-    margin-top: 1px;
-  }
-
-  .diff-line-num {
-    width: 34px;
-    font-size: 11px;
-    padding-right: 6px;
-    flex-shrink: 0;
-    line-height: 1.4;
-    margin-top: 1px;
-  }
-
-  .diff-line-text {
-    font-size: 12px;
-    line-height: 1.45;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    word-break: break-word;
-    white-space: pre-wrap;
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* Sticky Action Footer with Safe Area */
-  #diffModal .modal-footer--diff {
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px !important;
+  .modal-footer--diff {
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px)) 18px !important;
     display: flex;
     flex-direction: column-reverse;
     gap: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .modal-footer--diff button {
     width: 100%;
-    box-sizing: border-box;
-    background: rgba(28, 28, 28, 0.96) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  body[data-theme='light'] #diffModal .modal-footer--diff {
-    background: rgba(255, 255, 255, 0.96) !important;
-    border-top: 1px solid rgba(203, 213, 225, 0.7);
-  }
-
-  #diffModal .modal-footer--diff .btn-primary,
-  #diffModal .modal-footer--diff .btn-secondary {
-    width: 100% !important;
-    min-height: 48px;
-    height: 48px;
+    min-height: 46px;
     font-size: 16px;
     font-weight: 600;
     border-radius: 12px;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
-  /* Settings Modal Mobile View */
+  /* Settings Modal Content */
   .settings-card {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    max-height: 100vh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    border: none !important;
+    max-height: 92vh !important;
+    max-height: 92dvh !important;
+    padding: 0 !important;
+  }
+
+  .settings-card form {
     display: flex;
     flex-direction: column;
-    padding: 16px calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+    flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    z-index: 1001;
+    padding: 16px 18px calc(20px + env(safe-area-inset-bottom, 0px));
   }
 
-  .form-group input[type="text"],
-  .form-group input[type="password"],
-  .form-group input[type="time"],
-  .form-group input[type="number"],
-  .form-group select {
-    font-size: 16px; /* Prevents auto-zoom on iOS */
-    min-height: 44px;
-    height: 44px;
-    border-radius: 10px;
+  .settings-card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-card .modal-footer,
-  .modal-actions {
+  .settings-actions {
     display: flex;
     flex-direction: column-reverse;
     gap: 10px;
-    width: 100%;
+    margin-top: 16px;
   }
 
-  .settings-card .modal-footer button,
-  .modal-actions button {
+  .settings-actions button {
     width: 100%;
     min-height: 48px;
     font-size: 16px;
@@ -2886,8 +2914,15 @@ body[data-theme='light'] #backupList .list-item {
   .confirm-dialog {
     width: calc(100% - 32px) !important;
     max-width: 380px !important;
-    border-radius: 18px !important;
+    border-radius: 20px !important;
     margin: auto !important;
+    transform: scale(0.95) !important;
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease !important;
+  }
+
+  .modal[style*="display: flex"] .confirm-dialog,
+  .modal.active .confirm-dialog {
+    transform: scale(1) !important;
   }
 
   .confirm-modal-footer {
@@ -2903,11 +2938,36 @@ body[data-theme='light'] #backupList .list-item {
     font-size: 15px;
     border-radius: 10px;
   }
+
+  /* Unified Mobile Diff View */
+  .diff-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .diff-panel {
+    width: 100%;
+    border-radius: 10px;
+  }
+
+  .diff-line {
+    font-size: 12.5px;
+    padding: 4px 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .diff-line .line-num {
+    min-width: 26px;
+    padding-right: 4px;
+    margin-right: 4px;
+    font-size: 11px;
+  }
 }
 
 @media (max-width: 400px) {
   .header h1 {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .item-badges {

@@ -3,7 +3,11 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HA Time Machine">
+  <meta name="theme-color" content="#0f0f0f">
   <title>
     <%= title %>
   </title>
@@ -46,6 +50,7 @@
   <div id="diffModal" class="modal" style="display: none;">
     <div class="modal-backdrop"></div>
     <div class="modal-dialog">
+      <div class="sheet-drag-handle"></div>
       <div class="modal-header">
         <div>
           <h2 id="diffTitle">Compare Configuration</h2>
@@ -67,6 +72,7 @@
   <div id="settingsModal" class="modal" style="display: none;">
     <div class="modal-backdrop"></div>
     <div class="settings-card">
+      <div class="sheet-drag-handle"></div>
       <form id="settingsForm">
         <h2 id="settingsTitle"></h2>
 
@@ -217,6 +223,7 @@
   <div id="confirmModal" class="modal" style="display: none;">
     <div class="modal-backdrop"></div>
     <div class="modal-dialog confirm-dialog">
+      <div class="sheet-drag-handle"></div>
       <div class="modal-header confirm-modal-header">
         <div style="display: flex; align-items: center; gap: 12px;">
           <div id="confirmIcon" class="confirm-icon-container"></div>
@@ -233,7 +240,7 @@
     </div>
   </div>
 
-  <div class="container">
+  <div class="container" id="appContainer">
     <header class="header">
       <div class="header-content">
         <img src="<%= url('/static/images/icon.png') %>" alt="Logo" class="logo" onerror="this.style.display='none'">
@@ -242,7 +249,16 @@
           <p class="version" id="heroSubtitle"></p>
         </div>
       </div>
-      <button id="settingsBtn" class="btn-secondary">Settings</button>
+      <div class="header-actions">
+        <button class="btn-subtle mobile-quick-backup-btn" id="mobileQuickBackupBtn" onclick="triggerQuickBackup()" title="Backup Now" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+        <button id="settingsBtn" class="btn-secondary">Settings</button>
+      </div>
     </header>
 
     <div class="tabs">
@@ -255,8 +271,8 @@
           %>>Packages</button>
     </div>
 
-    <div class="content">
-      <div class="panel">
+    <div class="content" id="mainContent">
+      <div class="panel" id="leftPanelContainer">
         <div class="panel-header">
           <div class="panel-header-info">
             <h2 id="backupsTitle">Backups</h2>
@@ -268,10 +284,16 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" id="rightPanelContainer">
         <div class="panel-header">
           <div class="panel-header-top">
             <div class="panel-header-info">
+              <button id="mobileBackBtn" class="mobile-back-btn" onclick="navigateBackToMaster()" aria-label="Back">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span id="mobileBackBtnLabel">Back</span>
+              </button>
               <h2 id="itemsTitle">Select a backup</h2>
               <p id="itemsSubtitle"></p>
             </div>
@@ -306,6 +328,57 @@
       </div>
     </div>
   </div>
+
+  <!-- iOS-Style Mobile Bottom Navigation Tab Bar -->
+  <nav class="mobile-tab-bar" id="mobileTabBar">
+    <button class="mobile-tab-item active" id="mobileAutomationsTab" onclick="switchMode('automations')" aria-label="Automations">
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+      </svg>
+      <span class="mobile-tab-label" data-i18n="tabs.automations">Automations</span>
+    </button>
+    <button class="mobile-tab-item" id="mobileScriptsTab" onclick="switchMode('scripts')" aria-label="Scripts">
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
+      <span class="mobile-tab-label" data-i18n="tabs.scripts">Scripts</span>
+    </button>
+    <button class="mobile-tab-item" id="mobileLovelaceTab" onclick="switchMode('lovelace')" aria-label="Lovelace">
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="3" y1="9" x2="21" y2="9"></line>
+        <line x1="9" y1="21" x2="9" y2="9"></line>
+      </svg>
+      <span class="mobile-tab-label" data-i18n="tabs.lovelace">Lovelace</span>
+    </button>
+    <button class="mobile-tab-item" id="mobileEsphomeTab" onclick="switchMode('esphome')" aria-label="ESPHome" <% if (!esphomeEnabled) { %>style="display: none;"<% } %>>
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+        <rect x="9" y="9" width="6" height="6"></rect>
+        <line x1="9" y1="1" x2="9" y2="4"></line>
+        <line x1="15" y1="1" x2="15" y2="4"></line>
+        <line x1="9" y1="20" x2="9" y2="23"></line>
+        <line x1="15" y1="20" x2="15" y2="23"></line>
+      </svg>
+      <span class="mobile-tab-label" data-i18n="tabs.esphome">ESPHome</span>
+    </button>
+    <button class="mobile-tab-item" id="mobilePackagesTab" onclick="switchMode('packages')" aria-label="Packages" <% if (!packagesEnabled) { %>style="display: none;"<% } %>>
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <span class="mobile-tab-label" data-i18n="tabs.packages">Packages</span>
+    </button>
+    <button class="mobile-tab-item" id="mobileSettingsTab" onclick="openSettings()" aria-label="Settings">
+      <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span class="mobile-tab-label" data-i18n="app.settings">Settings</span>
+    </button>
+  </nav>
 
   <script>
     // Base path for all API calls
@@ -909,6 +982,7 @@
 
     // Select backup
     async function selectBackup(backupPath, folderName, mtime, index = -1) {
+      navigateToDetail();
       currentBackupPath = backupPath;
       currentBackupName = folderName;
       currentBackupMtime = mtime;
@@ -2152,11 +2226,40 @@
       }
     });
 
+    function navigateBackToMaster(smooth = true) {
+      const mainContent = document.getElementById('mainContent');
+      if (mainContent) {
+        mainContent.classList.remove('mobile-detail-active');
+      }
+    }
+
+    function navigateToDetail() {
+      const mainContent = document.getElementById('mainContent');
+      if (mainContent && window.innerWidth <= 768) {
+        mainContent.classList.add('mobile-detail-active');
+      }
+    }
+
+    function switchMode(newMode) {
+      if (newMode === 'settings') {
+        openSettings();
+        return;
+      }
+      const targetTab = document.querySelector(`.tab[data-tab="${newMode}"]`);
+      if (targetTab) {
+        targetTab.click();
+      }
+    }
+
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const newMode = tab.dataset.tab;
-        if (newMode === currentMode) return;
+        if (newMode === currentMode) {
+          // If already in this mode, clicking resets mobile detail view back to master
+          navigateBackToMaster(false);
+          return;
+        }
 
         if (newMode === 'esphome' && !esphomeFeatureEnabled) {
           showNotification(getEsphomeDisabledMessage(), 'info');
@@ -2168,9 +2271,21 @@
           return;
         }
 
+        // Close settings if open
+        closeSettings();
+
+        // Reset mobile detail view back to master
+        navigateBackToMaster(false);
+
+        // Update desktop tabs
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         currentMode = newMode;
+
+        // Update mobile bottom tab bar
+        document.querySelectorAll('.mobile-tab-item').forEach(t => t.classList.remove('active'));
+        const activeMobileTab = document.getElementById(`mobile${newMode.charAt(0).toUpperCase() + newMode.slice(1)}Tab`);
+        if (activeMobileTab) activeMobileTab.classList.add('active');
 
         // Clear backup selection when switching tabs
         currentBackupPath = null;
@@ -2199,8 +2314,6 @@
         // Update title and clear subtitle (no backup selected yet)
         document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${newMode}`);
         document.getElementById('itemsSubtitle').textContent = getStyledText('ui.itemsList.noBackupSelected');
-        // Note: Don't clear itemsList here - leave existing content visible until new content loads
-        // The list will be updated when user selects a backup from the newly loaded list
       });
     });
 
@@ -2258,8 +2371,10 @@
       }
     }
 
-    // Settings modal
-    document.getElementById('settingsBtn').addEventListener('click', () => {
+    function openSettings() {
+      const settingsModal = document.getElementById('settingsModal');
+      if (!settingsModal) return;
+
       if (haConfig) {
         const isDocker = haConfig.mode === 'docker';
         const allowManual = isDocker && !haConfig.haAuthConfigured;
@@ -2322,8 +2437,30 @@
       validateLivePath(livePath);
       validateBackupPath(backupPath);
 
-      document.getElementById('settingsModal').style.display = 'flex';
-    });
+      settingsModal.style.display = 'flex';
+      settingsModal.classList.add('active');
+    }
+
+    function closeSettings() {
+      const settingsModal = document.getElementById('settingsModal');
+      if (settingsModal) {
+        document.getElementById('connectionStatus').textContent = '';
+        document.getElementById('backupStatus').textContent = '';
+        settingsModal.style.display = 'none';
+        settingsModal.classList.remove('active');
+      }
+    }
+
+    async function triggerQuickBackup() {
+      const backupBtn = document.getElementById('backupNow');
+      if (backupBtn) {
+        showNotification(getStyledText('ui.backupNow.creating') || 'Creating backup...', 'info');
+        backupBtn.click();
+      }
+    }
+
+    // Settings modal triggers
+    document.getElementById('settingsBtn').addEventListener('click', openSettings);
 
     // Add blur event listeners for path validation
     document.getElementById('liveConfigPath').addEventListener('blur', (e) => {
@@ -2334,20 +2471,12 @@
       validateBackupPath(e.target.value);
     });
 
-    document.getElementById('cancelSettings').addEventListener('click', () => {
-      // Clear status messages when closing settings
-      document.getElementById('connectionStatus').textContent = '';
-      document.getElementById('backupStatus').textContent = '';
-      document.getElementById('settingsModal').style.display = 'none';
-    });
+    document.getElementById('cancelSettings').addEventListener('click', closeSettings);
 
     // Click outside to close settings modal
     document.getElementById('settingsModal').addEventListener('click', (e) => {
-      if (e.target.classList.contains('modal-backdrop')) {
-        // Clear status messages when closing settings
-        document.getElementById('connectionStatus').textContent = '';
-        document.getElementById('backupStatus').textContent = '';
-        document.getElementById('settingsModal').style.display = 'none';
+      if (e.target.classList.contains('modal-backdrop') || e.target.id === 'settingsModal') {
+        closeSettings();
       }
     });
 
@@ -2679,15 +2808,62 @@
 
     // Diff modal handlers
     document.getElementById('closeDiff').addEventListener('click', () => {
-      document.getElementById('diffModal').style.display = 'none';
+      const modal = document.getElementById('diffModal');
+      modal.style.display = 'none';
+      modal.classList.remove('active');
     });
 
     document.getElementById('cancelDiff').addEventListener('click', () => {
-      document.getElementById('diffModal').style.display = 'none';
+      const modal = document.getElementById('diffModal');
+      modal.style.display = 'none';
+      modal.classList.remove('active');
     });
+
+    function initMobileInteractions() {
+      // Touch drag-down on sheet handle to close action sheet
+      document.querySelectorAll('.sheet-drag-handle').forEach(handle => {
+        let startY = 0;
+        let currentY = 0;
+        const dialog = handle.closest('.modal-dialog, .settings-card, .confirm-dialog');
+        if (!dialog) return;
+
+        handle.addEventListener('touchstart', (e) => {
+          startY = e.touches[0].clientY;
+          currentY = startY;
+        }, { passive: true });
+
+        handle.addEventListener('touchmove', (e) => {
+          currentY = e.touches[0].clientY;
+          const deltaY = currentY - startY;
+          if (deltaY > 0) {
+            dialog.style.transform = `translateY(${deltaY}px)`;
+          }
+        }, { passive: true });
+
+        handle.addEventListener('touchend', () => {
+          const deltaY = currentY - startY;
+          dialog.style.transform = '';
+          if (deltaY > 60) {
+            const overlay = dialog.closest('.modal');
+            if (overlay) {
+              if (overlay.id === 'settingsModal') closeSettings();
+              else if (overlay.id === 'diffModal') {
+                document.getElementById('closeDiff')?.click();
+              } else if (overlay.id === 'confirmModal') {
+                document.getElementById('confirmCancelBtn')?.click();
+              } else {
+                overlay.style.display = 'none';
+                overlay.classList.remove('active');
+              }
+            }
+          }
+        });
+      });
+    }
 
     // Initialize
     (async () => {
+      initMobileInteractions();
       updateEsphomeVisibility();
       await loadAppSettings();
       updatePlaceholders();
