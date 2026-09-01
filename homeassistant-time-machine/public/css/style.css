@@ -2911,6 +2911,14 @@ body[data-theme='light'] .mobile-tab-bar {
     border-radius: 10px !important;
   }
 
+  .restore-text-full {
+    display: none !important;
+  }
+
+  .restore-text-short {
+    display: inline !important;
+  }
+
   /* --- iOS Native Bottom Sheets for Other Modals (Settings, etc.) --- */
   .modal:not(#diffModal) {
     position: fixed;
@@ -3311,6 +3319,14 @@ body[data-theme='light'] .modal-footer--diff {
 
 body[data-theme='light'] .modal-footer--diff .btn-primary {
   box-shadow: none;
+}
+
+.restore-text-short {
+  display: none;
+}
+
+.restore-text-full {
+  display: inline;
 }
 
 /* Code Viewer */

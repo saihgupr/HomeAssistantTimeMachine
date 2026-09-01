@@ -400,6 +400,14 @@ window.STRINGS = {
         nl: "Deze versie herstellen",
         it: "Ripristina questa versione"
       },
+      restoreShort: {
+        en: "Restore",
+        es: "Restaurar",
+        de: "Wiederherstellen",
+        fr: "Restaurer",
+        nl: "Herstellen",
+        it: "Ripristina"
+      },
       restoreLovelace: {
         en: "Restore",
         es: "Restaurar",

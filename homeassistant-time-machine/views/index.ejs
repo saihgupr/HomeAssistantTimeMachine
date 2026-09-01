@@ -63,7 +63,7 @@
       </div>
       <div class="modal-footer modal-footer--diff">
         <button id="cancelDiff" class="btn-secondary">Cancel</button>
-        <button id="restoreBtn" class="btn-primary">Restore This Version</button>
+        <button id="restoreBtn" class="btn-primary"><span class="restore-text-full">Restore This Version</span><span class="restore-text-short">Restore</span></button>
       </div>
     </div>
   </div>
@@ -540,7 +540,9 @@
       if (saveBtn) saveBtn.textContent = getStyledText('ui.buttons.save');
 
       // Update restore button text
-      document.getElementById('restoreBtn').textContent = getStyledText('ui.buttons.restore');
+      const fullRestoreText = getStyledText('ui.buttons.restore') || 'Restore This Version';
+      const shortRestoreText = getStyledText('ui.buttons.restoreShort') || 'Restore';
+      document.getElementById('restoreBtn').innerHTML = `<span class="restore-text-full">${fullRestoreText}</span><span class="restore-text-short">${shortRestoreText}</span>`;
 
       // Update show only changes label and initialize checkbox
       const showOnlyChangesLabel = document.getElementById('showOnlyChangesLabel');
