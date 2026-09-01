@@ -847,19 +847,21 @@
 
         filteredBackupsGlobal = data.backups;
 
-        // If showOnlyChanges is enabled, do sequential filtering
+        // Render all backups immediately so user can select any backup instantly without waiting!
+        backupCount.textContent = getStyledText('ui.backupList.snapshotsAvailable', { count: data.backups.length });
+        renderBackupList(data.backups, backupList);
+
+        // If showOnlyChanges is enabled, filter in background via batch API without blocking UI
         if (showOnlyChanges) {
-          await loadBackupsWithChangesFilter(data.backups, backupList, backupCount);
-        } else {
-          // Normal mode: show all backups immediately
-          backupCount.textContent = getStyledText('ui.backupList.snapshotsAvailable', { count: data.backups.length });
-          renderBackupList(data.backups, backupList);
+          filterBackupsBatch(data.backups, backupList, backupCount);
         }
       } catch (error) {
         console.error('[loadBackups] Error:', error);
         showNotification('Error loading backups: ' + error.message, 'error');
       }
     }
+
+    let currentScanId = 0;
 
     // Helper to render backup list
     function renderBackupList(backups, backupList) {
@@ -873,15 +875,17 @@
           const textColor = isSelected ? 'white' : (isLightMode ? '#0f172a' : '#d1d5db');
           return `
             <button 
+              type="button"
               class="list-item" 
               data-path="${backup.path}"
+              data-folder-name="${backup.folderName}"
+              data-mtime="${backup.mtime}"
               data-index="${index}"
               data-locked="${backup.locked}"
-              onclick="selectBackup('${backup.path}', '${backup.folderName}', '${backup.mtime}', ${index})"
               oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
-              style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; position: relative;"
+              style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; box-shadow: ${boxShadow}; color: ${textColor}; position: relative; touch-action: manipulation;"
             >
-              <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 12px; width: 100%; pointer-events: none;">
                 <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
                 ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
               </div>
@@ -890,98 +894,45 @@
         }).join('') + `</div>`;
     }
 
-    // Load backups with changes filter (sequential check with progressive rendering)
-    async function loadBackupsWithChangesFilter(allBackups, backupList, backupCount) {
+    // Fast background batch filter
+    async function filterBackupsBatch(allBackups, backupList, backupCount) {
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
-      const filteredBackups = [];
+      const scanId = ++currentScanId;
 
-      // Start with loading message and placeholder space
-      backupCount.innerHTML = '&nbsp;';
-      backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"><p class="loading">${getStyledText('ui.backupList.loading')}</p></div>`;
-      const container = document.getElementById('backupListContainer');
+      try {
+        const resp = await fetch(url('/api/check-snapshots-batch'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            backupPaths: allBackups.map(b => b.path),
+            liveConfigPath,
+            mode: currentMode
+          })
+        });
+        const data = await resp.json();
+        if (scanId !== currentScanId) return; // Abort if user clicked or navigated
 
-      filteredBackupsGlobal = [];
-
-      // Check each backup sequentially, add to list as found
-      for (let i = 0; i < allBackups.length; i++) {
-        const backup = allBackups[i];
-
-        try {
-          const checkResponse = await fetch(url('/api/check-snapshot-changes'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ backupPath: backup.path, liveConfigPath, mode: currentMode })
-          });
-          const checkData = await checkResponse.json();
-
-          if (checkData.hasChanges) {
-            // Clear loading text on first item
-            if (filteredBackups.length === 0) {
-              container.innerHTML = '';
-            }
-            const index = filteredBackups.length;
-            filteredBackups.push(backup);
-            filteredBackupsGlobal = filteredBackups;
-            // Add this backup to the visible list immediately
-            appendBackupToList(backup, container, index);
+        if (data.results) {
+          const filtered = allBackups.filter(b => data.results[b.path] !== false);
+          filteredBackupsGlobal = filtered;
+          if (filtered.length === 0) {
+            backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
+            backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
+          } else {
+            backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filtered.length });
+            renderBackupList(filtered, backupList);
           }
-        } catch (error) {
-          console.error('[loadBackupsWithChangesFilter] Error checking backup:', backup.path, error);
-          // Clear loading text on first item
-          if (filteredBackups.length === 0) {
-            container.innerHTML = '';
-          }
-          const index = filteredBackups.length;
-          // On error, include the backup to be safe
-          filteredBackups.push(backup);
-          filteredBackupsGlobal = filteredBackups;
-          appendBackupToList(backup, container, index);
         }
+      } catch (e) {
+        console.error('Batch filter error:', e);
+      } finally {
+        fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
       }
-
-      // Final state
-      if (filteredBackups.length === 0) {
-        backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
-        backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
-      } else {
-        backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filteredBackups.length });
-      }
-
-      // Clear server cache to free memory after filtering
-      fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
     }
-
-    // Append a single backup item to the list progressively
-    function appendBackupToList(backup, container, index) {
-      const isSelected = currentBackupPath === backup.path;
-      const isLightMode = currentTheme === 'light';
-      const bgColor = isSelected ? '#007AFC' : (isLightMode ? 'white' : 'rgb(46, 46, 46)');
-      const borderColor = isLightMode ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.05)';
-      const boxShadow = isSelected ? 'none' : (isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none');
-      const textColor = isSelected ? 'white' : (isLightMode ? '#0f172a' : '#d1d5db');
-
-      const button = document.createElement('button');
-      button.className = 'list-item';
-      button.dataset.path = backup.path;
-      button.dataset.index = index;
-      button.dataset.locked = backup.locked;
-      button.onclick = () => selectBackup(backup.path, backup.folderName, backup.mtime, index);
-      button.oncontextmenu = (e) => showContextMenu(e, backup.path, backup.locked);
-      button.style.cssText = `width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; transition: all 0.2s; box-shadow: ${boxShadow}; color: ${textColor}; margin-bottom: 8px; position: relative;`;
-
-      button.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-          <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
-          ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
-        </div>
-      `;
-      container.appendChild(button);
-    }
-
-
 
     // Select backup
     async function selectBackup(backupPath, folderName, mtime, index = -1) {
+      currentScanId++; // Immediately abort any active background filter so full network priority is given to loading selected backup
       navigateToDetail();
       currentBackupPath = backupPath;
       currentBackupName = folderName;
@@ -1259,12 +1210,12 @@
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
 
         return `
-          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
-            <div class="item-content">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle} style="touch-action: manipulation; cursor: pointer;">
+            <div class="item-content" style="pointer-events: none;">
               <span class="dot"></span>
               <span>${item.alias || item.id || `${currentMode} ${idx + 1}`}</span>
             </div>
-            <div class="item-badges">
+            <div class="item-badges" style="pointer-events: none;">
               ${statusBadge}
               <svg class="chevron" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -1304,6 +1255,7 @@
 
         document.getElementById('diffContent').innerHTML = diffHtml;
         document.getElementById('diffModal').style.display = 'flex';
+        document.getElementById('diffModal').classList.add('active');
 
         // Set restore button attributes
         const restoreBtn = document.getElementById('confirmRestore');
@@ -1332,9 +1284,6 @@
 
       const modalBody = document.getElementById('diffModalBody');
 
-      // Hide close button for all states
-      document.getElementById('closeDiff').style.display = 'none';
-
       if (!liveItem) {
         // Deleted state
         document.getElementById('diffSubtitle').innerHTML = `<span>${formatFolderName(currentBackupName, currentBackupMtime)}</span>`;
@@ -1348,7 +1297,6 @@
       } else if (noChanges) {
         // Unchanged state
         document.getElementById('diffSubtitle').textContent = getStyledText('ui.diffViewer.noChanges');
-        document.getElementById('closeDiff').style.display = 'none';
         modalBody.innerHTML = `
                            <div class="diff-state-block">            <div class="diff-state-banner diff-state-banner-unchanged">
               <span class="diff-state-label">${getStyledText('ui.diffViewer.currentVersion')}</span>
@@ -1517,12 +1465,12 @@
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
-          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
-            <div class="item-content">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle} style="touch-action: manipulation; cursor: pointer;">
+            <div class="item-content" style="pointer-events: none;">
               <span class="dot"></span>
               <span>${file.name}</span>
             </div>
-            <div class="item-badges">
+            <div class="item-badges" style="pointer-events: none;">
               ${statusBadge}
               <svg class="chevron" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -1695,10 +1643,6 @@
 
       // Apply saved palette preference
 
-
-      // Hide close button for all states
-      document.getElementById('closeDiff').style.display = 'none';
-
       if (!lovelaceLiveContent) {
         // Deleted state
         document.getElementById('diffSubtitle').innerHTML = `<span>${formatFolderName(currentBackupName, currentBackupMtime)}</span>`; modalBody.innerHTML = `
@@ -1712,7 +1656,6 @@
       } else if (noChanges) {
         // Unchanged state
         document.getElementById('diffSubtitle').textContent = getStyledText('ui.diffViewer.noChanges');
-        document.getElementById('closeDiff').style.display = 'none';
         modalBody.innerHTML = `
           <div class="diff-state-block">
             <div class="diff-state-banner diff-state-banner-unchanged">
@@ -1865,12 +1808,12 @@
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
-          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
-            <div class="item-content">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle} style="touch-action: manipulation; cursor: pointer;">
+            <div class="item-content" style="pointer-events: none;">
               <span class="dot"></span>
               <span>${file.name}</span>
             </div>
-            <div class="item-badges">
+            <div class="item-badges" style="pointer-events: none;">
               ${statusBadge}
               <svg class="chevron" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -1924,10 +1867,6 @@
 
       // Apply saved palette preference
 
-
-      // Hide close button for all states
-      document.getElementById('closeDiff').style.display = 'none';
-
       if (!esphomeLiveContent) {
         // Deleted state
         document.getElementById('diffSubtitle').innerHTML = `<span>${formatFolderName(currentBackupName, currentBackupMtime)}</span>`;
@@ -1942,7 +1881,6 @@
       } else if (noChanges) {
         // Unchanged state
         document.getElementById('diffSubtitle').textContent = getStyledText('ui.diffViewer.noChanges');
-        document.getElementById('closeDiff').style.display = 'none';
         modalBody.innerHTML = `
           <div class="diff-state-block">
             <div class="diff-state-banner diff-state-banner-unchanged">
@@ -2066,12 +2004,12 @@
         const statusBadge = status === 'changed' ? `<span class="badge badge-changed">${getStyledText('ui.badges.changed')}</span>` :
           status === 'deleted' ? `<span class="badge badge-deleted">${getStyledText('ui.badges.deleted')}</span>` : '';
         return `
-          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle}>
-            <div class="item-content">
+          <div class="list-item ${isSelected ? 'selected' : ''}" data-index="${idx}" ${itemStyle} style="touch-action: manipulation; cursor: pointer;">
+            <div class="item-content" style="pointer-events: none;">
               <span class="dot"></span>
               <span>${file.name}</span>
             </div>
-            <div class="item-badges">
+            <div class="item-badges" style="pointer-events: none;">
               ${statusBadge}
               <svg class="chevron" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -2125,10 +2063,6 @@
 
       // Apply saved palette preference
 
-
-      // Hide close button for all states
-      document.getElementById('closeDiff').style.display = 'none';
-
       if (!packagesLiveContent) {
         // Deleted state
         document.getElementById('diffSubtitle').innerHTML = `<span>${formatFolderName(currentBackupName, currentBackupMtime)}</span>`;
@@ -2143,7 +2077,6 @@
       } else if (noChanges) {
         // Unchanged state
         document.getElementById('diffSubtitle').textContent = getStyledText('ui.diffViewer.noChanges');
-        document.getElementById('closeDiff').style.display = 'none';
         modalBody.innerHTML = `
           <div class="diff-state-block">
             <div class="diff-state-banner diff-state-banner-unchanged">
@@ -2859,6 +2792,22 @@
           }
         });
       });
+
+      // Unified event delegation on #backupList for instantaneous tap response
+      const backupListEl = document.getElementById('backupList');
+      if (backupListEl) {
+        backupListEl.addEventListener('click', (e) => {
+          const item = e.target.closest('.list-item');
+          if (!item) return;
+          const path = item.dataset.path;
+          const folderName = item.dataset.folderName || '';
+          const mtime = item.dataset.mtime || '';
+          const index = parseInt(item.dataset.index || '-1');
+          if (path) {
+            selectBackup(path, folderName, mtime, index);
+          }
+        });
+      }
     }
 
     // Initialize

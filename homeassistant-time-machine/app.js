@@ -1293,7 +1293,7 @@ app.post('/api/clear-cache', (req, res) => {
 // Batch check multiple snapshots for changes (more efficient)
 app.post('/api/check-snapshots-batch', async (req, res) => {
   try {
-    const { backupPaths, liveConfigPath } = req.body;
+    const { backupPaths, liveConfigPath, mode } = req.body;
     const configPath = liveConfigPath || '/config';
 
     if (!backupPaths || !Array.isArray(backupPaths)) {
@@ -1301,7 +1301,7 @@ app.post('/api/check-snapshots-batch', async (req, res) => {
     }
 
     // Check all snapshots in parallel (limit concurrency to avoid overwhelming)
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = 15;
     const results = {};
 
     for (let i = 0; i < backupPaths.length; i += BATCH_SIZE) {
@@ -1309,7 +1309,7 @@ app.post('/api/check-snapshots-batch', async (req, res) => {
       const batchResults = await Promise.all(
         batch.map(async (backupPath) => {
           try {
-            const hasChanges = await checkSnapshotHasChanges(backupPath, configPath);
+            const hasChanges = await checkSnapshotHasChanges(backupPath, configPath, mode || 'automations');
             return { path: backupPath, hasChanges };
           } catch (err) {
             // On error, include the backup to be safe

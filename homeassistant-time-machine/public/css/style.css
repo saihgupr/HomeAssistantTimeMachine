@@ -2746,12 +2746,21 @@ body[data-theme='light'] .mobile-tab-bar {
     padding: 12px 14px;
     margin-bottom: 8px;
     border-radius: 12px;
+    touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.15s ease;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background-color 0.15s ease, opacity 0.12s ease;
   }
 
   .list-item:active {
-    transform: scale(0.985);
+    opacity: 0.7;
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  body[data-theme='light'] .list-item:active {
+    background-color: rgba(0, 0, 0, 0.06);
   }
 
   /* Touch Targets (min 44px) */
@@ -2775,8 +2784,135 @@ body[data-theme='light'] .mobile-tab-bar {
     height: 44px;
   }
 
-  /* --- iOS Native Bottom Sheets for Modals --- */
-  .modal {
+  /* --- Full Frame Mobile Diff Modal --- */
+  #diffModal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    z-index: 1000 !important;
+    display: none !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #171717 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  body[data-theme='light'] #diffModal {
+    background: #f8fafc !important;
+  }
+
+  #diffModal[style*="display: flex"],
+  #diffModal.active {
+    display: flex !important;
+  }
+
+  #diffModal .modal-dialog {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #171717 !important;
+  }
+
+  body[data-theme='light'] #diffModal .modal-dialog {
+    background: #f8fafc !important;
+  }
+
+  #diffModal .sheet-drag-handle {
+    display: none !important;
+  }
+
+  #diffModal .modal-header {
+    padding: max(10px, env(safe-area-inset-top, 10px)) 16px 10px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-shrink: 0 !important;
+  }
+
+  body[data-theme='light'] #diffModal .modal-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  }
+
+  #diffModal .close-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    font-size: 22px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: none !important;
+    color: inherit !important;
+    cursor: pointer !important;
+  }
+
+  body[data-theme='light'] #diffModal .close-btn {
+    background: rgba(0, 0, 0, 0.06) !important;
+  }
+
+  #diffModal .modal-body--diff {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 14px !important;
+    max-height: none !important;
+  }
+
+  #diffModal .modal-footer--diff {
+    position: sticky !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    flex-shrink: 0 !important;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 10px !important;
+    background: rgba(23, 23, 23, 0.96) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body[data-theme='light'] #diffModal .modal-footer--diff {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  }
+
+  #diffModal .modal-footer--diff button {
+    flex: 1 !important;
+    width: auto !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+  }
+
+  /* --- iOS Native Bottom Sheets for Other Modals (Settings, etc.) --- */
+  .modal:not(#diffModal) {
     position: fixed;
     inset: 0;
     width: 100%;
@@ -2792,12 +2928,12 @@ body[data-theme='light'] .mobile-tab-bar {
     transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
-  .modal[style*="display: flex"],
-  .modal.active {
+  .modal:not(#diffModal)[style*="display: flex"],
+  .modal:not(#diffModal).active {
     display: flex !important;
   }
 
-  .modal-dialog,
+  .modal:not(#diffModal) .modal-dialog,
   .settings-card {
     position: relative !important;
     inset: auto !important;
@@ -2821,17 +2957,17 @@ body[data-theme='light'] .mobile-tab-bar {
     overflow: hidden !important;
   }
 
-  body[data-theme='light'] .modal-dialog,
+  body[data-theme='light'] .modal:not(#diffModal) .modal-dialog,
   body[data-theme='light'] .settings-card {
     background: #ffffff !important;
     border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
   }
 
-  .modal[style*="display: flex"] .modal-dialog,
-  .modal[style*="display: flex"] .settings-card,
-  .modal.active .modal-dialog,
-  .modal.active .settings-card {
+  .modal:not(#diffModal)[style*="display: flex"] .modal-dialog,
+  .modal:not(#diffModal)[style*="display: flex"] .settings-card,
+  .modal:not(#diffModal).active .modal-dialog,
+  .modal:not(#diffModal).active .settings-card {
     transform: translateY(0) !important;
   }
 
@@ -2839,7 +2975,7 @@ body[data-theme='light'] .mobile-tab-bar {
     display: block;
   }
 
-  .modal-header {
+  .modal:not(#diffModal) .modal-header {
     padding: 8px 18px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
@@ -2847,31 +2983,8 @@ body[data-theme='light'] .mobile-tab-bar {
     justify-content: space-between;
   }
 
-  body[data-theme='light'] .modal-header {
+  body[data-theme='light'] .modal:not(#diffModal) .modal-header {
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .modal-body--diff {
-    padding: 12px 16px;
-    max-height: calc(88vh - 140px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .modal-footer--diff {
-    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px)) 18px !important;
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .modal-footer--diff button {
-    width: 100%;
-    min-height: 46px;
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: 12px;
   }
 
   /* Settings Modal Content */
