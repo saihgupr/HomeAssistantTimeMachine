@@ -1120,65 +1120,76 @@ async function saveDockerSettings(settings) {
   return settingsToSave;
 }
 
-const SKIP_BACKUP_DIRS = new Set(['esphome', '.storage', 'packages']);
+const SKIP_BACKUP_DIRS = new Set(['esphome', '.storage', 'packages', '@eaDir', '.Trashes', '.Spotlight-V100', '.fseventsd']);
 
-// Recursive function to find backup directories
+// Fast recursive function to find backup directories with parallel I/O
 async function getBackupDirs(dir, depth = 0) {
   let results = [];
-  const indent = '  '.repeat(depth);
 
   try {
     const list = await fs.readdir(dir, { withFileTypes: true });
+    const dashedPattern = /^\d{4}-\d{2}-\d{2}-\d{6}$/;
+    const numericPattern = /^\d{12}$/;
 
-    for (const dirent of list) {
+    const tasks = list.map(async (dirent) => {
+      if (!dirent.isDirectory() || SKIP_BACKUP_DIRS.has(dirent.name)) return [];
       const fullPath = path.resolve(dir, dirent.name);
-      if (dirent.isDirectory()) {
-        // Skip known non-backup directories
-        if (SKIP_BACKUP_DIRS.has(dirent.name)) {
-          continue;
-        }
-        const name = dirent.name;
-        const dashedPattern = /^\d{4}-\d{2}-\d{2}-\d{6}$/;
-        const numericPattern = /^\d{12}$/;
-        let isBackupFolder = dashedPattern.test(name) || numericPattern.test(name);
+      const name = dirent.name;
+      let isBackupFolder = dashedPattern.test(name) || numericPattern.test(name);
 
-        // Fallback: if folder contains common YAML backup files, treat as backup folder
-        if (!isBackupFolder) {
-          try {
-            const inner = await fs.readdir(fullPath);
-            const hasYaml = inner.some(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-            const hasKnownFiles = inner.includes('automations.yaml') || inner.includes('scripts.yaml');
-            if (hasYaml || hasKnownFiles) {
-              isBackupFolder = true;
-            }
-          } catch (err) {
-            // Skip directories we can't read
-          }
-        }
-
-        if (isBackupFolder) {
-          const stats = await fs.stat(fullPath);
-          let locked = false;
-          try {
-            await fs.access(path.join(fullPath, '.lock'));
-            locked = true;
-          } catch (e) {
-            // Not locked
-          }
-          results.push({ path: fullPath, folderName: name, mtime: stats.mtime, locked });
-        }
-
-        // Continue scanning deeper regardless to support nested structures like /year/month/backup
+      if (!isBackupFolder) {
         try {
-          const nestedResults = await getBackupDirs(fullPath, depth + 1);
-          results = results.concat(nestedResults);
-        } catch (err) {
-          // Skip directories we can't read
-        }
+          const inner = await fs.readdir(fullPath);
+          const hasYaml = inner.some(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+          const hasKnownFiles = inner.includes('automations.yaml') || inner.includes('scripts.yaml');
+          if (hasYaml || hasKnownFiles) {
+            isBackupFolder = true;
+          }
+        } catch (err) { }
       }
-    }
+
+      let folderResult = null;
+      if (isBackupFolder) {
+        let mtime = new Date();
+        if (dashedPattern.test(name)) {
+          const parts = name.split('-');
+          if (parts.length === 4) {
+            const timePart = parts[3];
+            const hh = timePart.substring(0, 2);
+            const mm = timePart.substring(2, 4);
+            const ss = timePart.substring(4, 6);
+            mtime = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T${hh}:${mm}:${ss}`);
+          }
+        } else {
+          try {
+            const stats = await fs.stat(fullPath);
+            mtime = stats.mtime;
+          } catch (e) { }
+        }
+
+        let locked = false;
+        try {
+          await fs.access(path.join(fullPath, '.lock'));
+          locked = true;
+        } catch (e) { }
+
+        folderResult = { path: fullPath, folderName: name, mtime, locked };
+      }
+
+      let nestedResults = [];
+      if (depth < 2 && !isBackupFolder) {
+        try {
+          nestedResults = await getBackupDirs(fullPath, depth + 1);
+        } catch (err) { }
+      }
+
+      return folderResult ? [folderResult, ...nestedResults] : nestedResults;
+    });
+
+    const nestedArrays = await Promise.all(tasks);
+    results = nestedArrays.flat();
   } catch (error) {
-    console.error(`${indent}[scan-backups] Error reading ${dir}:`, error.message);
+    console.error(`[scan-backups] Error reading ${dir}:`, error.message);
   }
 
   return results.filter(result => !SKIP_BACKUP_DIRS.has(path.basename(result.path)));
@@ -1187,12 +1198,9 @@ async function getBackupDirs(dir, depth = 0) {
 // Scan backups
 app.post('/api/scan-backups', async (req, res) => {
   try {
-    // Accept backupRootPath from request body or use default
     const backupRootPath = req.body?.backupRootPath || '/media/timemachine';
     const mode = req.body?.mode; // Optional mode filter: automations, scripts, lovelace, esphome, packages
-    console.log('[scan-backups] Scanning backup directory:', backupRootPath, mode ? `for mode: ${mode}` : '');
 
-    // Basic security check
     if (backupRootPath.includes('..')) {
       return res.status(400).json({ error: 'Invalid path' });
     }
@@ -1202,54 +1210,42 @@ app.post('/api/scan-backups', async (req, res) => {
     // Sort descending to show newest first
     backups.sort((a, b) => b.folderName.localeCompare(a.folderName));
 
-    // If mode is specified, filter backups to only include those with relevant files
+    // Fast parallel manifest check if mode is specified
     if (mode) {
-      const filteredBackups = [];
-      for (const backup of backups) {
-        try {
-          const manifestPath = path.join(backup.path, '.backup_manifest.json');
-          const manifestData = await fs.readFile(manifestPath, 'utf8');
-          const manifest = JSON.parse(manifestData);
+      const modeChecks = await Promise.all(
+        backups.map(async (backup) => {
+          try {
+            const manifestPath = path.join(backup.path, '.backup_manifest.json');
+            const manifestData = await fs.readFile(manifestPath, 'utf8');
+            const manifest = JSON.parse(manifestData);
 
-          let hasRelevantFiles = false;
-
-          switch (mode) {
-            case 'automations':
-              // Check if automations.yaml is in root files
-              hasRelevantFiles = manifest.files?.root?.includes('automations.yaml') ?? false;
-              break;
-            case 'scripts':
-              // Check if scripts.yaml is in root files
-              hasRelevantFiles = manifest.files?.root?.includes('scripts.yaml') ?? false;
-              break;
-            case 'lovelace':
-              // Check if any lovelace files are in storage
-              hasRelevantFiles = (manifest.files?.storage?.some(f => f.startsWith('lovelace'))) ?? false;
-              break;
-            case 'esphome':
-              // Check if any esphome files exist
-              hasRelevantFiles = (manifest.files?.esphome?.length > 0) ?? false;
-              break;
-            case 'packages':
-              // Check if any packages files exist
-              hasRelevantFiles = (manifest.files?.packages?.length > 0) ?? false;
-              break;
-            default:
-              // Unknown mode, include the backup
-              hasRelevantFiles = true;
+            let hasRelevantFiles = false;
+            switch (mode) {
+              case 'automations':
+                hasRelevantFiles = manifest.files?.root?.includes('automations.yaml') ?? false;
+                break;
+              case 'scripts':
+                hasRelevantFiles = manifest.files?.root?.includes('scripts.yaml') ?? false;
+                break;
+              case 'lovelace':
+                hasRelevantFiles = (manifest.files?.storage?.some(f => f.startsWith('lovelace'))) ?? false;
+                break;
+              case 'esphome':
+                hasRelevantFiles = (manifest.files?.esphome?.length > 0) ?? false;
+                break;
+              case 'packages':
+                hasRelevantFiles = (manifest.files?.packages?.length > 0) ?? false;
+                break;
+              default:
+                hasRelevantFiles = true;
+            }
+            return hasRelevantFiles ? backup : null;
+          } catch (manifestErr) {
+            return backup;
           }
-
-          if (hasRelevantFiles) {
-            filteredBackups.push(backup);
-          }
-        } catch (manifestErr) {
-          // No manifest or error reading it - this is an old-style full backup
-          // Include it to be safe (assume it has all files)
-          filteredBackups.push(backup);
-        }
-      }
-      backups = filteredBackups;
-      console.log('[scan-backups] Filtered to', backups.length, 'backups with', mode, 'files');
+        })
+      );
+      backups = modeChecks.filter(Boolean);
     }
 
     console.log('[scan-backups] Found backups:', backups.length);

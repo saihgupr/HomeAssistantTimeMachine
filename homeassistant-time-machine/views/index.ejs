@@ -862,36 +862,64 @@
     }
 
     let currentScanId = 0;
+    let currentRenderId = 0;
 
-    // Helper to render backup list
+    // Helper to render backup list with progressive streaming for huge lists
     function renderBackupList(backups, backupList) {
+      const renderId = ++currentRenderId;
+      const CHUNK_SIZE = 40;
+
+      function renderItemHtml(backup, index) {
+        const isSelected = currentBackupPath === backup.path;
+        const isLightMode = currentTheme === 'light';
+        const bgColor = isSelected ? '#007AFC' : (isLightMode ? 'white' : 'rgb(46, 46, 46)');
+        const borderColor = isLightMode ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.05)';
+        const boxShadow = isSelected ? 'none' : (isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none');
+        const textColor = isSelected ? 'white' : (isLightMode ? '#0f172a' : '#d1d5db');
+        return `
+          <button 
+            type="button"
+            class="list-item" 
+            data-path="${backup.path}"
+            data-folder-name="${backup.folderName}"
+            data-mtime="${backup.mtime}"
+            data-index="${index}"
+            data-locked="${backup.locked}"
+            oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
+            style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; box-shadow: ${boxShadow}; color: ${textColor}; position: relative; touch-action: manipulation;"
+          >
+            <div style="display: flex; align-items: center; gap: 12px; width: 100%; pointer-events: none;">
+              <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
+              ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
+            </div>
+          </button>
+        `;
+      }
+
+      // Render initial chunk immediately for instantaneous display
+      const initialChunk = backups.slice(0, CHUNK_SIZE);
       backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;">` +
-        backups.map((backup, index) => {
-          const isSelected = currentBackupPath === backup.path;
-          const isLightMode = currentTheme === 'light';
-          const bgColor = isSelected ? '#007AFC' : (isLightMode ? 'white' : 'rgb(46, 46, 46)');
-          const borderColor = isLightMode ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.05)';
-          const boxShadow = isSelected ? 'none' : (isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none');
-          const textColor = isSelected ? 'white' : (isLightMode ? '#0f172a' : '#d1d5db');
-          return `
-            <button 
-              type="button"
-              class="list-item" 
-              data-path="${backup.path}"
-              data-folder-name="${backup.folderName}"
-              data-mtime="${backup.mtime}"
-              data-index="${index}"
-              data-locked="${backup.locked}"
-              oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
-              style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; box-shadow: ${boxShadow}; color: ${textColor}; position: relative; touch-action: manipulation;"
-            >
-              <div style="display: flex; align-items: center; gap: 12px; width: 100%; pointer-events: none;">
-                <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
-                ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
-              </div>
-            </button>
-          `;
-        }).join('') + `</div>`;
+        initialChunk.map((backup, index) => renderItemHtml(backup, index)).join('') +
+        `</div>`;
+
+      const container = document.getElementById('backupListContainer');
+      if (backups.length <= CHUNK_SIZE || !container) return;
+
+      // Stream remaining items in quick progressive chunks
+      let offset = CHUNK_SIZE;
+      function renderNextChunk() {
+        if (renderId !== currentRenderId || !container) return;
+        const nextSlice = backups.slice(offset, offset + CHUNK_SIZE);
+        if (nextSlice.length > 0) {
+          const html = nextSlice.map((backup, i) => renderItemHtml(backup, offset + i)).join('');
+          container.insertAdjacentHTML('beforeend', html);
+          offset += CHUNK_SIZE;
+          if (offset < backups.length) {
+            requestAnimationFrame(renderNextChunk);
+          }
+        }
+      }
+      requestAnimationFrame(renderNextChunk);
     }
 
     // Fast background batch filter
