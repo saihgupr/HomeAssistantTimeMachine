@@ -2700,7 +2700,8 @@ body[data-theme='light'] .mobile-tab-bar {
 
   .panel-header-info {
     display: flex;
-    align-items: center;
+    align-items: baseline;
+    gap: 8px;
     min-width: 0;
     flex: 1;
   }
@@ -2712,6 +2713,13 @@ body[data-theme='light'] .mobile-tab-bar {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin: 0;
+  }
+
+  .panel-header-info p {
+    font-size: 13px;
+    margin: 0;
+    white-space: nowrap;
   }
 
   .panel-header-top {
@@ -2852,23 +2860,7 @@ body[data-theme='light'] .mobile-tab-bar {
   }
 
   #diffModal .close-btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
-    border-radius: 50% !important;
-    font-size: 22px !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    border: none !important;
-    color: inherit !important;
-    cursor: pointer !important;
-  }
-
-  body[data-theme='light'] #diffModal .close-btn {
-    background: rgba(0, 0, 0, 0.06) !important;
+    display: none !important;
   }
 
   #diffModal .modal-body--diff {
