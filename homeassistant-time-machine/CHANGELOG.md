@@ -1,3 +1,19 @@
+# v2.4.0
+
+- **Fixed:** Resolved UI sidebar duplication and blank diff display issue when comparing split configuration automations and scripts without explicit IDs or with identical aliases.
+- **Fixed:** Automatically resolve relative backup mount names (e.g. `HA_TM_NAS`) to Supervisor network mount paths (`/data/mounts/...`).
+- **Performance:** Parallelized backup directory scanning using `Promise.all`, cutting initial load time from ~10s to under 1s for large backup sets (800+ snapshots on external storage).
+- **Performance:** Timestamps are now parsed directly from folder names for the common date-based naming format, eliminating per-folder `fs.stat` calls entirely.
+- **Performance:** Mode-based manifest filtering (`automations`, `scripts`, `lovelace`, etc.) now runs in parallel across all backups instead of sequentially.
+- **Mobile:** Backup list renders the first 40 items immediately on load — the list is interactive before the full set finishes streaming in the background.
+- **Mobile:** Diff viewer is now a full-screen frame on mobile (edge-to-edge, no bottom sheet), maximising usable space on small screens.
+- **Mobile:** Removed the redundant `×` close button from the diff viewer header; Cancel and Restore buttons in the footer handle dismissal.
+- **Mobile:** The top title/logo header is now hidden on mobile — Home Assistant Ingress already provides its own app header.
+- **Mobile:** "Restore This Version" button label shortened to "Restore" on narrow screens to avoid overflow.
+- **Mobile:** Fixed search bar icon overlapping placeholder text on mobile by increasing left padding.
+- **Mobile:** Fixed iOS WebKit tap-registration delay — backup list items are now selectable on first tap without waiting for the full list to load.
+
+
 # v2.3.1
 
 - **Integration Updates:** You can now configure the integration directly from the Home Assistant UI, and the `time_machine.backup_now` service call now supports all available parameters for granular control.
