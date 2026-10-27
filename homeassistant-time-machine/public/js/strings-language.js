@@ -283,6 +283,64 @@ window.STRINGS = {
         fr: "Aucun élément correspondant",
         nl: "Geen overeenkomende items",
         it: "Nessun elemento corrispondente"
+      },
+      noMatchingItemsInBackup: {
+        en: "No matching items in this backup.",
+        es: "No hay elementos coincidentes en esta copia de seguridad.",
+        de: "Keine übereinstimmenden Elemente in diesem Backup.",
+        fr: "Aucun élément correspondant dans cette sauvegarde.",
+        nl: "Geen overeenkomende items in deze back-up.",
+        it: "Nessun elemento corrispondente in questo backup."
+      },
+      searchAllBackupsHint: {
+        en: "Press Enter or click here to search all backup dates.",
+        es: "Pulsa Intro o haz clic aquí para buscar en todas las copias de seguridad.",
+        de: "Drücke Enter oder klicke hier, um alle Backup-Daten zu durchsuchen.",
+        fr: "Appuyez sur Entrée ou cliquez ici pour rechercher dans toutes les sauvegardes.",
+        nl: "Druk op Enter of klik hier om alle back-updatums te doorzoeken.",
+        it: "Premi Invio o clicca qui per cercare in tutti i backup."
+      }
+    },
+    backupSearch: {
+      filtered: {
+        en: "Filtered: \"{query}\"",
+        es: "Filtrado: \"{query}\"",
+        de: "Gefiltert: \"{query}\"",
+        fr: "Filtré : \"{query}\"",
+        nl: "Gefilterd: \"{query}\"",
+        it: "Filtrato: \"{query}\""
+      },
+      searching: {
+        en: "Searching all backups...",
+        es: "Buscando en todas las copias de seguridad...",
+        de: "Durchsuche alle Backups...",
+        fr: "Recherche dans toutes les sauvegardes...",
+        nl: "Alle back-ups doorzoeken...",
+        it: "Ricerca in tutti i backup..."
+      },
+      noMatches: {
+        en: "No backups found matching \"{query}\"",
+        es: "No se encontraron copias que coincidan con \"{query}\"",
+        de: "Keine Backups gefunden für \"{query}\"",
+        fr: "Aucune sauvegarde trouvée pour \"{query}\"",
+        nl: "Geen back-ups gevonden voor \"{query}\"",
+        it: "Nessun backup trovato per \"{query}\""
+      },
+      matchingSnapshots: {
+        en: "{count} backup dates match \"{query}\"",
+        es: "{count} copias coinciden con \"{query}\"",
+        de: "{count} Backup-Daten entsprechen \"{query}\"",
+        fr: "{count} sauvegardes correspondent à \"{query}\"",
+        nl: "{count} back-updatums komen overeen met \"{query}\"",
+        it: "{count} backup corrispondono a \"{query}\""
+      },
+      clear: {
+        en: "Clear search filter",
+        es: "Borrar filtro de búsqueda",
+        de: "Suchfilter löschen",
+        fr: "Effacer le filtre de recherche",
+        nl: "Zoekfilter wissen",
+        it: "Cancella filtro di ricerca"
       }
     },
     badges: {

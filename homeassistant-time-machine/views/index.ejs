@@ -277,6 +277,10 @@
             <h2 id="backupsTitle">Backups</h2>
             <p id="backupCount">Loading...</p>
           </div>
+          <div id="backupFilterPill" class="backup-filter-pill" style="display: none;">
+            <span id="backupFilterPillLabel"></span>
+            <button type="button" id="clearBackupFilterBtn" aria-label="Clear search filter" title="Clear search filter">&times;</button>
+          </div>
         </div>
         <div id="backupList" class="list">
           <p class="loading">Loading backups...</p>
@@ -310,6 +314,12 @@
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input type="text" id="searchBox" class="search-input" placeholder="Search...">
+            <button type="button" id="searchClearBtn" class="search-clear-btn" aria-label="Clear search" title="Clear search" style="display: none;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
         </div>
         <div id="itemsList" class="list">
@@ -401,6 +411,14 @@
     let esphomeFeatureEnabled = document.body.dataset.esphomeEnabled === 'true';
     let packagesFeatureEnabled = document.body.dataset.packagesEnabled === 'true';
     let showOnlyChanges = false; // Will be set from server in loadAppSettings()
+
+    // Backup list search/filter state
+    let allBackupsCache = []; // Raw scan results for the current tab
+    let baseBackupList = []; // Current tab results after the Show Changes Only filter
+    let baseBackupsChangeFiltered = false;
+    let backupSearchActive = false;
+    let backupSearchQuery = '';
+    let backupSearchRequestId = 0;
 
     // Keyboard navigation state
     let activePanel = 'backups'; // 'backups' or 'items'
@@ -818,6 +836,8 @@
       const backupList = document.getElementById('backupList');
       const backupCount = document.getElementById('backupCount');
 
+      resetBackupSearchState();
+
       // Don't clear existing content - keep it visible while loading
       // Only show loading state if the list is currently empty
       const hasExistingContent = backupList.children.length > 0 &&
@@ -842,10 +862,16 @@
         if (!data.backups || data.backups.length === 0) {
           backupCount.textContent = getStyledText('ui.backupList.noBackups');
           backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.backupList.noBackups')}</p>`;
+          allBackupsCache = [];
+          baseBackupList = [];
+          baseBackupsChangeFiltered = true;
           filteredBackupsGlobal = [];
           return;
         }
 
+        allBackupsCache = data.backups;
+        baseBackupList = data.backups;
+        baseBackupsChangeFiltered = !showOnlyChanges;
         filteredBackupsGlobal = data.backups;
 
         // Render all backups immediately so user can select any backup instantly without waiting!
@@ -943,6 +969,9 @@
 
         if (data.results) {
           const filtered = allBackups.filter(b => data.results[b.path] !== false);
+          baseBackupList = filtered;
+          baseBackupsChangeFiltered = true;
+          if (backupSearchActive) return; // Don't replace cross-search results
           filteredBackupsGlobal = filtered;
           if (filtered.length === 0) {
             backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
@@ -959,9 +988,180 @@
       }
     }
 
+    function updateBackupFilterPill() {
+      const pill = document.getElementById('backupFilterPill');
+      const label = document.getElementById('backupFilterPillLabel');
+      if (!pill || !label) return;
+
+      if (backupSearchActive && backupSearchQuery) {
+        label.textContent = getStyledText('ui.backupSearch.filtered', { query: backupSearchQuery }) ||
+          `Filtered: "${backupSearchQuery}"`;
+        pill.style.display = 'inline-flex';
+      } else {
+        label.textContent = '';
+        pill.style.display = 'none';
+      }
+    }
+
+    function updateSearchClearButton() {
+      const input = document.getElementById('searchBox');
+      const clearBtn = document.getElementById('searchClearBtn');
+      if (!input || !clearBtn) return;
+      clearBtn.style.display = input.value.length > 0 ? 'flex' : 'none';
+    }
+
+    function resetBackupSearchState() {
+      backupSearchRequestId++;
+      backupSearchActive = false;
+      backupSearchQuery = '';
+      updateBackupFilterPill();
+    }
+
+    function restoreBaseBackupList() {
+      const backupList = document.getElementById('backupList');
+      const backupCount = document.getElementById('backupCount');
+      if (!backupList || !backupCount) return;
+
+      // If the show-only-changes filter has not finished yet, reload the normal list.
+      if (showOnlyChanges && !baseBackupsChangeFiltered) {
+        loadBackups();
+        return;
+      }
+
+      filteredBackupsGlobal = baseBackupList;
+      currentBackupIndex = baseBackupList.findIndex(b => b.path === currentBackupPath);
+
+      if (baseBackupList.length === 0) {
+        if (showOnlyChanges && baseBackupsChangeFiltered) {
+          backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
+          backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
+        } else {
+          backupCount.textContent = getStyledText('ui.backupList.noBackups');
+          backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.backupList.noBackups')}</p>`;
+        }
+        return;
+      }
+
+      backupCount.textContent = showOnlyChanges
+        ? getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: baseBackupList.length })
+        : getStyledText('ui.backupList.snapshotsAvailable', { count: baseBackupList.length });
+      renderBackupList(baseBackupList, backupList);
+    }
+
+    function clearBackupSearchFilter() {
+      const wasActive = backupSearchActive;
+      resetBackupSearchState();
+      if (wasActive) {
+        restoreBaseBackupList();
+      }
+    }
+
+    function clearSearchAndFilter() {
+      const input = document.getElementById('searchBox');
+      if (input) input.value = '';
+      updateSearchClearButton();
+      clearBackupSearchFilter();
+      applyFilters();
+    }
+
+    function renderBackupSearchEmptyState(query) {
+      const backupList = document.getElementById('backupList');
+      if (!backupList) return;
+
+      const message = getStyledText('ui.backupSearch.noMatches', { query }) ||
+        `No backups found matching "${query}"`;
+      const clearLabel = getStyledText('ui.backupSearch.clear') || 'Clear search filter';
+
+      backupList.innerHTML = `
+        <div class="empty-state backup-search-empty">
+          <p>${escapeHtml(message)}</p>
+          <button type="button" class="btn-secondary backup-search-clear-btn" id="clearBackupSearchBtn">${escapeHtml(clearLabel)}</button>
+        </div>
+      `;
+
+      const clearBtn = document.getElementById('clearBackupSearchBtn');
+      if (clearBtn) clearBtn.addEventListener('click', clearSearchAndFilter);
+    }
+
+    async function searchAllBackups() {
+      const input = document.getElementById('searchBox');
+      const backupList = document.getElementById('backupList');
+      const backupCount = document.getElementById('backupCount');
+      if (!input || !backupList || !backupCount) return;
+
+      const query = input.value.trim();
+      if (!query) {
+        clearBackupSearchFilter();
+        return;
+      }
+
+      const backupRootPath = haConfig?.backupFolderPath || '/media/timemachine';
+      const liveConfigPath = haConfig?.liveConfigPath || '/config';
+      const requestId = ++backupSearchRequestId;
+
+      backupSearchActive = true;
+      backupSearchQuery = query;
+      updateBackupFilterPill();
+      backupCount.textContent = getStyledText('ui.backupSearch.searching') || 'Searching all backups...';
+
+      try {
+        const response = await fetch(url('/api/search-backups'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            backupRootPath,
+            mode: currentMode,
+            query,
+            showOnlyChanges,
+            liveConfigPath
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Search failed (${response.status})`);
+        }
+
+        const data = await response.json();
+        if (requestId !== backupSearchRequestId) return;
+
+        const matches = data.backups || [];
+        if (matches.length === 0) {
+          filteredBackupsGlobal = [];
+          backupCount.textContent = getStyledText('ui.backupSearch.noMatches', { query: data.query || query }) ||
+            `No backups found matching "${data.query || query}"`;
+          renderBackupSearchEmptyState(data.query || query);
+          return;
+        }
+
+        filteredBackupsGlobal = matches;
+        const selectedIndex = matches.findIndex(b => b.path === currentBackupPath);
+
+        if (selectedIndex !== -1) {
+          currentBackupIndex = selectedIndex;
+          renderBackupList(matches, backupList);
+          applyFilters();
+        } else {
+          renderBackupList(matches, backupList);
+          await selectBackup(matches[0].path, matches[0].folderName, matches[0].mtime, 0);
+        }
+
+        if (requestId !== backupSearchRequestId) return;
+
+        backupCount.textContent = getStyledText('ui.backupSearch.matchingSnapshots', { count: matches.length, query: data.query || query }) ||
+          `${matches.length} backup dates match "${data.query || query}"`;
+      } catch (error) {
+        if (requestId !== backupSearchRequestId) return;
+        console.error('[searchAllBackups] Error:', error);
+        showNotification(`Error searching backups: ${error.message}`, 'error');
+        resetBackupSearchState();
+        restoreBaseBackupList();
+      } finally {
+        fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
+      }
+    }
+
     // Select backup
-    async function selectBackup(backupPath, folderName, mtime, index = -1) {
-      currentScanId++; // Immediately abort any active background filter so full network priority is given to loading selected backup
+    async function selectBackup(backupPath, folderName, mtime, index = -1) {      currentScanId++; // Immediately abort any active background filter so full network priority is given to loading selected backup
       navigateToDetail();
       currentBackupPath = backupPath;
       currentBackupName = folderName;
@@ -1218,12 +1418,38 @@
       renderItems(filtered);
     }
 
+    function renderEmptyItemsState() {
+      const itemsList = document.getElementById('itemsList');
+      if (!itemsList) return;
+
+      filteredItemsGlobal = [];
+      const query = document.getElementById('searchBox')?.value.trim() || '';
+
+      if (!query) {
+        itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noMatchingItems')}</p>`;
+        return;
+      }
+
+      const message = getStyledText('ui.itemsList.noMatchingItemsInBackup') || 'No matching items in this backup.';
+      const hint = getStyledText('ui.itemsList.searchAllBackupsHint') || 'Press Enter or click here to search all backup dates.';
+
+      itemsList.innerHTML = `
+        <p class="empty-state">
+          ${escapeHtml(message)}<br>
+          <button type="button" class="empty-state-action" id="searchAllBackupsFromEmpty">${escapeHtml(hint)}</button>
+        </p>
+      `;
+
+      const searchBtn = document.getElementById('searchAllBackupsFromEmpty');
+      if (searchBtn) searchBtn.addEventListener('click', searchAllBackups);
+    }
+
     // Render items
     function renderItems(items) {
       const itemsList = document.getElementById('itemsList');
 
       if (items.length === 0) {
-        itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noMatchingItems')}</p>`;
+        renderEmptyItemsState();
         return;
       }
 
@@ -1486,6 +1712,10 @@
     // Render Lovelace files
     function renderLovelaceFiles(files) {
       const itemsList = document.getElementById('itemsList');
+      if (files.length === 0) {
+        renderEmptyItemsState();
+        return;
+      }
       filteredItemsGlobal = files;
       itemsList.innerHTML = files.map((file, idx) => {
         const isSelected = currentItemIndex === idx && activePanel === 'items';
@@ -1829,6 +2059,10 @@
     // Render ESPHome files
     function renderEsphomeFiles(files) {
       const itemsList = document.getElementById('itemsList');
+      if (files.length === 0) {
+        renderEmptyItemsState();
+        return;
+      }
       filteredItemsGlobal = files;
       itemsList.innerHTML = files.map((file, idx) => {
         const isSelected = currentItemIndex === idx && activePanel === 'items';
@@ -2025,6 +2259,10 @@
     // Render Packages files
     function renderPackagesFiles(files) {
       const itemsList = document.getElementById('itemsList');
+      if (files.length === 0) {
+        renderEmptyItemsState();
+        return;
+      }
       filteredItemsGlobal = files;
       itemsList.innerHTML = files.map((file, idx) => {
         const isSelected = currentItemIndex === idx && activePanel === 'items';
@@ -2279,7 +2517,34 @@
       });
     });
 
-    document.getElementById('searchBox').addEventListener('input', applyFilters);
+    const searchBox = document.getElementById('searchBox');
+    searchBox.addEventListener('input', () => {
+      updateSearchClearButton();
+
+      // Any edit after a cross-backup search invalidates the left-column filter
+      if (backupSearchActive && searchBox.value.trim().toLowerCase() !== backupSearchQuery.toLowerCase()) {
+        clearBackupSearchFilter();
+      }
+
+      applyFilters();
+    });
+
+    searchBox.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        searchAllBackups();
+      }
+    });
+
+    document.getElementById('searchClearBtn').addEventListener('click', () => {
+      clearSearchAndFilter();
+      searchBox.focus();
+    });
+
+    document.getElementById('clearBackupFilterBtn').addEventListener('click', () => {
+      clearSearchAndFilter();
+    });
+
     document.getElementById('sortSelect').addEventListener('change', applyFilters);
 
     // Path validation
@@ -2839,6 +3104,7 @@
       updateEsphomeVisibility();
       await loadAppSettings();
       updatePlaceholders();
+      updateSearchClearButton();
       loadBackups();
     })();
 
