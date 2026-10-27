@@ -3460,6 +3460,10 @@ body[data-theme='light'] .file-icon {
 }
 
 .empty-state-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   margin-top: 4px;
   padding: 7px 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -3489,6 +3493,14 @@ body[data-theme='light'] .empty-state-action:hover {
   background: rgba(15, 23, 42, 0.08);
   border-color: rgba(15, 23, 42, 0.2);
   color: #0f172a;
+}
+
+.empty-state-action .enter-key-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  opacity: 0.55;
+  transform: translateY(1px);
 }
 
 .items-empty-prompt {
