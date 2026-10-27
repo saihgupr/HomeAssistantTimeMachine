@@ -3497,9 +3497,8 @@ body[data-theme='light'] .empty-state-action:hover {
 
 .empty-state-action .enter-key-icon {
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  opacity: 0.55;
+  width: 12px;
+  height: 12px;
   transform: translateY(1px);
 }
 
