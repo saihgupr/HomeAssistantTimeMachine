@@ -245,7 +245,7 @@ body[data-theme='light'] .panel-header p {
 }
 
 .panel-header.has-backup-filter {
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .backup-filter-pill span {
