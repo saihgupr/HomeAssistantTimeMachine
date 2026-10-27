@@ -419,6 +419,7 @@
     let backupSearchActive = false;
     let backupSearchQuery = '';
     let backupSearchRequestId = 0;
+    let backupSearchAbortController = null;
 
     // Keyboard navigation state
     let activePanel = 'backups'; // 'backups' or 'items'
@@ -891,42 +892,43 @@
     let currentScanId = 0;
     let currentRenderId = 0;
 
+    // Build markup for a single backup row (shared by list rendering and streaming search)
+    function buildBackupItemHtml(backup, index) {
+      const isSelected = currentBackupPath === backup.path;
+      const isLightMode = currentTheme === 'light';
+      const bgColor = isSelected ? '#007AFC' : (isLightMode ? 'white' : 'rgb(46, 46, 46)');
+      const borderColor = isLightMode ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.05)';
+      const boxShadow = isSelected ? 'none' : (isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none');
+      const textColor = isSelected ? 'white' : (isLightMode ? '#0f172a' : '#d1d5db');
+      return `
+        <button
+          type="button"
+          class="list-item"
+          data-path="${backup.path}"
+          data-folder-name="${backup.folderName}"
+          data-mtime="${backup.mtime}"
+          data-index="${index}"
+          data-locked="${backup.locked}"
+          oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
+          style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; box-shadow: ${boxShadow}; color: ${textColor}; position: relative; touch-action: manipulation;"
+        >
+          <div style="display: flex; align-items: center; gap: 12px; width: 100%; pointer-events: none;">
+            <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
+            ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
+          </div>
+        </button>
+      `;
+    }
+
     // Helper to render backup list with progressive streaming for huge lists
     function renderBackupList(backups, backupList) {
       const renderId = ++currentRenderId;
       const CHUNK_SIZE = 40;
 
-      function renderItemHtml(backup, index) {
-        const isSelected = currentBackupPath === backup.path;
-        const isLightMode = currentTheme === 'light';
-        const bgColor = isSelected ? '#007AFC' : (isLightMode ? 'white' : 'rgb(46, 46, 46)');
-        const borderColor = isLightMode ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.05)';
-        const boxShadow = isSelected ? 'none' : (isLightMode ? '0 14px 30px -20px rgba(15, 23, 42, 0.45)' : 'none');
-        const textColor = isSelected ? 'white' : (isLightMode ? '#0f172a' : '#d1d5db');
-        return `
-          <button 
-            type="button"
-            class="list-item" 
-            data-path="${backup.path}"
-            data-folder-name="${backup.folderName}"
-            data-mtime="${backup.mtime}"
-            data-index="${index}"
-            data-locked="${backup.locked}"
-            oncontextmenu="showContextMenu(event, '${backup.path}', ${backup.locked})"
-            style="width: 100%; text-align: left; padding: 16px; background-color: ${bgColor}; border-radius: 12px; border: 1px solid ${borderColor}; cursor: pointer; box-shadow: ${boxShadow}; color: ${textColor}; position: relative; touch-action: manipulation;"
-          >
-            <div style="display: flex; align-items: center; gap: 12px; width: 100%; pointer-events: none;">
-              <span style="font-weight: 400; font-size: 16px; flex: 1; min-width: 0;">${formatFolderName(backup.folderName, backup.mtime)}</span>
-              ${backup.locked ? `<span class="lock-indicator" aria-label="Locked backup" role="img">🔒</span>` : ''}
-            </div>
-          </button>
-        `;
-      }
-
       // Render initial chunk immediately for instantaneous display
       const initialChunk = backups.slice(0, CHUNK_SIZE);
       backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;">` +
-        initialChunk.map((backup, index) => renderItemHtml(backup, index)).join('') +
+        initialChunk.map((backup, index) => buildBackupItemHtml(backup, index)).join('') +
         `</div>`;
 
       const container = document.getElementById('backupListContainer');
@@ -938,7 +940,7 @@
         if (renderId !== currentRenderId || !container) return;
         const nextSlice = backups.slice(offset, offset + CHUNK_SIZE);
         if (nextSlice.length > 0) {
-          const html = nextSlice.map((backup, i) => renderItemHtml(backup, offset + i)).join('');
+          const html = nextSlice.map((backup, i) => buildBackupItemHtml(backup, offset + i)).join('');
           container.insertAdjacentHTML('beforeend', html);
           offset += CHUNK_SIZE;
           if (offset < backups.length) {
@@ -993,14 +995,19 @@
       const label = document.getElementById('backupFilterPillLabel');
       if (!pill || !label) return;
 
-      if (backupSearchActive && backupSearchQuery) {
+      const header = pill.closest('.panel-header');
+      const isVisible = Boolean(backupSearchActive && backupSearchQuery);
+
+      if (isVisible) {
         label.textContent = getStyledText('ui.backupSearch.filtered', { query: backupSearchQuery }) ||
           `Filtered: "${backupSearchQuery}"`;
-        pill.style.display = 'inline-flex';
+        pill.style.display = 'flex';
       } else {
         label.textContent = '';
         pill.style.display = 'none';
       }
+
+      if (header) header.classList.toggle('has-backup-filter', isVisible);
     }
 
     function updateSearchClearButton() {
@@ -1012,6 +1019,10 @@
 
     function resetBackupSearchState() {
       backupSearchRequestId++;
+      if (backupSearchAbortController) {
+        backupSearchAbortController.abort();
+        backupSearchAbortController = null;
+      }
       backupSearchActive = false;
       backupSearchQuery = '';
       updateBackupFilterPill();
@@ -1083,6 +1094,85 @@
       if (clearBtn) clearBtn.addEventListener('click', clearSearchAndFilter);
     }
 
+    function setSearchingStatus(matchCount = 0) {
+      const backupCount = document.getElementById('backupCount');
+      if (!backupCount) return;
+
+      let status = backupCount.querySelector('.searching-status');
+      if (!status) {
+        const searchingLabel = getStyledText('ui.backupSearch.searching') || 'Searching all backups...';
+        const baseLabel = searchingLabel.replace(/\.+\s*$/, '');
+
+        backupCount.innerHTML = `
+          <span class="searching-status">
+            <span class="searching-spinner" aria-hidden="true"></span>
+            <span>${escapeHtml(baseLabel)}</span>
+            <span class="searching-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
+            <span class="searching-found" style="display: none;"></span>
+          </span>
+        `;
+        status = backupCount.querySelector('.searching-status');
+      }
+
+      const found = status.querySelector('.searching-found');
+      if (!found) return;
+
+      if (matchCount > 0) {
+        const foundLabel = getStyledText('ui.backupSearch.foundSoFar', { count: matchCount }) || `${matchCount} found`;
+        found.textContent = `\u00b7 ${foundLabel}`;
+        found.style.display = 'inline';
+      } else {
+        found.textContent = '';
+        found.style.display = 'none';
+      }
+    }
+
+    function appendBackupSearchResults(backups, startIndex) {
+      const backupList = document.getElementById('backupList');
+      if (!backupList || backups.length === 0) return;
+
+      let container = document.getElementById('backupListContainer');
+      if (!container) {
+        backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
+        container = document.getElementById('backupListContainer');
+      }
+
+      container.insertAdjacentHTML(
+        'beforeend',
+        backups.map((backup, i) => buildBackupItemHtml(backup, startIndex + i)).join('')
+      );
+    }
+
+    async function readBackupSearchStream(response, onEvent, isStale) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const flushLines = () => {
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          if (line) onEvent(JSON.parse(line));
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (isStale()) {
+          await reader.cancel();
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        flushLines();
+      }
+
+      buffer += decoder.decode();
+      flushLines();
+      if (buffer.trim()) onEvent(JSON.parse(buffer.trim()));
+    }
+
     async function searchAllBackups() {
       const input = document.getElementById('searchBox');
       const backupList = document.getElementById('backupList');
@@ -1097,12 +1187,24 @@
 
       const backupRootPath = haConfig?.backupFolderPath || '/media/timemachine';
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
+
+      if (backupSearchAbortController) backupSearchAbortController.abort();
+      const abortController = new AbortController();
+      backupSearchAbortController = abortController;
       const requestId = ++backupSearchRequestId;
 
       backupSearchActive = true;
       backupSearchQuery = query;
       updateBackupFilterPill();
-      backupCount.textContent = getStyledText('ui.backupSearch.searching') || 'Searching all backups...';
+      setSearchingStatus(0);
+
+      // Stop any in-flight list rendering and start with an empty list that fills as matches arrive.
+      currentRenderId++;
+      backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
+      const matches = [];
+      let finalData = null;
+      filteredBackupsGlobal = matches;
+      currentBackupIndex = -1;
 
       try {
         const response = await fetch(url('/api/search-backups'), {
@@ -1113,23 +1215,48 @@
             mode: currentMode,
             query,
             showOnlyChanges,
-            liveConfigPath
-          })
+            liveConfigPath,
+            stream: true
+          }),
+          signal: abortController.signal
         });
 
         if (!response.ok) {
           throw new Error(`Search failed (${response.status})`);
         }
 
-        const data = await response.json();
+        const handleEvent = (event) => {
+          if (requestId !== backupSearchRequestId) return;
+
+          if (event.type === 'backup' && event.backup) {
+            const matchIndex = matches.length;
+            appendBackupSearchResults([event.backup], matchIndex);
+            matches.push(event.backup);
+            filteredBackupsGlobal = matches;
+            if (event.backup.path === currentBackupPath) currentBackupIndex = matchIndex;
+            setSearchingStatus(matches.length);
+          } else if (event.type === 'done') {
+            finalData = event;
+          }
+        };
+
+        if (response.body && typeof response.body.getReader === 'function') {
+          await readBackupSearchStream(response, handleEvent, () => requestId !== backupSearchRequestId);
+        } else {
+          const text = await response.text();
+          text.split('\n').forEach(line => {
+            if (line.trim()) handleEvent(JSON.parse(line));
+          });
+        }
+
         if (requestId !== backupSearchRequestId) return;
 
-        const matches = data.backups || [];
+        const resultQuery = finalData?.query || query;
         if (matches.length === 0) {
           filteredBackupsGlobal = [];
-          backupCount.textContent = getStyledText('ui.backupSearch.noMatches', { query: data.query || query }) ||
-            `No backups found matching "${data.query || query}"`;
-          renderBackupSearchEmptyState(data.query || query);
+          backupCount.textContent = getStyledText('ui.backupSearch.noMatches', { query: resultQuery }) ||
+            `No backups found matching "${resultQuery}"`;
+          renderBackupSearchEmptyState(resultQuery);
           return;
         }
 
@@ -1138,25 +1265,26 @@
 
         if (selectedIndex !== -1) {
           currentBackupIndex = selectedIndex;
-          renderBackupList(matches, backupList);
           applyFilters();
         } else {
-          renderBackupList(matches, backupList);
           await selectBackup(matches[0].path, matches[0].folderName, matches[0].mtime, 0);
         }
 
         if (requestId !== backupSearchRequestId) return;
 
-        backupCount.textContent = getStyledText('ui.backupSearch.matchingSnapshots', { count: matches.length, query: data.query || query }) ||
-          `${matches.length} backup dates match "${data.query || query}"`;
+        backupCount.textContent = getStyledText('ui.backupSearch.matchingSnapshots', { count: matches.length, query: resultQuery }) ||
+          `${matches.length} backup dates match "${resultQuery}"`;
       } catch (error) {
-        if (requestId !== backupSearchRequestId) return;
+        if (error.name === 'AbortError' || requestId !== backupSearchRequestId) return;
         console.error('[searchAllBackups] Error:', error);
         showNotification(`Error searching backups: ${error.message}`, 'error');
         resetBackupSearchState();
         restoreBaseBackupList();
       } finally {
-        fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
+        if (requestId === backupSearchRequestId) {
+          backupSearchAbortController = null;
+          fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
+        }
       }
     }
 
@@ -1434,10 +1562,10 @@
       const hint = getStyledText('ui.itemsList.searchAllBackupsHint') || 'Press Enter or click here to search all backup dates.';
 
       itemsList.innerHTML = `
-        <p class="empty-state">
-          ${escapeHtml(message)}<br>
+        <div class="empty-state items-empty-prompt">
+          <p>${escapeHtml(message)}</p>
           <button type="button" class="empty-state-action" id="searchAllBackupsFromEmpty">${escapeHtml(hint)}</button>
-        </p>
+        </div>
       `;
 
       const searchBtn = document.getElementById('searchAllBackupsFromEmpty');

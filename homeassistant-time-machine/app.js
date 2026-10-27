@@ -1457,26 +1457,98 @@ app.post('/api/search-backups', async (req, res) => {
       context.liveItems = await loadLiveItemsForMode(mode, configPath);
     }
 
+    const searchBackup = async (backup) => {
+      try {
+        const matches = await backupMatchesSearch(
+          backup.path,
+          mode,
+          normalizedQuery,
+          Boolean(showOnlyChanges),
+          context
+        );
+        return matches ? backup : null;
+      } catch (err) {
+        console.error(`[search-backups] Failed to inspect ${backup.path}:`, err.message);
+        return null;
+      }
+    };
+
+    // Streaming mode: emit matches as soon as they are found so the UI can render
+    // results while the scan is still running. Non-streaming clients still get JSON.
+    if (req.body && req.body.stream) {
+      res.status(200).set({
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no'
+      });
+      res.flushHeaders();
+
+      let aborted = false;
+      res.on('close', () => { aborted = true; });
+
+      const writeEvent = (event) => {
+        if (aborted || res.writableEnded) return;
+        res.write(JSON.stringify(event) + '\n');
+      };
+
+      writeEvent({ type: 'start', query: rawQuery, total: backups.length });
+
+      const CONCURRENCY = 12;
+      const results = new Array(backups.length);
+      let cursor = 0;
+      let nextToFlush = 0;
+      let scanned = 0;
+      let matchedCount = 0;
+      let lastReportedMatched = -1;
+      let lastProgressAt = 0;
+
+      const flushReady = () => {
+        while (nextToFlush < backups.length && results[nextToFlush] !== undefined) {
+          const match = results[nextToFlush];
+          if (match) {
+            matchedCount++;
+            writeEvent({ type: 'backup', backup: match });
+          }
+          nextToFlush++;
+        }
+
+        if (aborted) return;
+        const now = Date.now();
+        if (now - lastProgressAt > 150 || scanned === backups.length || matchedCount !== lastReportedMatched) {
+          lastProgressAt = now;
+          lastReportedMatched = matchedCount;
+          writeEvent({ type: 'progress', scanned, total: backups.length, matched: matchedCount });
+        }
+      };
+
+      const worker = async () => {
+        while (!aborted) {
+          const index = cursor++;
+          if (index >= backups.length) return;
+          results[index] = await searchBackup(backups[index]);
+          scanned++;
+          flushReady();
+        }
+      };
+
+      const workerCount = Math.min(CONCURRENCY, backups.length);
+      await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+      if (!aborted) {
+        writeEvent({ type: 'done', query: rawQuery, scanned: backups.length, matched: matchedCount });
+        res.end();
+      }
+
+      console.log(`[search-backups] "${rawQuery}" matched ${matchedCount} of ${backups.length} backups (mode: ${mode}, streamed)`);
+      return;
+    }
+
     const matchedBackups = [];
     const BATCH_SIZE = 8;
 
     for (let i = 0; i < backups.length; i += BATCH_SIZE) {
       const batch = backups.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(batch.map(async (backup) => {
-        try {
-          const matches = await backupMatchesSearch(
-            backup.path,
-            mode,
-            normalizedQuery,
-            Boolean(showOnlyChanges),
-            context
-          );
-          return matches ? backup : null;
-        } catch (err) {
-          console.error(`[search-backups] Failed to inspect ${backup.path}:`, err.message);
-          return null;
-        }
-      }));
+      const results = await Promise.all(batch.map(searchBackup));
       matchedBackups.push(...results.filter(Boolean));
     }
 

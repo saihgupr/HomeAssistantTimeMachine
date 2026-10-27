@@ -285,20 +285,20 @@ window.STRINGS = {
         it: "Nessun elemento corrispondente"
       },
       noMatchingItemsInBackup: {
-        en: "No matching items in this backup.",
-        es: "No hay elementos coincidentes en esta copia de seguridad.",
-        de: "Keine übereinstimmenden Elemente in diesem Backup.",
-        fr: "Aucun élément correspondant dans cette sauvegarde.",
-        nl: "Geen overeenkomende items in deze back-up.",
-        it: "Nessun elemento corrispondente in questo backup."
+        en: "No matches in this backup.",
+        es: "No hay coincidencias en esta copia de seguridad.",
+        de: "Keine Treffer in diesem Backup.",
+        fr: "Aucune correspondance dans cette sauvegarde.",
+        nl: "Geen overeenkomsten in deze back-up.",
+        it: "Nessuna corrispondenza in questo backup."
       },
       searchAllBackupsHint: {
-        en: "Press Enter or click here to search all backup dates.",
-        es: "Pulsa Intro o haz clic aquí para buscar en todas las copias de seguridad.",
-        de: "Drücke Enter oder klicke hier, um alle Backup-Daten zu durchsuchen.",
-        fr: "Appuyez sur Entrée ou cliquez ici pour rechercher dans toutes les sauvegardes.",
-        nl: "Druk op Enter of klik hier om alle back-updatums te doorzoeken.",
-        it: "Premi Invio o clicca qui per cercare in tutti i backup."
+        en: "Search all backups",
+        es: "Buscar en todas las copias",
+        de: "Alle Backups durchsuchen",
+        fr: "Rechercher dans toutes les sauvegardes",
+        nl: "Alle back-ups doorzoeken",
+        it: "Cerca in tutti i backup"
       }
     },
     backupSearch: {
@@ -317,6 +317,14 @@ window.STRINGS = {
         fr: "Recherche dans toutes les sauvegardes...",
         nl: "Alle back-ups doorzoeken...",
         it: "Ricerca in tutti i backup..."
+      },
+      foundSoFar: {
+        en: "{count} found",
+        es: "{count} encontradas",
+        de: "{count} gefunden",
+        fr: "{count} trouvées",
+        nl: "{count} gevonden",
+        it: "{count} trovate"
       },
       noMatches: {
         en: "No backups found matching \"{query}\"",

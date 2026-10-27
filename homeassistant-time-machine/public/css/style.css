@@ -230,7 +230,8 @@ body[data-theme='light'] .panel-header p {
 }
 
 .backup-filter-pill {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   align-items: center;
   gap: 4px;
   max-width: 100%;
@@ -241,6 +242,10 @@ body[data-theme='light'] .panel-header p {
   color: #58a6ff;
   font-size: 12px;
   font-weight: 500;
+}
+
+.panel-header.has-backup-filter {
+  padding-bottom: 8px;
 }
 
 .backup-filter-pill span {
@@ -3455,27 +3460,101 @@ body[data-theme='light'] .file-icon {
 }
 
 .empty-state-action {
-  margin-top: 10px;
-  padding: 4px 8px;
-  border: 0;
-  background: transparent;
-  color: #58a6ff;
+  margin-top: 4px;
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d1d5db;
   font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .empty-state-action:hover {
-  color: #8ec5ff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #f9f9f9;
 }
 
 body[data-theme='light'] .empty-state-action {
-  color: #0066d6;
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.04);
+  color: #1f2937;
 }
 
 body[data-theme='light'] .empty-state-action:hover {
-  color: #0052ad;
+  background: rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+}
+
+.items-empty-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.items-empty-prompt p {
+  margin: 0;
+}
+
+.searching-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.searching-spinner {
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: searchSpinner 0.7s linear infinite;
+}
+
+.searching-dots {
+  display: inline-flex;
+}
+
+.searching-dots span {
+  animation: searchDotPulse 1.2s ease-in-out infinite;
+}
+
+.searching-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.searching-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.searching-found {
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
+@keyframes searchSpinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes searchDotPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
 }
 
 .backup-search-empty {
