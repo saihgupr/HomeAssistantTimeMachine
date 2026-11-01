@@ -2,6 +2,7 @@
 
 - **HACS Brand Assets:** Standardized inline brand icons (256×256 and 512×512 @2x variants) under `custom_components/time_machine/brand/` to comply with Home Assistant's Brands Proxy API.
 - **Search All Backups:** Press Enter in the item search (or click "Search all backups") to filter the backup list down to snapshots that contain matching items. Results stream in as each backup is checked, so newer matches appear without waiting for the full scan. Works across Automations, Scripts, Lovelace, ESPHome and Packages, respects **Show Changes Only**, and resets when the search is cleared or a tab changes.
+- **Fixed:** Support named/labeled automation and script sections (e.g. `automation yaml:`, `automation manual:`) so multiple split configuration blocks are fully recognized and backed up (#74).
 - **Fixed:** Resolved live path validation failure when `!include` or `!include_dir_*` targets in `configuration.yaml` are wrapped in single or double quotes (#75).
 - **Fixed:** Resolved UI sidebar duplication and blank diff display issue when comparing split configuration automations and scripts without explicit IDs or with identical aliases.
 - **Fixed:** Automatically resolve relative backup mount names (e.g. `HA_TM_NAS`) to Supervisor network mount paths (`/data/mounts/...`).

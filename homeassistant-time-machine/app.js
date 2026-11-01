@@ -514,11 +514,11 @@ async function getConfigFilePaths(configPath) {
       if (!trimmedLine) continue;
 
       // Track current section by looking at unindented lines ending with :
-      const isUnindented = /^[a-zA-Z0-9_-]+:/.test(line);
+      const isUnindented = /^[a-zA-Z0-9_-]+(?:\s+[^:]+)?:/.test(line);
       if (isUnindented) {
-        if (trimmedLine.startsWith('automation:')) {
+        if (/^automation(?:\s+[^:]+)?:/.test(trimmedLine)) {
           currentSection = 'automation';
-        } else if (trimmedLine.startsWith('script:')) {
+        } else if (/^script(?:\s+[^:]+)?:/.test(trimmedLine)) {
           currentSection = 'script';
         } else {
           currentSection = null;
@@ -526,21 +526,21 @@ async function getConfigFilePaths(configPath) {
       }
 
       // Check for inline inclusions
-      const inlineAutoInclude = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
+      const inlineAutoInclude = trimmedLine.match(/^automation(?:\s+[^:]+)?:\s*!include\s+(.+)$/);
       if (inlineAutoInclude) {
         const file = cleanTarget(inlineAutoInclude[1]);
         automationPaths.push(path.join(configPath, file));
         continue;
       }
 
-      const inlineScriptInclude = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
+      const inlineScriptInclude = trimmedLine.match(/^script(?:\s+[^:]+)?:\s*!include\s+(.+)$/);
       if (inlineScriptInclude) {
         const file = cleanTarget(inlineScriptInclude[1]);
         scriptPaths.push(path.join(configPath, file));
         continue;
       }
 
-      const inlineAutoDir = trimmedLine.match(/^automation:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
+      const inlineAutoDir = trimmedLine.match(/^automation(?:\s+[^:]+)?:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
       if (inlineAutoDir) {
         const dir = cleanTarget(inlineAutoDir[1]);
         const fullDir = path.join(configPath, dir);
@@ -556,7 +556,7 @@ async function getConfigFilePaths(configPath) {
         continue;
       }
 
-      const inlineScriptDir = trimmedLine.match(/^script:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
+      const inlineScriptDir = trimmedLine.match(/^script(?:\s+[^:]+)?:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
       if (inlineScriptDir) {
         const dir = cleanTarget(inlineScriptDir[1]);
         const fullDir = path.join(configPath, dir);
@@ -633,12 +633,22 @@ async function getConfigFilePaths(configPath) {
     scriptPaths.push(path.join(configPath, 'scripts.yaml'));
   }
 
-  debugLog('[getConfigFilePaths] Automation paths:', automationPaths);
-  debugLog('[getConfigFilePaths] Script paths:', scriptPaths);
-  debugLog('[getConfigFilePaths] Automation dirs:', automationDirs);
-  debugLog('[getConfigFilePaths] Script dirs:', scriptDirs);
+  const uniqueAutomationPaths = [...new Set(automationPaths)];
+  const uniqueScriptPaths = [...new Set(scriptPaths)];
+  const uniqueAutomationDirs = [...new Set(automationDirs)];
+  const uniqueScriptDirs = [...new Set(scriptDirs)];
 
-  return { automationPaths, scriptPaths, automationDirs, scriptDirs };
+  debugLog('[getConfigFilePaths] Automation paths:', uniqueAutomationPaths);
+  debugLog('[getConfigFilePaths] Script paths:', uniqueScriptPaths);
+  debugLog('[getConfigFilePaths] Automation dirs:', uniqueAutomationDirs);
+  debugLog('[getConfigFilePaths] Script dirs:', uniqueScriptDirs);
+
+  return {
+    automationPaths: uniqueAutomationPaths,
+    scriptPaths: uniqueScriptPaths,
+    automationDirs: uniqueAutomationDirs,
+    scriptDirs: uniqueScriptDirs
+  };
 }
 
 
