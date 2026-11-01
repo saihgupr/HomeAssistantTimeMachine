@@ -1,5 +1,6 @@
 # v2.4.0
 
+- **HACS Brand Assets:** Standardized inline brand icons (256×256 and 512×512 @2x variants) under `custom_components/time_machine/brand/` to comply with Home Assistant's Brands Proxy API.
 - **Search All Backups:** Press Enter in the item search (or click "Search all backups") to filter the backup list down to snapshots that contain matching items. Results stream in as each backup is checked, so newer matches appear without waiting for the full scan. Works across Automations, Scripts, Lovelace, ESPHome and Packages, respects **Show Changes Only**, and resets when the search is cleared or a tab changes.
 - **Fixed:** Resolved UI sidebar duplication and blank diff display issue when comparing split configuration automations and scripts without explicit IDs or with identical aliases.
 - **Fixed:** Automatically resolve relative backup mount names (e.g. `HA_TM_NAS`) to Supervisor network mount paths (`/data/mounts/...`).
