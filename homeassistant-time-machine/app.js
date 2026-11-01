@@ -504,6 +504,7 @@ async function getConfigFilePaths(configPath) {
     debugLog('[getConfigFilePaths] Found configuration.yaml, parsing...');
 
     let currentSection = null;
+    const cleanTarget = (str) => str.trim().replace(/^['"]|['"]$/g, '').trim();
     const lines = configContent.split('\n');
     for (const line of lines) {
       // Strip comments
@@ -527,21 +528,21 @@ async function getConfigFilePaths(configPath) {
       // Check for inline inclusions
       const inlineAutoInclude = trimmedLine.match(/^automation:\s*!include\s+(.+)$/);
       if (inlineAutoInclude) {
-        const file = inlineAutoInclude[1].trim();
+        const file = cleanTarget(inlineAutoInclude[1]);
         automationPaths.push(path.join(configPath, file));
         continue;
       }
 
       const inlineScriptInclude = trimmedLine.match(/^script:\s*!include\s+(.+)$/);
       if (inlineScriptInclude) {
-        const file = inlineScriptInclude[1].trim();
+        const file = cleanTarget(inlineScriptInclude[1]);
         scriptPaths.push(path.join(configPath, file));
         continue;
       }
 
       const inlineAutoDir = trimmedLine.match(/^automation:\s*!include_dir_(?:merge_)?list\s+(.+)$/);
       if (inlineAutoDir) {
-        const dir = inlineAutoDir[1].trim();
+        const dir = cleanTarget(inlineAutoDir[1]);
         const fullDir = path.join(configPath, dir);
         automationDirs.push(fullDir);
         try {
@@ -557,7 +558,7 @@ async function getConfigFilePaths(configPath) {
 
       const inlineScriptDir = trimmedLine.match(/^script:\s*!include_dir_(?:merge_)?named\s+(.+)$/);
       if (inlineScriptDir) {
-        const dir = inlineScriptDir[1].trim();
+        const dir = cleanTarget(inlineScriptDir[1]);
         const fullDir = path.join(configPath, dir);
         scriptDirs.push(fullDir);
         try {
@@ -575,13 +576,13 @@ async function getConfigFilePaths(configPath) {
       if (currentSection === 'automation') {
         const includeMatch = trimmedLine.match(/!include\s+(.+)$/);
         if (includeMatch) {
-          const file = includeMatch[1].trim();
+          const file = cleanTarget(includeMatch[1]);
           automationPaths.push(path.join(configPath, file));
         }
 
         const dirMatch = trimmedLine.match(/!include_dir_(?:merge_)?list\s+(.+)$/);
         if (dirMatch) {
-          const dir = dirMatch[1].trim();
+          const dir = cleanTarget(dirMatch[1]);
           const fullDir = path.join(configPath, dir);
           automationDirs.push(fullDir);
           try {
@@ -596,13 +597,13 @@ async function getConfigFilePaths(configPath) {
       } else if (currentSection === 'script') {
         const includeMatch = trimmedLine.match(/!include\s+(.+)$/);
         if (includeMatch) {
-          const file = includeMatch[1].trim();
+          const file = cleanTarget(includeMatch[1]);
           scriptPaths.push(path.join(configPath, file));
         }
 
         const dirMatch = trimmedLine.match(/!include_dir_(?:merge_)?named\s+(.+)$/);
         if (dirMatch) {
-          const dir = dirMatch[1].trim();
+          const dir = cleanTarget(dirMatch[1]);
           const fullDir = path.join(configPath, dir);
           scriptDirs.push(fullDir);
           try {
