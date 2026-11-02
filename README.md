@@ -4,12 +4,11 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 ## What's New!
 
-*   **Backup Lock, Deletion & Export:** Added a new backup lock feature to prevent accidental deletion of snapshots. You can now also manually delete or export individual backups as .tar.gz archives directly from the web UI using the new right-click context menu.
-*   **HACS Integration:** Now available as a companion integration via HACS! Track backup status with a native sensor and trigger backups using the `time_machine.backup_now` service.
-*   **Keyboard Navigation:** Navigate backups and items using arrow keys! Use Up/Down to change selection and Left/Right to switch between panels. Press Enter on an item to view its diff.
-*   **Manifest-Driven Backups & Restoration:** Every backup now includes a detailed file manifest, ensuring that restores and change detection are perfectly aware of where your files live and are automatically placed back exactly where they belong in your YAML structure.
-*   **Docker Env Var:** Added `ESPHOME_CONFIG_PATH` environment variable support for Docker installations, allowing custom locations for ESPHome configuration files.
-*   **Split Config Support:** Optimized for advanced Home Assistant setups using `!include`, `!include_dir_list`, and other split configuration methods.
+*   **Search All Backups:** Press Enter in the search bar or click "Search all backups" to filter your snapshot history down to backups containing matching items. Results stream in progressively in real time across Automations, Scripts, Lovelace, ESPHome, and Packages.
+*   **Mobile UI Overhaul:** Redesigned mobile experience with an edge-to-edge fullscreen diff viewer, immediate tap responsiveness without touch delay, and an Ingress-optimized header layout for phone browsers and the Home Assistant Companion App.
+*   **Full Split-Config Coverage:** Full support for labeled section blocks (e.g. `automation yaml:`, `script manual:`) and single- or double-quoted `!include` and `!include_dir_*` targets in `configuration.yaml`.
+*   **Performance Overhaul:** Parallelized backup folder scanning and direct timestamp parsing cut initial load times from ~10s to under 1s for large backup archives on external network shares.
+*   **HACS Brand Assets:** Standardized inline brand icons (256×256 and 512×512 @2x variants) complying with Home Assistant's Brands Proxy API.
 
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/1.png)
 ![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/2.png)
