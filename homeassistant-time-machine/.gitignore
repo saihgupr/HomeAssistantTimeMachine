@@ -3,3 +3,6 @@ config.js
 node_modules/
 *.log
 .env
+deploy.sh
+data/
+bump_version.sh
