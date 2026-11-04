@@ -1397,7 +1397,7 @@ body[data-theme='light'] .settings-divider {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 40px 0 16px;
+  padding: 17px 0 16px;
 }
 
 .settings-footer-link {
