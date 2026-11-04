@@ -1591,6 +1591,12 @@ async function checkSnapshotHasChanges(backupPath, configPath, mode) {
 }
 
 // Check automations for changes (supports split configs)
+function normalizeAutomationData(data) {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') return [data];
+  return [];
+}
+
 async function checkAutomationsChanges(backupPath, configPath) {
   try {
     // Get all automation file paths from configuration.yaml
@@ -1619,9 +1625,7 @@ async function checkAutomationsChanges(backupPath, configPath) {
           try {
             const filePath = await resolveFileInBackupChain(backupPath, file);
             const fileData = await loadYamlWithCache(filePath);
-            if (Array.isArray(fileData)) {
-              backupArray = backupArray.concat(fileData);
-            }
+            backupArray = backupArray.concat(normalizeAutomationData(fileData));
           } catch (err) { /* Skip */ }
         }
       }
@@ -1639,9 +1643,7 @@ async function checkAutomationsChanges(backupPath, configPath) {
     for (const filePath of automationPaths) {
       try {
         const fileData = await loadYamlWithCache(filePath);
-        if (Array.isArray(fileData)) {
-          liveArray = liveArray.concat(fileData);
-        }
+        liveArray = liveArray.concat(normalizeAutomationData(fileData));
       } catch (err) { /* File not found, skip */ }
     }
 
@@ -1872,9 +1874,7 @@ async function loadBackupAutomationItems(backupPath) {
         try {
           const filePath = await resolveFileInBackupChain(backupPath, file);
           const fileData = await loadYamlWithCache(filePath);
-          if (Array.isArray(fileData)) {
-            allAutomations = allAutomations.concat(fileData);
-          }
+          allAutomations = allAutomations.concat(normalizeAutomationData(fileData));
         } catch (err) { /* File not found, skip */ }
       }
 
@@ -1893,7 +1893,7 @@ async function loadBackupAutomationItems(backupPath) {
   try {
     const automationsFile = await resolveFileInBackupChain(backupPath, 'automations.yaml');
     const automations = await loadYamlWithCache(automationsFile) || [];
-    allAutomations = Array.isArray(automations) ? automations : [];
+    allAutomations = normalizeAutomationData(automations);
   } catch (err) { /* No automations.yaml */ }
 
   return allAutomations;
@@ -2003,9 +2003,7 @@ async function loadLiveItemsForMode(mode, configPath) {
     try {
       const fileData = await loadYamlWithCache(filePath);
       if (mode === 'automations') {
-        if (Array.isArray(fileData)) {
-          allItems = allItems.concat(fileData);
-        }
+        allItems = allItems.concat(normalizeAutomationData(fileData));
       } else if (mode === 'scripts') {
         if (fileData && typeof fileData === 'object' && !Array.isArray(fileData)) {
           allItems = allItems.concat(processScriptData(fileData));
@@ -2109,10 +2107,8 @@ app.post('/api/get-live-automation', async (req, res) => {
     for (const filePath of automationPaths) {
       try {
         const automations = await loadYamlWithCache(filePath) || [];
-        if (Array.isArray(automations)) {
-          automation = automations.find(a => a.id === automationIdentifier || a.alias === automationIdentifier);
-          if (automation) break;
-        }
+        automation = normalizeAutomationData(automations).find(a => a.id === automationIdentifier || a.alias === automationIdentifier);
+        if (automation) break;
       } catch (err) { /* File not found, continue */ }
     }
 
@@ -2276,7 +2272,7 @@ app.post('/api/restore-automation', async (req, res) => {
           try {
             const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
-            if (Array.isArray(data) && data.some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
+            if (normalizeAutomationData(data).some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
               relativeFilePath = file;
               backupFilePath = potentialBackupPath;
               break;
@@ -2307,6 +2303,18 @@ app.post('/api/restore-automation', async (req, res) => {
     // Parse documents (preserves ranges)
     const liveDoc = YAML.parseDocument(liveContent);
     const backupDoc = YAML.parseDocument(backupContent);
+
+    // Split configs using !include_dir_list store one automation per file as a
+    // mapping rather than a list. Restoring one means replacing the whole file.
+    const backupData = backupDoc.toJSON();
+    if (backupData && !Array.isArray(backupData) && typeof backupData === 'object') {
+      const matches = backupData.id === automationIdentifier || backupData.alias === automationIdentifier;
+      if (!matches) {
+        return res.status(404).json({ error: 'Automation not found in backup' });
+      }
+      await fs.writeFile(liveFilePath, backupContent, 'utf-8');
+      return res.json({ success: true, message: `Automation restored successfully to ${relativeFilePath}` });
+    }
 
     // Find backup node
     const backupItems = backupDoc.contents?.items || [];
