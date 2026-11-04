@@ -1390,7 +1390,37 @@ body[data-theme='light'] .settings-divider {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 0;
+}
+
+.settings-footer-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 40px 0 16px;
+}
+
+.settings-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #A2A2A2;
+  font-size: 12px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.settings-footer-link:hover {
+  color: #F9F9F9;
+  text-decoration: underline;
+}
+
+body[data-theme='light'] .settings-footer-link {
+  color: #6b7280;
+}
+
+body[data-theme='light'] .settings-footer-link:hover {
+  color: #1f2937;
 }
 
 /* Toggle Switch - Claude Style */
