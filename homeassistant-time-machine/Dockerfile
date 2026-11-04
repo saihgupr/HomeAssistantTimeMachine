@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Install git, curl and other dependencies
 RUN apk add --no-cache git curl

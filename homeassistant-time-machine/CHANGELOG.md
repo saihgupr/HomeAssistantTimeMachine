@@ -6,6 +6,8 @@
 - **Fixed:** Resolved live path validation failure when `!include` or `!include_dir_*` targets in `configuration.yaml` are wrapped in single or double quotes (#75).
 - **Fixed:** Resolved UI sidebar duplication and blank diff display issue when comparing split configuration automations and scripts without explicit IDs or with identical aliases.
 - **Fixed:** Automatically resolve relative backup mount names (e.g. `HA_TM_NAS`) to Supervisor network mount paths (`/data/mounts/...`).
+- **Maintenance:** Moved the add-on and Docker image to Node.js 24, replacing the end-of-life Node.js 20 base image so security fixes continue to ship (#76).
+- **Settings:** Added GitHub and Donate shortcuts to the Settings footer.
 - **Performance:** Parallelized backup directory scanning using `Promise.all`, cutting initial load time from ~10s to under 1s for large backup sets (800+ snapshots on external storage).
 - **Performance:** Timestamps are now parsed directly from folder names for the common date-based naming format, eliminating per-folder `fs.stat` calls entirely.
 - **Performance:** Mode-based manifest filtering (`automations`, `scripts`, `lovelace`, etc.) now runs in parallel across all backups instead of sequentially.
