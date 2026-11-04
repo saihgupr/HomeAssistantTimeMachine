@@ -1233,10 +1233,12 @@ app.post('/api/scan-backups', async (req, res) => {
             let hasRelevantFiles = false;
             switch (mode) {
               case 'automations':
-                hasRelevantFiles = manifest.files?.root?.includes('automations.yaml') ?? false;
+                hasRelevantFiles = (manifest.automation_files?.length > 0) ||
+                  (manifest.files?.root?.includes('automations.yaml') ?? false);
                 break;
               case 'scripts':
-                hasRelevantFiles = manifest.files?.root?.includes('scripts.yaml') ?? false;
+                hasRelevantFiles = (manifest.script_files?.length > 0) ||
+                  (manifest.files?.root?.includes('scripts.yaml') ?? false);
                 break;
               case 'lovelace':
                 hasRelevantFiles = (manifest.files?.storage?.some(f => f.startsWith('lovelace'))) ?? false;
@@ -3417,13 +3419,11 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
     }
   }
 
-  // Write Manifest only if smart backup is enabled
-  if (smartBackupEnabled) {
-    try {
-      await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
-    } catch (err) {
-      console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
-    }
+  // Write the manifest for every backup so split configs resolve without scanning
+  try {
+    await fs.writeFile(path.join(backupPath, '.backup_manifest.json'), JSON.stringify(manifest, null, 2));
+  } catch (err) {
+    console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
   }
 
   console.log(`[backup-${source}] Backup completed successfully at:`, backupPath);
