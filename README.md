@@ -6,9 +6,10 @@ Home Assistant Time Machine is a web-based tool that acts as a "Time Machine" fo
 
 *   **Search All Backups:** Press Enter in the search bar or click "Search all backups" to filter your snapshot history down to backups containing matching items. Results stream in progressively in real time across Automations, Scripts, Lovelace, ESPHome, and Packages.
 *   **Mobile UI Overhaul:** Redesigned mobile experience with an edge-to-edge fullscreen diff viewer, immediate tap responsiveness without touch delay, and an Ingress-optimized header layout for phone browsers and the Home Assistant Companion App.
-*   **Full Split-Config Coverage:** Full support for labeled section blocks (e.g. `automation yaml:`, `script manual:`) and single- or double-quoted `!include` and `!include_dir_*` targets in `configuration.yaml`.
+*   **Full Split-Config Coverage:** Labeled section blocks (e.g. `automation yaml:`, `script manual:`), quoted `!include` targets, and one-automation-per-file `!include_dir_list` setups are all fully supported. Every backup now writes a manifest, so split-config items stay visible in full backups, and backups containing only split config files no longer disappear from the Automations and Scripts tabs.
 *   **Performance Overhaul:** Parallelized backup folder scanning and direct timestamp parsing cut initial load times from ~10s to under 1s for large backup archives on external network shares.
 *   **HACS Brand Assets:** Standardized inline brand icons (256×256 and 512×512 @2x variants) complying with Home Assistant's Brands Proxy API.
+*   **Maintenance:** Moved the add-on and Docker image to Node.js 24 so security updates keep shipping.
 
 ![Screenshot 1](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/1.png)
 ![Screenshot 2](https://raw.githubusercontent.com/saihgupr/HomeAssistantTimeMachine/main/images/2.png)
