@@ -892,17 +892,18 @@
         }
 
         allBackupsCache = data.backups;
-        baseBackupList = data.backups;
-        baseBackupsChangeFiltered = !showOnlyChanges;
-        filteredBackupsGlobal = data.backups;
 
-        // Render all backups immediately so user can select any backup instantly without waiting!
-        backupCount.textContent = getStyledText('ui.backupList.snapshotsAvailable', { count: data.backups.length });
-        renderBackupList(data.backups, backupList);
-
-        // If showOnlyChanges is enabled, filter in background via batch API without blocking UI
         if (showOnlyChanges) {
-          filterBackupsBatch(data.backups, backupList, backupCount);
+          baseBackupList = [];
+          baseBackupsChangeFiltered = false;
+          filteredBackupsGlobal = [];
+          filterBackupsProgressively(data.backups, backupList, backupCount);
+        } else {
+          baseBackupList = data.backups;
+          baseBackupsChangeFiltered = true;
+          filteredBackupsGlobal = data.backups;
+          backupCount.textContent = getStyledText('ui.backupList.snapshotsAvailable', { count: data.backups.length });
+          renderBackupList(data.backups, backupList);
         }
       } catch (error) {
         console.error('[loadBackups] Error:', error);
@@ -972,47 +973,70 @@
       requestAnimationFrame(renderNextChunk);
     }
 
-    // Fast background batch filter
-    async function filterBackupsBatch(allBackups, backupList, backupCount) {
+    // Filter snapshots in chunks and append matches as they arrive
+    async function filterBackupsProgressively(allBackups, backupList, backupCount) {
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
       const scanId = ++currentScanId;
+      const CHUNK_SIZE = 20;
+      const filtered = [];
 
-      if (!backupSearchActive) {
-        backupCount.textContent = getStyledText('ui.snapshotFilter.loading');
-      }
+      backupList.innerHTML = `<div id="backupListContainer" style="display: flex; flex-direction: column; gap: 8px;"><p class="loading">${getStyledText('ui.snapshotFilter.loading')}</p></div>`;
+      const container = document.getElementById('backupListContainer');
+      backupCount.textContent = getStyledText('ui.snapshotFilter.checking', { current: 0, total: allBackups.length });
 
       try {
-        const resp = await fetch(url('/api/check-snapshots-batch'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            backupPaths: allBackups.map(b => b.path),
-            liveConfigPath,
-            mode: currentMode
-          })
-        });
-        const data = await resp.json();
-        if (scanId !== currentScanId) return; // Abort if a newer scan started
+        for (let i = 0; i < allBackups.length; i += CHUNK_SIZE) {
+          if (scanId !== currentScanId || backupSearchActive) return;
 
-        if (data.results) {
-          const filtered = allBackups.filter(b => data.results[b.path] !== false);
+          const chunk = allBackups.slice(i, i + CHUNK_SIZE);
+          let results = {};
+
+          try {
+            const resp = await fetch(url('/api/check-snapshots-batch'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                backupPaths: chunk.map(b => b.path),
+                liveConfigPath,
+                mode: currentMode
+              })
+            });
+            const data = await resp.json();
+            results = data.results || {};
+          } catch (e) {
+            console.error('Progressive filter chunk error:', e);
+            // On error, include the chunk to be safe
+            for (const backup of chunk) results[backup.path] = true;
+          }
+
+          if (scanId !== currentScanId || backupSearchActive) return;
+
+          const loadingEl = container?.querySelector('.loading');
+          for (const backup of chunk) {
+            if (results[backup.path] === false) continue;
+            if (loadingEl) loadingEl.remove();
+            const index = filtered.length;
+            filtered.push(backup);
+            if (container) container.insertAdjacentHTML('beforeend', buildBackupItemHtml(backup, index));
+          }
+
           baseBackupList = filtered;
-          baseBackupsChangeFiltered = true;
-          if (backupSearchActive) return; // Don't replace cross-search results
           filteredBackupsGlobal = filtered;
           currentBackupIndex = filtered.findIndex(b => b.path === currentBackupPath);
-          if (filtered.length === 0) {
-            backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
-            backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
-          } else {
-            backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filtered.length });
-            renderBackupList(filtered, backupList);
-          }
+          backupCount.textContent = getStyledText('ui.snapshotFilter.checking', {
+            current: Math.min(i + CHUNK_SIZE, allBackups.length),
+            total: allBackups.length
+          });
         }
-      } catch (e) {
-        console.error('Batch filter error:', e);
-        if (scanId === currentScanId && !backupSearchActive) {
-          backupCount.textContent = getStyledText('ui.backupList.snapshotsAvailable', { count: allBackups.length });
+
+        if (scanId !== currentScanId || backupSearchActive) return;
+
+        baseBackupsChangeFiltered = true;
+        if (filtered.length === 0) {
+          backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
+          backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
+        } else {
+          backupCount.textContent = getStyledText('ui.snapshotFilter.snapshotsWithChanges', { count: filtered.length });
         }
       } finally {
         fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
