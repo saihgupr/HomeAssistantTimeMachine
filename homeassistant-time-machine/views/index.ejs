@@ -985,7 +985,47 @@
       backupCount.textContent = getStyledText('ui.snapshotFilter.checking', { current: 0, total: allBackups.length });
 
       try {
-        for (let i = 0; i < allBackups.length; i += CHUNK_SIZE) {
+        // Check the newest few snapshots one at a time so the first results
+        // appear immediately, then switch to batches for the rest.
+        const INITIAL_SEQUENTIAL = 5;
+        let startIndex = 0;
+
+        for (let i = 0; i < Math.min(INITIAL_SEQUENTIAL, allBackups.length); i++) {
+          if (scanId !== currentScanId || backupSearchActive) return;
+
+          const backup = allBackups[i];
+          let hasChanges = true;
+
+          try {
+            const resp = await fetch(url('/api/check-snapshot-changes'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ backupPath: backup.path, liveConfigPath, mode: currentMode })
+            });
+            const data = await resp.json();
+            hasChanges = data.hasChanges !== false;
+          } catch (e) {
+            console.error('Progressive filter initial check error:', e);
+          }
+
+          if (scanId !== currentScanId || backupSearchActive) return;
+
+          if (hasChanges) {
+            const loadingEl = container?.querySelector('.loading');
+            if (loadingEl) loadingEl.remove();
+            const index = filtered.length;
+            filtered.push(backup);
+            if (container) container.insertAdjacentHTML('beforeend', buildBackupItemHtml(backup, index));
+          }
+
+          baseBackupList = filtered;
+          filteredBackupsGlobal = filtered;
+          currentBackupIndex = filtered.findIndex(b => b.path === currentBackupPath);
+          backupCount.textContent = getStyledText('ui.snapshotFilter.checking', { current: i + 1, total: allBackups.length });
+          startIndex = i + 1;
+        }
+
+        for (let i = startIndex; i < allBackups.length; i += CHUNK_SIZE) {
           if (scanId !== currentScanId || backupSearchActive) return;
 
           const chunk = allBackups.slice(i, i + CHUNK_SIZE);
