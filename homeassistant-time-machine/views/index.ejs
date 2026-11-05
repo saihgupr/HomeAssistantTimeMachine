@@ -625,7 +625,7 @@
 
       // Replace placeholders like {mode}, {error}, etc.
       return translatedText.replace(/{(\w+)}/g, (match, key) => {
-        return replacements[key] || match;
+        return Object.prototype.hasOwnProperty.call(replacements, key) ? replacements[key] : match;
       });
     }
 
