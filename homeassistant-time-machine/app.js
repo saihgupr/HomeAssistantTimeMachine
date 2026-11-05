@@ -31,7 +31,7 @@ const DATA_DIR = (() => {
   return fallback;
 })();
 
-const version = '2.4.0';
+const version = '2.4.1';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
@@ -176,6 +176,7 @@ app.post('/api/delete-backup', async (req, res) => {
 
     console.log(`[api] Manually deleting backup: ${backupPath}`);
     await rmWithRetry(backupPath);
+    clearBackupPathsCache();
     res.json({ success: true });
   } catch (error) {
     console.error('[api] Error deleting backup:', error);
@@ -1602,7 +1603,7 @@ function normalizeAutomationData(data) {
 async function checkAutomationsChanges(backupPath, configPath) {
   try {
     // Get all automation file paths from configuration.yaml
-    const { automationPaths } = await getConfigFilePaths(configPath);
+    const { automationPaths } = await getConfigFilePathsCached(configPath);
 
     // Load backup automations (check both root automations.yaml and any backed-up directories/files)
     // We search all files in the backup that match the automation file pattern
@@ -1662,7 +1663,8 @@ async function checkAutomationsChanges(backupPath, configPath) {
 
     return false;
   } catch (err) {
-    return false;
+    console.error('[checkAutomationsChanges] Error:', err);
+    return true;
   }
 }
 
@@ -1671,7 +1673,7 @@ async function checkAutomationsChanges(backupPath, configPath) {
 async function checkScriptsChanges(backupPath, configPath) {
   try {
     // Get all script file paths from configuration.yaml
-    const { scriptPaths } = await getConfigFilePaths(configPath);
+    const { scriptPaths } = await getConfigFilePathsCached(configPath);
 
     // Load backup scripts
     let backupScripts = {};
@@ -1730,7 +1732,8 @@ async function checkScriptsChanges(backupPath, configPath) {
 
     return false;
   } catch (err) {
-    return false;
+    console.error('[checkScriptsChanges] Error:', err);
+    return true;
   }
 }
 
@@ -1738,42 +1741,31 @@ async function checkScriptsChanges(backupPath, configPath) {
 // Check lovelace files for changes
 async function checkLovelaceChanges(backupPath, configPath) {
   try {
-    // Lovelace files are in .storage directory
-    const backupStorageDir = path.join(backupPath, '.storage');
+    const backupFiles = await getBackupLovelaceFileNames(backupPath);
     const liveStorageDir = path.join(configPath, '.storage');
 
-    // Get list of lovelace files from backup
-    const backupFiles = await fs.readdir(backupStorageDir).catch(() => []);
-    const lovelaceFiles = backupFiles.filter(f => f.startsWith('lovelace'));
+    for (const file of backupFiles) {
+      const relativePath = path.join('.storage', file);
+      const resolvedPath = await resolveFileInBackupChain(backupPath, relativePath);
+      const [backupContent, liveContent] = await Promise.all([
+        fs.readFile(resolvedPath, 'utf-8').catch(() => null),
+        fs.readFile(path.join(liveStorageDir, file), 'utf-8').catch(() => null)
+      ]);
 
-    for (const file of lovelaceFiles) {
-      const backupFile = path.join(backupStorageDir, file);
-      const liveFile = path.join(liveStorageDir, file);
-
-      try {
-        const [backupContent, liveContent] = await Promise.all([
-          fs.readFile(backupFile, 'utf-8').catch(() => null),
-          fs.readFile(liveFile, 'utf-8').catch(() => null)
-        ]);
-
-        if (backupContent === null && liveContent !== null) return true; // Added
-        if (backupContent !== null && liveContent === null) return true; // Deleted
-        if (backupContent !== liveContent) return true; // Modified
-      } catch (err) {
-        // Continue checking other files
-      }
+      if (backupContent !== liveContent) return true;
     }
 
     // Also check for NEW lovelace files in live
-    const liveFiles = await fs.readdir(liveStorageDir).catch(() => []);
+    const liveFiles = await readdirCached(liveStorageDir).catch(() => []);
     const liveLovelaceFiles = liveFiles.filter(f => f.startsWith('lovelace'));
     for (const file of liveLovelaceFiles) {
-      if (!lovelaceFiles.includes(file)) return true; // New file added
+      if (!backupFiles.includes(file)) return true; // New file added
     }
 
     return false;
   } catch (err) {
-    return false;
+    console.error('[checkLovelaceChanges] Error:', err);
+    return true;
   }
 }
 
@@ -1806,7 +1798,8 @@ async function checkEsphomeChanges(backupPath, configPath) {
 
     return false;
   } catch (err) {
-    return false;
+    console.error('[checkEsphomeChanges] Error:', err);
+    return true;
   }
 }
 
@@ -1839,7 +1832,8 @@ async function checkPackagesChanges(backupPath, configPath) {
 
     return false;
   } catch (err) {
-    return false;
+    console.error('[checkPackagesChanges] Error:', err);
+    return true;
   }
 }
 
@@ -2824,8 +2818,59 @@ app.post('/api/validate-path', async (req, res) => {
 });
 
 
+// Cache the backup folder list briefly so chain resolution does not rescan
+// the directory tree for every file it looks up.
+const backupPathsCache = new Map();
+const backupFileLocationsCache = new Map();
+const liveDirCache = new Map();
+const BACKUP_PATHS_CACHE_TTL_MS = 2000;
+const BACKUP_FILE_LOCATIONS_CACHE_TTL_MS = 10000;
+const LIVE_DIR_CACHE_TTL_MS = 5000;
+
+function clearBackupPathsCache() {
+  backupPathsCache.clear();
+  backupFileLocationsCache.clear();
+}
+
+function getCachedLiveDir(key) {
+  const cached = liveDirCache.get(key);
+  if (cached && (Date.now() - cached.timestamp) < LIVE_DIR_CACHE_TTL_MS) {
+    return cached.files;
+  }
+  return null;
+}
+
+function setCachedLiveDir(key, files) {
+  liveDirCache.set(key, { timestamp: Date.now(), files });
+}
+
+async function readdirCached(dir) {
+  const key = `dir:${dir}`;
+  const cached = getCachedLiveDir(key);
+  if (cached) return cached;
+
+  const files = await fs.readdir(dir);
+  setCachedLiveDir(key, files);
+  return files;
+}
+
+async function getConfigFilePathsCached(configPath) {
+  const key = `config:${configPath}`;
+  const cached = getCachedLiveDir(key);
+  if (cached) return cached;
+
+  const paths = await getConfigFilePaths(configPath);
+  setCachedLiveDir(key, paths);
+  return paths;
+}
+
 // Helper function to get all backup paths in reverse chronological order
 async function getAllBackupPaths(backupRoot) {
+  const cached = backupPathsCache.get(backupRoot);
+  if (cached && (Date.now() - cached.timestamp) < BACKUP_PATHS_CACHE_TTL_MS) {
+    return cached.paths;
+  }
+
   const allBackups = [];
   try {
     const years = await fs.readdir(backupRoot);
@@ -2849,11 +2894,13 @@ async function getAllBackupPaths(backupRoot) {
         }
       }
     }
-    return allBackups;
   } catch (err) {
     console.log('[smart-backup] Error getting backup paths:', err.message);
     return [];
   }
+
+  backupPathsCache.set(backupRoot, { timestamp: Date.now(), paths: allBackups });
+  return allBackups;
 }
 
 // Helper function to find the most recent version of a file by walking the backup chain
@@ -2909,15 +2956,29 @@ async function resolveFileInBackupChain(targetBackupPath, relativeFilePath) {
       return path.join(targetBackupPath, relativeFilePath);
     }
 
-    // Iterate from startIndex onwards (covering target and older backups)
-    for (let i = startIndex; i < allBackups.length; i++) {
-      const potentialPath = path.join(allBackups[i], relativeFilePath);
-      try {
-        await fs.access(potentialPath);
-        return potentialPath; // Found it!
-      } catch (e) {
-        // Not here, continue to older backup
+    // Cache which backups contain this file so repeated lookups across many
+    // snapshots do not walk the whole chain every time.
+    const cacheKey = `${rootPath}\0${relativeFilePath}`;
+    let locations;
+    const cached = backupFileLocationsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < BACKUP_FILE_LOCATIONS_CACHE_TTL_MS) {
+      locations = cached.locations;
+    } else {
+      locations = [];
+      for (let i = 0; i < allBackups.length; i++) {
+        try {
+          await fs.access(path.join(allBackups[i], relativeFilePath));
+          locations.push(i);
+        } catch (e) {
+          // Not in this backup, continue
+        }
       }
+      backupFileLocationsCache.set(cacheKey, { timestamp: Date.now(), locations });
+    }
+
+    // Use the newest backup at or after the target that contains the file
+    for (const i of locations) {
+      if (i >= startIndex) return path.join(allBackups[i], relativeFilePath);
     }
 
     // If not found in history, return the path in target backup (let caller handle ENOENT)
@@ -3376,6 +3437,7 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
       console.log(`[backup-${source}] No files changed since last backup. Removing empty backup folder.`);
       try {
         await fs.rm(backupPath, { recursive: true, force: true });
+        clearBackupPathsCache();
 
         // Also clean up empty parent directories (MM and YYYY) if they're now empty
         const monthPath = path.dirname(backupPath);
@@ -3425,6 +3487,8 @@ async function performBackup(liveConfigPath, backupFolderPath, source = 'manual'
   } catch (err) {
     console.error(`[backup-${source}] Failed to write backup manifest:`, err.message);
   }
+
+  clearBackupPathsCache();
 
   console.log(`[backup-${source}] Backup completed successfully at:`, backupPath);
 

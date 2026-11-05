@@ -284,6 +284,14 @@ window.STRINGS = {
         nl: "Geen overeenkomende items",
         it: "Nessun elemento corrispondente"
       },
+      noChangesInSnapshot: {
+        en: "No changes in this snapshot",
+        es: "No hay cambios en esta instantánea",
+        de: "Keine Änderungen in diesem Snapshot",
+        fr: "Aucune modification dans cet instantané",
+        nl: "Geen wijzigingen in deze snapshot",
+        it: "Nessuna modifica in questa istantanea"
+      },
       noMatchingItemsInBackup: {
         en: "No matches in this backup.",
         es: "No hay coincidencias en esta copia de seguridad.",

@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.4.0.2') %>">
+  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.4.1') %>">
   <script>
     // Set theme immediately (before <body> exists) to prevent flash
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -25,7 +25,7 @@
     root.classList.add('theme-preload');
     window.__initialTheme = savedTheme;
   </script>
-  <script defer src="<%= url('/static/js/strings-language.js?v=2.4.0') %>"></script>
+  <script defer src="<%= url('/static/js/strings-language.js?v=2.4.1') %>"></script>
 </head>
 
 <body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>"
@@ -977,6 +977,10 @@
       const liveConfigPath = haConfig?.liveConfigPath || '/config';
       const scanId = ++currentScanId;
 
+      if (!backupSearchActive) {
+        backupCount.textContent = getStyledText('ui.snapshotFilter.loading');
+      }
+
       try {
         const resp = await fetch(url('/api/check-snapshots-batch'), {
           method: 'POST',
@@ -988,7 +992,7 @@
           })
         });
         const data = await resp.json();
-        if (scanId !== currentScanId) return; // Abort if user clicked or navigated
+        if (scanId !== currentScanId) return; // Abort if a newer scan started
 
         if (data.results) {
           const filtered = allBackups.filter(b => data.results[b.path] !== false);
@@ -996,6 +1000,7 @@
           baseBackupsChangeFiltered = true;
           if (backupSearchActive) return; // Don't replace cross-search results
           filteredBackupsGlobal = filtered;
+          currentBackupIndex = filtered.findIndex(b => b.path === currentBackupPath);
           if (filtered.length === 0) {
             backupCount.textContent = getStyledText('ui.snapshotFilter.noChangesFound');
             backupList.innerHTML = `<p class="empty-state">${getStyledText('ui.snapshotFilter.noChangesFound')}</p>`;
@@ -1006,6 +1011,9 @@
         }
       } catch (e) {
         console.error('Batch filter error:', e);
+        if (scanId === currentScanId && !backupSearchActive) {
+          backupCount.textContent = getStyledText('ui.backupList.snapshotsAvailable', { count: allBackups.length });
+        }
       } finally {
         fetch(url('/api/clear-cache'), { method: 'POST' }).catch(() => { });
       }
@@ -1310,7 +1318,7 @@
     }
 
     // Select backup
-    async function selectBackup(backupPath, folderName, mtime, index = -1) {      currentScanId++; // Immediately abort any active background filter so full network priority is given to loading selected backup
+    async function selectBackup(backupPath, folderName, mtime, index = -1) {
       navigateToDetail();
       currentBackupPath = backupPath;
       currentBackupName = folderName;
@@ -1575,6 +1583,21 @@
       const query = document.getElementById('searchBox')?.value.trim() || '';
 
       if (!query) {
+        const hasAnyItems = currentMode === 'automations' || currentMode === 'scripts'
+          ? Array.isArray(allItems) && allItems.length > 0
+          : currentMode === 'lovelace'
+            ? Array.isArray(lovelaceFiles) && lovelaceFiles.length > 0
+            : currentMode === 'esphome'
+              ? Array.isArray(esphomeFiles) && esphomeFiles.length > 0
+              : currentMode === 'packages'
+                ? Array.isArray(packagesFiles) && packagesFiles.length > 0
+                : false;
+
+        if (showOnlyChanges && hasAnyItems) {
+          itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noChangesInSnapshot')}</p>`;
+          return;
+        }
+
         itemsList.innerHTML = `<p class="empty-state">${getStyledText('ui.itemsList.noMatchingItems')}</p>`;
         return;
       }

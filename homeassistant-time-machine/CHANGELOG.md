@@ -1,3 +1,7 @@
+# v2.4.1
+
+- **Fixed:** Enabling **Show Changes Only** now filters the backup list in the background and updates it automatically, with no page refresh required.
+
 # v2.4.0
 
 - **HACS Brand Assets:** Standardized inline brand icons (256×256 and 512×512 @2x variants) under `custom_components/time_machine/brand/` to comply with Home Assistant's Brands Proxy API.
