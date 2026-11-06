@@ -1,3 +1,9 @@
+# v2.4.2
+
+- **Fixed:** Opening the integration options from the Home Assistant UI no longer crashes with a 500 error.
+- **Fixed:** The Last Backup sensor now reads the add-on timestamp instead of reporting `unknown`, and still handles older add-on versions.
+- **Fixed:** ESPHome and Packages tabs no longer hide snapshots whose manifest is missing file entries, and nested files are now compared through the backup chain.
+
 # v2.4.1
 
 - **Search All Backups:** Press Enter in search to find every snapshot containing an item across Automations, Scripts, Lovelace, ESPHome, and Packages. Results stream in as each backup is checked.

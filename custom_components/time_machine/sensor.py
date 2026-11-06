@@ -123,18 +123,31 @@ class TimeMachineLastBackupSensor(SensorEntity):
                 async with session.get(f"{self._url}{API_HEALTH}") as response:
                     if response.status == 200:
                         data = await response.json()
+                        last_backup_iso = data.get("last_backup_time")
                         last_backup_str = data.get("last_backup")
-                        
-                        if last_backup_str:
-                            try:
-                                # Format: 2024-03-20_14-30-05
-                                dt = datetime.strptime(last_backup_str, "%Y-%m-%d_%H-%M-%S")
-                                # Set as local time
-                                self._attr_native_value = dt_util.as_utc(dt)
-                            except (ValueError, TypeError):
-                                self._attr_native_value = None
-                        else:
-                            self._attr_native_value = None
+
+                        self._attr_native_value = None
+
+                        if last_backup_iso:
+                            parsed = dt_util.parse_datetime(last_backup_iso)
+                            if parsed is not None:
+                                self._attr_native_value = dt_util.as_utc(parsed)
+
+                        if self._attr_native_value is None and last_backup_str:
+                            # Older add-on versions only expose the folder
+                            # name, which uses the backup timestamp format.
+                            for date_format in (
+                                "%Y-%m-%d-%H%M%S",
+                                "%Y-%m-%d_%H-%M-%S",
+                            ):
+                                try:
+                                    parsed = datetime.strptime(
+                                        last_backup_str, date_format
+                                    )
+                                except (ValueError, TypeError):
+                                    continue
+                                self._attr_native_value = dt_util.as_utc(parsed)
+                                break
                     else:
                         self._attr_native_value = None
         except Exception:

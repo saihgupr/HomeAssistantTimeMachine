@@ -31,7 +31,7 @@ const DATA_DIR = (() => {
   return fallback;
 })();
 
-const version = '2.4.1';
+const version = '2.4.2';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
@@ -1246,9 +1246,21 @@ app.post('/api/scan-backups', async (req, res) => {
                 break;
               case 'esphome':
                 hasRelevantFiles = (manifest.files?.esphome?.length > 0) ?? false;
+                if (!hasRelevantFiles) {
+                  // Older manifests may not list esphome files even though
+                  // the backup contains them.
+                  const esphomeFiles = await listYamlFilesRecursive(path.join(backup.path, 'esphome'));
+                  hasRelevantFiles = esphomeFiles.length > 0;
+                }
                 break;
               case 'packages':
                 hasRelevantFiles = (manifest.files?.packages?.length > 0) ?? false;
+                if (!hasRelevantFiles) {
+                  // Older manifests may not list packages files even though
+                  // the backup contains them.
+                  const packagesFiles = await listYamlFilesRecursive(path.join(backup.path, 'packages'));
+                  hasRelevantFiles = packagesFiles.length > 0;
+                }
                 break;
               default:
                 hasRelevantFiles = true;
@@ -1769,34 +1781,47 @@ async function checkLovelaceChanges(backupPath, configPath) {
   }
 }
 
+// Compare a manifest-backed backup directory (esphome/packages) against live.
+// Resolves files through the backup chain so smart backups are handled, and
+// walks subdirectories because both backup types are copied recursively.
+async function checkBackupDirectoryChanges(backupPath, dirName, liveDir) {
+  const backupFiles = dirName === 'esphome'
+    ? await getBackupEsphomeFileNames(backupPath)
+    : await getBackupPackagesFileNames(backupPath);
+
+  for (const file of backupFiles) {
+    let liveFile;
+    try {
+      liveFile = resolveWithinDirectory(liveDir, file);
+    } catch (err) {
+      continue;
+    }
+
+    const resolvedPath = await resolveFileInBackupChain(backupPath, path.join(dirName, file));
+    const [backupContent, liveContent] = await Promise.all([
+      fs.readFile(resolvedPath, 'utf-8').catch(() => null),
+      fs.readFile(liveFile, 'utf-8').catch(() => null)
+    ]);
+
+    if (backupContent === null && liveContent !== null) return true;
+    if (backupContent !== null && liveContent === null) return true;
+    if (backupContent !== liveContent) return true;
+  }
+
+  // New files added to live after this snapshot was taken
+  const liveFiles = await listYamlFilesRecursive(liveDir).catch(() => []);
+  for (const file of liveFiles) {
+    if (!backupFiles.includes(file)) return true;
+  }
+
+  return false;
+}
+
 // Check esphome files for changes
 async function checkEsphomeChanges(backupPath, configPath) {
   try {
-    const backupEsphomeDir = path.join(backupPath, 'esphome');
     const liveEsphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
-
-    const backupFiles = await fs.readdir(backupEsphomeDir).catch(() => []);
-    const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-    for (const file of yamlFiles) {
-      const backupFile = path.join(backupEsphomeDir, file);
-      const liveFile = path.join(liveEsphomeDir, file);
-
-      try {
-        const [backupContent, liveContent] = await Promise.all([
-          fs.readFile(backupFile, 'utf-8').catch(() => null),
-          fs.readFile(liveFile, 'utf-8').catch(() => null)
-        ]);
-
-        if (backupContent === null && liveContent !== null) return true;
-        if (backupContent !== null && liveContent === null) return true;
-        if (backupContent !== liveContent) return true;
-      } catch (err) {
-        // Continue
-      }
-    }
-
-    return false;
+    return await checkBackupDirectoryChanges(backupPath, 'esphome', liveEsphomeDir);
   } catch (err) {
     console.error('[checkEsphomeChanges] Error:', err);
     return true;
@@ -1806,31 +1831,8 @@ async function checkEsphomeChanges(backupPath, configPath) {
 // Check packages files for changes
 async function checkPackagesChanges(backupPath, configPath) {
   try {
-    const backupPackagesDir = path.join(backupPath, 'packages');
     const livePackagesDir = path.join(configPath, 'packages');
-
-    const backupFiles = await fs.readdir(backupPackagesDir).catch(() => []);
-    const yamlFiles = backupFiles.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-    for (const file of yamlFiles) {
-      const backupFile = path.join(backupPackagesDir, file);
-      const liveFile = path.join(livePackagesDir, file);
-
-      try {
-        const [backupContent, liveContent] = await Promise.all([
-          fs.readFile(backupFile, 'utf-8').catch(() => null),
-          fs.readFile(liveFile, 'utf-8').catch(() => null)
-        ]);
-
-        if (backupContent === null && liveContent !== null) return true;
-        if (backupContent !== null && liveContent === null) return true;
-        if (backupContent !== liveContent) return true;
-      } catch (err) {
-        // Continue
-      }
-    }
-
-    return false;
+    return await checkBackupDirectoryChanges(backupPath, 'packages', livePackagesDir);
   } catch (err) {
     console.error('[checkPackagesChanges] Error:', err);
     return true;
@@ -3911,8 +3913,15 @@ app.get('/api/health', async (req, res) => {
     }
 
     let lastBackup = null;
+    let lastBackupTime = null;
     if (allBackups.length > 0) {
       lastBackup = path.basename(allBackups[0]);
+      try {
+        const latestBackupStats = await fs.stat(allBackups[0]);
+        lastBackupTime = latestBackupStats.mtime.toISOString();
+      } catch (e) {
+        debugLog('[health] Could not stat latest backup:', e.message);
+      }
     }
 
     // Disk usage
@@ -3940,6 +3949,7 @@ app.get('/api/health', async (req, res) => {
       mode: options.mode,
       backup_count: allBackups.length,
       last_backup: lastBackup,
+      last_backup_time: lastBackupTime,
       disk_usage: disk_info,
       active_schedules,
       last_backup_status: LAST_BACKUP_STATE.status,
