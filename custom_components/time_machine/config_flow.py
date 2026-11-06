@@ -122,14 +122,17 @@ class TimeMachineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class TimeMachineOptionsFlow(config_entries.OptionsFlow):
     """Handle options for Time Machine."""
 
-    def __init__(self, config_entry):
+    def __init__(self, config_entry=None):
         """Initialize options flow."""
-        super().__init__(config_entry)
-        self.config_entry = config_entry
+        self._entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         errors = {}
+
+        # Home Assistant sets config_entry on the flow after init. Older
+        # versions do not expose it, so keep the one passed by the handler.
+        entry = getattr(self, "config_entry", None) or self._entry
 
         if user_input is not None:
             url = user_input[CONF_URL].strip().rstrip("/")
@@ -138,8 +141,8 @@ class TimeMachineOptionsFlow(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data={CONF_URL: url})
             errors["base"] = "cannot_connect"
 
-        current_url = self.config_entry.options.get(
-            CONF_URL, self.config_entry.data.get(CONF_URL, DEFAULT_URL)
+        current_url = entry.options.get(
+            CONF_URL, entry.data.get(CONF_URL, DEFAULT_URL)
         )
 
         return self.async_show_form(
