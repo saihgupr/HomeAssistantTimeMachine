@@ -1,3 +1,8 @@
+# v2.4.3
+
+- **Fixed:** The integration manifest version now matches the add-on version, so HACS and Home Assistant report the same release.
+- **Maintenance:** Updated GitHub Actions to their latest major versions.
+
 # v2.4.2
 
 - **Fixed:** Opening the integration options from the Home Assistant UI no longer crashes with a 500 error.

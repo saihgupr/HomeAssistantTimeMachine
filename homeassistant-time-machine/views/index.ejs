@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.4.2') %>">
+  <link rel="stylesheet" href="<%= url('/static/css/style.css?v=2.4.3') %>">
   <script>
     // Set theme immediately (before <body> exists) to prevent flash
     const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -25,7 +25,7 @@
     root.classList.add('theme-preload');
     window.__initialTheme = savedTheme;
   </script>
-  <script defer src="<%= url('/static/js/strings-language.js?v=2.4.2') %>"></script>
+  <script defer src="<%= url('/static/js/strings-language.js?v=2.4.3') %>"></script>
 </head>
 
 <body data-esphome-enabled="<%= esphomeEnabled ? 'true' : 'false' %>"
@@ -363,7 +363,7 @@
   <nav class="mobile-tab-bar" id="mobileTabBar">
     <button class="mobile-tab-item active" id="mobileAutomationsTab" onclick="switchMode('automations')" aria-label="Automations">
       <svg class="mobile-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2.4.22 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12.4.28 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+        <path d="M12 2.4.32 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12.4.38 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
       </svg>
       <span class="mobile-tab-label" data-i18n="tabs.automations">Automations</span>
     </button>
@@ -3904,7 +3904,7 @@
           <span>${lockLabel}</span>
         </div>
         <div class="context-menu-item" onclick="exportBackup('${backupPath}')">
-          <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.4.21"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></i>
+          <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.4.31"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/></svg></i>
           <span>${getStyledText('ui.contextMenu.export')}</span>
         </div>
         <div class="context-menu-separator"></div>
