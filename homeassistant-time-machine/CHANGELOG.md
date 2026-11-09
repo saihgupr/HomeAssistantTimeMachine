@@ -1,3 +1,7 @@
+# Unreleased
+
+- **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
+
 # v2.4.3
 
 - **Fixed:** The integration manifest version now matches the add-on version, so HACS and Home Assistant report the same release.

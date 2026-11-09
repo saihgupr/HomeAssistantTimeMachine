@@ -594,10 +594,9 @@
       }
 
       // Update empty state message
-      const emptyStateMode = getStyledText(`ui.buttons.${currentMode}`) || currentMode;
       const emptyStateEl = document.getElementById('emptyStateMessage');
       if (emptyStateEl) {
-        emptyStateEl.textContent = getStyledText('ui.itemsList.selectBackup', { mode: emptyStateMode });
+        emptyStateEl.textContent = getNoBackupMessage(currentMode);
       }
 
       // Update placeholders
@@ -689,7 +688,7 @@
           packagesFeatureEnabled = !!haConfig?.packagesEnabled;
           updatePackagesVisibility();
           document.getElementById('heroSubtitle').textContent = getStyledText('ui.hero.subtitle');
-          document.getElementById('itemsSubtitle').textContent = getStyledText('ui.itemsList.noBackupSelected');
+          document.getElementById('itemsSubtitle').textContent = '';
           updateUIText(); // Update all UI text elements
         }
       } catch (error) {
@@ -1541,13 +1540,45 @@
       }
     }
 
+    // Message shown in the right panel when no snapshot is selected
+    function getNoBackupMessage(mode) {
+      if (mode === 'lovelace') {
+        return getStyledText('ui.lovelace.selectBackup') || 'Select a backup to view Lovelace files';
+      }
+      if (mode === 'esphome') {
+        return getStyledText('ui.esphome.selectBackup') || 'Select a backup to view ESPHome files';
+      }
+      if (mode === 'packages') {
+        return getStyledText('ui.packages.selectBackup') || 'Select a backup to view Packages files';
+      }
+      const modeLabel = getStyledText(`ui.buttons.${mode}`) || mode;
+      return getStyledText('ui.itemsList.selectBackup', { mode: modeLabel }) ||
+        `Select a backup to view ${modeLabel}`;
+    }
+
+    // Restore the right panel to its "no backup selected" state
+    function showNoBackupSelectedState(mode = currentMode) {
+      const itemsList = document.getElementById('itemsList');
+      if (!itemsList) return;
+
+      itemsList.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;">
+          <div class="file-icon-container">
+            <svg class="file-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0112.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <p class="empty-state-message" id="emptyStateMessage"></p>
+        </div>`;
+      document.getElementById('emptyStateMessage').textContent = getNoBackupMessage(mode);
+    }
+
     // Apply filters (search and sort)
     function applyFilters() {
       // If no backup is selected, show empty state
       if (!currentBackupPath) {
-        const modeLabel = getStyledText(`ui.buttons.${currentMode}`) || currentMode;
-        const emptyMessage = getStyledText('ui.itemsList.selectBackup', { mode: modeLabel });
-        document.getElementById('itemsList').innerHTML = `<p class="empty-state">${emptyMessage}</p>`;
+        showNoBackupSelectedState();
         return;
       }
 
@@ -2746,6 +2777,25 @@
         allItems = [];
         liveItemsMap = {};
         itemStatuses = {};
+        selectedItem = null;
+        filteredItemsGlobal = [];
+        currentItemIndex = -1;
+        currentBackupIndex = -1;
+        activePanel = 'backups';
+        lovelaceFiles = [];
+        lovelaceFileStatuses = {};
+        selectedLovelaceFile = null;
+        esphomeFiles = [];
+        esphomeFileStatuses = {};
+        selectedEsphomeFile = null;
+        packagesFiles = [];
+        packagesFileStatuses = {};
+        selectedPackagesFile = null;
+
+        // Clear any previous item search
+        const searchInput = document.getElementById('searchBox');
+        if (searchInput) searchInput.value = '';
+        updateSearchClearButton();
 
         // Always reload backups when switching tabs (filtering is mode-specific)
         loadBackups();
@@ -2753,9 +2803,10 @@
         // Update search placeholder
         updatePlaceholders();
 
-        // Update title and clear subtitle (no backup selected yet)
+        // Update title and reset the right panel to the new mode's empty state
         document.getElementById('itemsTitle').textContent = getStyledText(`ui.buttons.${newMode}`);
-        document.getElementById('itemsSubtitle').textContent = getStyledText('ui.itemsList.noBackupSelected');
+        document.getElementById('itemsSubtitle').textContent = '';
+        showNoBackupSelectedState(newMode);
       });
     });
 
