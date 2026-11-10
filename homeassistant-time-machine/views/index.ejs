@@ -816,7 +816,7 @@
         return folderName; // Invalid date, return original name
       }
 
-      // Use a single Intl.DateTimeFormat call for full date and time formatting with fallback
+      // Let the selected locale decide between 12-hour and 24-hour time
       const locale = currentLanguage || 'en';
       try {
         return new Intl.DateTimeFormat(locale, {
@@ -824,8 +824,7 @@
           day: '2-digit',
           year: 'numeric',
           hour: 'numeric',
-          minute: '2-digit',
-          hour12: true // This will handle AM/PM and 'at' for English, and appropriate for other locales
+          minute: '2-digit'
         }).format(date);
       } catch (e) {
         console.warn('Intl formatting failed:', e);
@@ -842,13 +841,12 @@
       const minute = folderName.substring(10, 12);
 
       const date = new Date(year, month - 1, day, hour, minute);
-      return new Intl.DateTimeFormat('en-US', {
+      return new Intl.DateTimeFormat(currentLanguage || 'en', {
         month: 'short',
         day: '2-digit',
         year: 'numeric',
         hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
+        minute: '2-digit'
       }).format(date);
     }
 

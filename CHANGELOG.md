@@ -1,6 +1,7 @@
 # Unreleased
 
 - **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
+- **Fixed:** Backup timestamps now follow the selected language's time format, so French and other 24-hour locales no longer show AM/PM.
 
 # v2.4.3
 
