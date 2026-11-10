@@ -20,6 +20,6 @@
     "yaml": "^2.8.1"
   },
   "overrides": {
-    "brace-expansion": "2.0.2"
+    "brace-expansion": "2.1.7"
   }
 }
