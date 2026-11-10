@@ -1,5 +1,6 @@
 # Unreleased
 
+- **Changed:** The GitHub and donate links now sit below the Save and Cancel buttons in the settings sheet, with a little more breathing room above them.
 - **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
 - **Fixed:** Backup timestamps now follow the selected language's time format, so French and other 24-hour locales no longer show AM/PM.
 - **Maintenance:** Updated server dependencies to clear all npm audit advisories.

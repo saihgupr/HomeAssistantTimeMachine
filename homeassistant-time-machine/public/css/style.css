@@ -1390,14 +1390,14 @@ body[data-theme='light'] .settings-divider {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 0;
+  margin-top: 12px;
 }
 
 .settings-footer-links {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 17px 0 16px;
+  padding: 16px 0 0;
 }
 
 .settings-footer-link {
