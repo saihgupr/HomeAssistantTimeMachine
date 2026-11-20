@@ -1395,9 +1395,19 @@ body[data-theme='light'] .settings-divider {
 
 .settings-footer-links {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  padding: 16px 0 0;
+  gap: 16px;
+  margin-top: auto;
+  padding: 32px 0 16px;
+}
+
+.settings-footer-divider {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  flex: 0 0 auto;
 }
 
 .settings-footer-link {
@@ -1407,7 +1417,12 @@ body[data-theme='light'] .settings-divider {
   color: #A2A2A2;
   font-size: 12px;
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.2s ease;
+}
+
+.settings-footer-link svg {
+  flex: 0 0 auto;
 }
 
 .settings-footer-link:hover {
@@ -1421,6 +1436,10 @@ body[data-theme='light'] .settings-footer-link {
 
 body[data-theme='light'] .settings-footer-link:hover {
   color: #1f2937;
+}
+
+body[data-theme='light'] .settings-footer-divider {
+  background: rgba(148, 163, 184, 0.25);
 }
 
 /* Toggle Switch - Claude Style */
@@ -3197,6 +3216,18 @@ body[data-theme='light'] .mobile-tab-bar {
     flex-direction: column;
     align-items: flex-end;
     gap: 4px;
+  }
+
+  .settings-footer-links {
+    gap: 12px;
+  }
+
+  .settings-footer-divider {
+    display: none;
+  }
+
+  .settings-footer-link {
+    font-size: 11px;
   }
 }
 

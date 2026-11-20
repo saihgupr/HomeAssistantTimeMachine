@@ -5,10 +5,11 @@ const fsSync = require('fs');
 const YAML = require('yaml');
 const jsyaml = require('js-yaml');
 const cron = require('node-cron');
-const fetch = require('node-fetch');
-const https = require('https');
+const { fetch, Agent } = require('undici');
 const readline = require('readline');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
+const { resolveInside, isInside, realPathInside, realPathInsideParent } = require('./utils/path-safety');
 
 const DATA_DIR = (() => {
   const addonDataRoot = '/data';
@@ -31,8 +32,137 @@ const DATA_DIR = (() => {
   return fallback;
 })();
 
+// ---------------------------------------------------------------------------
+// Runtime mode and API authentication
+//
+// Standalone Docker installs are reachable on the network, so basic auth is on
+// by default there. Inside a Home Assistant add-on the Supervisor/Ingress layer
+// already authenticates users, so it defaults to off. HATM_API_AUTH always wins.
+// ---------------------------------------------------------------------------
+const isAddonMode = fsSync.existsSync('/data/options.json');
+let addonOptions = {};
+if (isAddonMode) {
+  try {
+    addonOptions = JSON.parse(fsSync.readFileSync('/data/options.json', 'utf-8')) || {};
+  } catch (error) {
+    console.error('[auth] Could not read /data/options.json:', error.message);
+    addonOptions = {};
+  }
+}
+
+function parseBooleanFlag(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (['off', 'false', '0', 'no'].includes(normalized)) return false;
+  if (['on', 'true', '1', 'yes'].includes(normalized)) return true;
+  return null;
+}
+
+const apiAuthEnvOverride = parseBooleanFlag(process.env.HATM_API_AUTH || '');
+let apiAuthEnabled = apiAuthEnvOverride === null ? !isAddonMode : apiAuthEnvOverride;
+if (addonOptions.api_auth === true || addonOptions.api_auth === 'true') {
+  apiAuthEnabled = true;
+}
+
+const apiUsername = process.env.HATM_USERNAME || 'hatm';
+const API_PASSWORD_FILE = path.join(DATA_DIR, 'api-password');
+let apiPassword = null;
+
+function resolveApiPassword() {
+  const envPassword = process.env.HATM_PASSWORD;
+  if (envPassword) return envPassword;
+
+  if (typeof addonOptions.api_auth_password === 'string' && addonOptions.api_auth_password !== '') {
+    return addonOptions.api_auth_password;
+  }
+
+  try {
+    const stored = fsSync.readFileSync(API_PASSWORD_FILE, 'utf-8').trim();
+    if (stored) return stored;
+  } catch (error) {
+    // No password file yet; generate one below.
+  }
+
+  const generated = crypto.randomBytes(18).toString('base64url');
+  try {
+    fsSync.mkdirSync(DATA_DIR, { recursive: true });
+    fsSync.writeFileSync(API_PASSWORD_FILE, `${generated}\n`, { mode: 0o600 });
+    fsSync.chmodSync(API_PASSWORD_FILE, 0o600);
+  } catch (error) {
+    console.error('[auth] Could not persist generated API password:', error.message);
+  }
+  return generated;
+}
+
+if (apiAuthEnabled) {
+  const passwordIsConfigured = !!(process.env.HATM_PASSWORD ||
+    (typeof addonOptions.api_auth_password === 'string' && addonOptions.api_auth_password !== ''));
+  apiPassword = resolveApiPassword();
+  console.log(`[auth] API basic auth enabled (user: ${apiUsername})`);
+  if (passwordIsConfigured) {
+    console.log('[auth] Using the configured API password');
+  } else {
+    console.log(`[auth] API password: ${apiPassword}`);
+  }
+}
+
+function constantTimeEqual(left, right) {
+  const leftHash = crypto.createHash('sha256').update(String(left ?? ''), 'utf8').digest();
+  const rightHash = crypto.createHash('sha256').update(String(right ?? ''), 'utf8').digest();
+  return crypto.timingSafeEqual(leftHash, rightHash);
+}
+
+function basicAuth(req, res, next) {
+  if (!apiAuthEnabled) return next();
+
+  // CORS preflights never carry credentials.
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
+  const header = req.headers.authorization || '';
+  const separatorIndex = header.indexOf(' ');
+  const scheme = separatorIndex === -1 ? '' : header.slice(0, separatorIndex);
+  const encoded = separatorIndex === -1 ? '' : header.slice(separatorIndex + 1).trim();
+
+  if (scheme.toLowerCase() === 'basic' && encoded) {
+    let decoded = '';
+    try {
+      decoded = Buffer.from(encoded, 'base64').toString('utf8');
+    } catch (error) {
+      decoded = '';
+    }
+
+    // Only the first colon separates user from password (passwords may contain colons).
+    const colonIndex = decoded.indexOf(':');
+    if (colonIndex !== -1) {
+      const username = decoded.slice(0, colonIndex);
+      const password = decoded.slice(colonIndex + 1);
+      if (constantTimeEqual(username, apiUsername) && constantTimeEqual(password, apiPassword)) {
+        return next();
+      }
+    }
+  }
+
+  res.set('WWW-Authenticate', 'Basic realm="Home Assistant Time Machine", charset="UTF-8"');
+  return res.status(401).json({ success: false, error: 'Authentication required' });
+}
+
+function internalApiHeaders(extra = {}) {
+  const headers = { 'Content-Type': 'application/json', ...extra };
+  if (apiAuthEnabled && apiPassword) {
+    headers.Authorization = 'Basic ' + Buffer.from(`${apiUsername}:${apiPassword}`).toString('base64');
+  }
+  return headers;
+}
+
+// Exact-match allowlist. Substring matching would let any origin containing an
+// allowed value through.
+const allowedOrigins = (process.env.HATM_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(origin => origin.length > 0);
+
 const version = '2.4.4';
-const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true';
+const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true' || process.env.HATM_DEBUG === '1';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
     console.log(...args);
@@ -103,12 +233,92 @@ const isTlsCertificateError = (error) => {
 };
 
 const app = express();
-app.use(express.json());
 const PORT = process.env.PORT || 54000;
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || (isAddonMode ? '0.0.0.0' : '127.0.0.1');
 const INGRESS_PATH = process.env.INGRESS_ENTRY || '';
 const basePath = INGRESS_PATH || '';
+const trustIngressHeaders = isAddonMode || process.env.HATM_TRUST_PROXY_HEADERS === '1';
 const BODY_SIZE_LIMIT = '50mb';
+
+// Security headers. Add-on mode runs inside an Ingress iframe, so framing is
+// only denied for standalone installs.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (!isAddonMode) {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+  }
+  next();
+});
+
+// CORS for explicitly allowed cross-origin clients. The UI is served
+// same-origin, so no CORS headers are needed for normal use.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const originAllowed = !!origin && allowedOrigins.includes(origin);
+
+  if (originAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+  }
+
+  next();
+});
+
+// CSRF guard. Browsers send Sec-Fetch-Site on every request, so a cross-site
+// mutation is always forged. Requests without the header are left alone.
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+
+  if (req.headers['sec-fetch-site'] === 'cross-site') {
+    return res.status(403).json({ success: false, error: 'Cross-site request blocked' });
+  }
+
+  next();
+});
+
+// Ingress path detection and URL rewriting middleware. It runs before auth so
+// a trusted prefix is stripped before the /api mount is matched.
+app.use((req, res, next) => {
+  debugLog(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+
+  // Proxy headers are client-controlled unless we are in add-on mode or the
+  // operator explicitly opted in.
+  const ingressPath = trustIngressHeaders
+    ? (req.headers['x-ingress-path'] ||
+      req.headers['x-forwarded-prefix'] ||
+      req.headers['x-external-url'] ||
+      '')
+    : INGRESS_PATH;
+
+  // Make ingress path available to templates  
+  res.locals.ingressPath = ingressPath;
+  res.locals.url = (path) => ingressPath + path;
+
+  if (ingressPath) {
+    debugLog(`[ingress] Detected: ${ingressPath}, Original URL: ${req.originalUrl}`);
+
+    // Strip ingress prefix from URL for routing
+    if (req.originalUrl.startsWith(ingressPath)) {
+      req.url = req.originalUrl.substring(ingressPath.length) || '/';
+      debugLog(`[ingress] Rewritten URL: ${req.url}`);
+    }
+  }
+
+  next();
+});
+
+app.use(express.json());
+
+// API authentication runs before every /api route.
+app.use('/api', basicAuth);
 
 
 
@@ -123,7 +333,16 @@ app.post('/api/toggle-lock', async (req, res) => {
       return res.status(400).json({ error: 'backupPath is required' });
     }
 
-    const lockFile = path.join(backupPath, '.lock');
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath
+      || resolvedBackupPath === path.resolve(backupRoot)
+      || !(await realPathInside(backupRoot, resolvedBackupPath))) {
+      return res.status(403).json({ error: 'Invalid path' });
+    }
+
+    const lockFile = path.join(resolvedBackupPath, '.lock');
     let locked = false;
 
     try {
@@ -168,14 +387,23 @@ app.post('/api/delete-backup', async (req, res) => {
   }
 
   try {
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath
+      || resolvedBackupPath === path.resolve(backupRoot)
+      || !(await realPathInside(backupRoot, resolvedBackupPath))) {
+      return res.status(403).json({ error: 'Invalid path' });
+    }
+
     // Check if locked
-    const lockFile = path.join(backupPath, '.lock');
+    const lockFile = path.join(resolvedBackupPath, '.lock');
     if (fsSync.existsSync(lockFile)) {
       return res.status(403).json({ error: 'This backup is protected and cannot be deleted.' });
     }
 
-    console.log(`[api] Manually deleting backup: ${backupPath}`);
-    await rmWithRetry(backupPath);
+    console.log(`[api] Manually deleting backup: ${resolvedBackupPath}`);
+    await rmWithRetry(resolvedBackupPath);
     clearBackupPathsCache();
     res.json({ success: true });
   } catch (error) {
@@ -191,14 +419,11 @@ app.get('/api/export-backup', async (req, res) => {
       return res.status(400).json({ error: 'backupPath is required' });
     }
 
-    const options = await getAddonOptions();
-    const settings = await loadDockerSettings();
-    const configuredBackupRoot = options.backupFolderPath || settings.backupFolderPath || '/media/timemachine';
+    const { backupFolderPath } = await getConfiguredRoots();
+    const configuredBackupRoot = resolveBackupRootPath(backupFolderPath);
 
-    const resolvedRoot = path.resolve(configuredBackupRoot);
-    const resolvedBackupPath = path.resolve(backupPath);
-    const rootWithSep = resolvedRoot.endsWith(path.sep) ? resolvedRoot : `${resolvedRoot}${path.sep}`;
-    if (resolvedBackupPath !== resolvedRoot && !resolvedBackupPath.startsWith(rootWithSep)) {
+    const resolvedBackupPath = resolveInside(configuredBackupRoot, backupPath, { allowRoot: true });
+    if (!resolvedBackupPath || !(await realPathInside(configuredBackupRoot, resolvedBackupPath))) {
       return res.status(403).json({ error: 'Invalid backup path' });
     }
 
@@ -343,33 +568,6 @@ app.use((err, req, res, next) => {
     });
   }
   next(err);
-});
-
-// Ingress path detection and URL rewriting middleware
-app.use((req, res, next) => {
-  debugLog(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-
-  // Detect ingress path from headers
-  const ingressPath = req.headers['x-ingress-path'] ||
-    req.headers['x-forwarded-prefix'] ||
-    req.headers['x-external-url'] ||
-    '';
-
-  // Make ingress path available to templates  
-  res.locals.ingressPath = ingressPath;
-  res.locals.url = (path) => ingressPath + path;
-
-  if (ingressPath) {
-    debugLog(`[ingress] Detected: ${ingressPath}, Original URL: ${req.originalUrl}`);
-
-    // Strip ingress prefix from URL for routing
-    if (req.originalUrl.startsWith(ingressPath)) {
-      req.url = req.originalUrl.substring(ingressPath.length) || '/';
-      debugLog(`[ingress] Rewritten URL: ${req.url}`);
-    }
-  }
-
-  next();
 });
 
 // Set up view engine
@@ -1100,6 +1298,49 @@ async function loadDockerSettings() {
   }
 }
 
+/**
+ * Resolve the configured live config root and backup root.
+ *
+ * Addon options win over saved app settings, and both fall back to the
+ * container defaults. getAddonOptions() can fail while running standalone, so
+ * a failure there falls back to the saved settings.
+ *
+ * @returns {Promise<{ liveConfigPath: string, backupFolderPath: string }>}
+ */
+async function getConfiguredRoots() {
+  let options = {};
+  try {
+    options = await getAddonOptions() || {};
+  } catch (error) {
+    debugLog('[path-safety] Failed to load addon options, falling back to saved settings:', error.message);
+  }
+
+  let settings = {};
+  try {
+    settings = await loadDockerSettings() || {};
+  } catch (error) {
+    debugLog('[path-safety] Failed to load saved settings, falling back to defaults:', error.message);
+  }
+
+  return {
+    liveConfigPath: options.liveConfigPath || settings.liveConfigPath || '/config',
+    backupFolderPath: options.backupFolderPath || settings.backupFolderPath || '/media/timemachine',
+  };
+}
+
+/**
+ * True when a value is a plain file name: no directory separators, no null
+ * bytes, and not the current or parent directory entry.
+ *
+ * @param {unknown} fileName
+ * @returns {boolean}
+ */
+function isPlainFileName(fileName) {
+  if (typeof fileName !== 'string' || !fileName || fileName.includes('\0')) return false;
+  if (fileName === '.' || fileName === '..') return false;
+  return path.basename(fileName) === fileName;
+}
+
 // Save Docker settings to file
 async function saveDockerSettings(settings) {
   // Ensure all required fields are present with defaults
@@ -1210,10 +1451,13 @@ async function getBackupDirs(dir, depth = 0) {
 // Scan backups
 app.post('/api/scan-backups', async (req, res) => {
   try {
-    const backupRootPath = req.body?.backupRootPath || '/media/timemachine';
+    const { backupFolderPath } = await getConfiguredRoots();
+    const configuredBackupRoot = resolveBackupRootPath(backupFolderPath);
+    // The client echoes the raw configured value, which may be a mount name.
+    const backupRootPath = resolveBackupRootPath(req.body?.backupRootPath || configuredBackupRoot);
     const mode = req.body?.mode; // Optional mode filter: automations, scripts, lovelace, esphome, packages
 
-    if (backupRootPath.includes('..')) {
+    if (!isInside(configuredBackupRoot, backupRootPath)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -1291,14 +1535,20 @@ app.post('/api/scan-backups', async (req, res) => {
 // Check if a snapshot has any changes compared to live config
 app.post('/api/check-snapshot-changes', async (req, res) => {
   try {
-    const { backupPath, liveConfigPath, mode } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { backupPath, mode } = req.body;
 
     if (!backupPath) {
       return res.status(400).json({ error: 'backupPath is required' });
     }
 
-    const hasChanges = await checkSnapshotHasChanges(backupPath, configPath, mode || 'automations');
+    const { liveConfigPath: configPath, backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const hasChanges = await checkSnapshotHasChanges(resolvedBackupPath, configPath, mode || 'automations');
     res.json({ hasChanges });
   } catch (error) {
     console.error('[check-snapshot-changes] Error:', error);
@@ -1315,11 +1565,17 @@ app.post('/api/clear-cache', (req, res) => {
 // Batch check multiple snapshots for changes (more efficient)
 app.post('/api/check-snapshots-batch', async (req, res) => {
   try {
-    const { backupPaths, liveConfigPath, mode } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { backupPaths, mode } = req.body;
 
     if (!backupPaths || !Array.isArray(backupPaths)) {
       return res.status(400).json({ error: 'backupPaths array is required' });
+    }
+
+    const { liveConfigPath: configPath, backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPaths = backupPaths.map(backupPath => resolveInside(backupRoot, backupPath));
+    if (resolvedBackupPaths.some(backupPath => !backupPath)) {
+      return res.status(400).json({ error: 'Invalid path' });
     }
 
     // Check all snapshots in parallel (limit concurrency to avoid overwhelming)
@@ -1329,9 +1585,9 @@ app.post('/api/check-snapshots-batch', async (req, res) => {
     for (let i = 0; i < backupPaths.length; i += BATCH_SIZE) {
       const batch = backupPaths.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.all(
-        batch.map(async (backupPath) => {
+        batch.map(async (backupPath, batchIndex) => {
           try {
-            const hasChanges = await checkSnapshotHasChanges(backupPath, configPath, mode || 'automations');
+            const hasChanges = await checkSnapshotHasChanges(resolvedBackupPaths[i + batchIndex], configPath, mode || 'automations');
             return { path: backupPath, hasChanges };
           } catch (err) {
             // On error, include the backup to be safe
@@ -1450,22 +1706,24 @@ async function backupMatchesSearch(backupPath, mode, normalizedQuery, showOnlyCh
 app.post('/api/search-backups', async (req, res) => {
   try {
     const {
-      backupRootPath = '/media/timemachine',
+      backupRootPath: requestedBackupRootPath,
       mode = 'automations',
       query,
-      showOnlyChanges = false,
-      liveConfigPath
+      showOnlyChanges = false
     } = req.body || {};
 
-    if (backupRootPath.includes('..')) {
+    const { liveConfigPath: configPath, backupFolderPath } = await getConfiguredRoots();
+    const configuredBackupRoot = resolveBackupRootPath(backupFolderPath);
+    const backupRootPath = resolveBackupRootPath(requestedBackupRootPath || configuredBackupRoot);
+
+    if (!isInside(configuredBackupRoot, backupRootPath)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
     const rawQuery = typeof query === 'string' ? query.trim() : '';
     const normalizedQuery = rawQuery.toLowerCase();
-    const configPath = liveConfigPath || '/config';
 
-    let backups = await getBackupDirs(backupRootPath);
+    let backups = await getBackupDirs(path.resolve(backupRootPath));
     backups.sort((a, b) => b.folderName.localeCompare(a.folderName));
 
     if (backups.length === 0 || !normalizedQuery) {
@@ -2018,7 +2276,14 @@ async function loadLiveItemsForMode(mode, configPath) {
 // Get backup automations (supports split configs)
 app.post('/api/get-backup-automations', async (req, res) => {
   try {
-    const automations = await loadBackupAutomationItems(req.body.backupPath);
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, req.body?.backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const automations = await loadBackupAutomationItems(resolvedBackupPath);
     res.json({ automations });
   } catch (error) {
     console.error('[get-backup-automations] Error:', error);
@@ -2030,7 +2295,14 @@ app.post('/api/get-backup-automations', async (req, res) => {
 // Get backup scripts (supports split configs)
 app.post('/api/get-backup-scripts', async (req, res) => {
   try {
-    const scripts = await loadBackupScriptItems(req.body.backupPath);
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, req.body?.backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const scripts = await loadBackupScriptItems(resolvedBackupPath);
     res.json({ scripts });
   } catch (error) {
     console.error('[get-backup-scripts] Error:', error);
@@ -2042,8 +2314,8 @@ app.post('/api/get-backup-scripts', async (req, res) => {
 // Get live items (automations or scripts) - supports split configs
 app.post('/api/get-live-items', async (req, res) => {
   try {
-    const { itemIdentifiers, mode, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { itemIdentifiers, mode } = req.body;
+    const { liveConfigPath: configPath } = await getConfiguredRoots();
 
     // Get all file paths from configuration.yaml
     const allItems = await loadLiveItemsForMode(mode, configPath);
@@ -2094,8 +2366,8 @@ app.post('/api/get-live-items', async (req, res) => {
 // Get live automation (supports split configs)
 app.post('/api/get-live-automation', async (req, res) => {
   try {
-    const { automationIdentifier, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { automationIdentifier } = req.body;
+    const { liveConfigPath: configPath } = await getConfiguredRoots();
 
     // Get all automation file paths from configuration.yaml
     const { automationPaths } = await getConfigFilePaths(configPath);
@@ -2125,8 +2397,8 @@ app.post('/api/get-live-automation', async (req, res) => {
 // Get live script (supports split configs)
 app.post('/api/get-live-script', async (req, res) => {
   try {
-    const { automationIdentifier, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { automationIdentifier } = req.body;
+    const { liveConfigPath: configPath } = await getConfiguredRoots();
 
     // Get all script file paths from configuration.yaml
     const { scriptPaths } = await getConfigFilePaths(configPath);
@@ -2228,10 +2500,17 @@ function findFullRange(content, node, isListItem) {
 // Restore automation
 app.post('/api/restore-automation', async (req, res) => {
   try {
-    const { backupPath, automationIdentifier, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    const { backupPath, automationIdentifier, timezone, smartBackupEnabled } = req.body;
 
     if (!backupPath || !automationIdentifier) {
       return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
+    }
+
+    const { liveConfigPath: configuredLiveConfigPath, backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
     }
 
     // Perform a backup before restoring
@@ -2241,9 +2520,9 @@ app.post('/api/restore-automation', async (req, res) => {
       const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
       effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
     }
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
+    await performBackup(configuredLiveConfigPath, backupFolderPath, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
-    const configPath = liveConfigPath || '/config';
+    const configPath = configuredLiveConfigPath;
 
     // Find which file in the backup contains the requested automation
     let relativeFilePath = 'automations.yaml';
@@ -2251,7 +2530,7 @@ app.post('/api/restore-automation', async (req, res) => {
 
     let autoFiles = null;
     try {
-      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestPath = path.join(resolvedBackupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
 
@@ -2268,7 +2547,7 @@ app.post('/api/restore-automation', async (req, res) => {
       if (autoFiles) {
         for (const file of autoFiles) {
           try {
-            const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
+            const potentialBackupPath = await resolveFileInBackupChain(resolvedBackupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
             if (normalizeAutomationData(data).some(a => a.id === automationIdentifier || a.alias === automationIdentifier)) {
               relativeFilePath = file;
@@ -2282,11 +2561,14 @@ app.post('/api/restore-automation', async (req, res) => {
 
     if (!backupFilePath) {
       // Fallback: search the backup chain for automations.yaml
-      backupFilePath = await resolveFileInBackupChain(backupPath, 'automations.yaml');
+      backupFilePath = await resolveFileInBackupChain(resolvedBackupPath, 'automations.yaml');
     }
 
     // Determine target live file path
-    const liveFilePath = path.join(configPath, relativeFilePath);
+    const liveFilePath = resolveInside(configPath, relativeFilePath);
+    if (!liveFilePath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
     const backupContent = await fs.readFile(backupFilePath, 'utf-8');
 
     // Read live contents
@@ -2358,10 +2640,17 @@ app.post('/api/restore-automation', async (req, res) => {
 // Restore script
 app.post('/api/restore-script', async (req, res) => {
   try {
-    const { backupPath, automationIdentifier: scriptIdentifier, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    const { backupPath, automationIdentifier: scriptIdentifier, timezone, smartBackupEnabled } = req.body;
 
     if (!backupPath || !scriptIdentifier) {
       return res.status(400).json({ error: 'Missing required parameters: backupPath and automationIdentifier' });
+    }
+
+    const { liveConfigPath: configuredLiveConfigPath, backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
     }
 
     // Perform a backup before restoring
@@ -2371,9 +2660,9 @@ app.post('/api/restore-script', async (req, res) => {
       const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
       effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
     }
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
+    await performBackup(configuredLiveConfigPath, backupFolderPath, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
-    const configPath = liveConfigPath || '/config';
+    const configPath = configuredLiveConfigPath;
 
     // Find which file in the backup contains the requested script
     let relativeFilePath = 'scripts.yaml';
@@ -2381,7 +2670,7 @@ app.post('/api/restore-script', async (req, res) => {
 
     let scriptFiles = null;
     try {
-      const manifestPath = path.join(backupPath, '.backup_manifest.json');
+      const manifestPath = path.join(resolvedBackupPath, '.backup_manifest.json');
       const manifestData = await fs.readFile(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestData);
 
@@ -2398,7 +2687,7 @@ app.post('/api/restore-script', async (req, res) => {
       if (scriptFiles) {
         for (const file of scriptFiles) {
           try {
-            const potentialBackupPath = await resolveFileInBackupChain(backupPath, file);
+            const potentialBackupPath = await resolveFileInBackupChain(resolvedBackupPath, file);
             const data = await loadYamlWithCache(potentialBackupPath);
             if (data && typeof data === 'object' && !Array.isArray(data)) {
               if (data[scriptIdentifier] || Object.values(data).some(s => s.alias === scriptIdentifier)) {
@@ -2413,10 +2702,13 @@ app.post('/api/restore-script', async (req, res) => {
     } catch (e) { /* Proceed to fallback */ }
 
     if (!backupFilePath) {
-      backupFilePath = await resolveFileInBackupChain(backupPath, 'scripts.yaml');
+      backupFilePath = await resolveFileInBackupChain(resolvedBackupPath, 'scripts.yaml');
     }
 
-    const liveFilePath = path.join(configPath, relativeFilePath);
+    const liveFilePath = resolveInside(configPath, relativeFilePath);
+    if (!liveFilePath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
     const backupContent = await fs.readFile(backupFilePath, 'utf-8');
 
     // Read live contents
@@ -2545,6 +2837,12 @@ app.post('/api/validate-backup-path', async (req, res) => {
       return res.status(400).json({ isValid: false, error: 'Path is required' });
     }
 
+    // Settings uses this endpoint to validate a candidate backup folder before
+    // it is saved, so any absolute directory is allowed here. Auth protects it.
+    if (!path.isAbsolute(folderPath)) {
+      return res.status(400).json({ isValid: false, error: 'Path must be absolute' });
+    }
+
     const stats = await fs.stat(folderPath);
 
     if (!stats.isDirectory()) {
@@ -2617,8 +2915,8 @@ app.post('/api/test-home-assistant-connection', async (req, res) => {
           message: fetchError.message,
           causeCode: fetchError.cause?.code,
         });
-        const insecureAgent = new https.Agent({ rejectUnauthorized: false });
-        response = await fetch(endpoint, { ...fetchOptions, agent: insecureAgent });
+        const insecureDispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+        response = await fetch(endpoint, { ...fetchOptions, dispatcher: insecureDispatcher });
       } else {
         throw fetchError;
       }
@@ -2723,7 +3021,7 @@ app.post('/api/schedule-backup', async (req, res) => {
           try {
             const response = await fetch(`http://localhost:${PORT}/api/backup-now`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: internalApiHeaders(),
               body: JSON.stringify({
                 liveConfigPath: effectiveLivePath,
                 backupFolderPath: effectiveBackupPath,
@@ -3597,8 +3895,14 @@ app.post('/api/backup-now', async (req, res) => {
 // Lovelace endpoints
 app.post('/api/get-backup-lovelace', async (req, res) => {
   try {
-    const { backupPath } = req.body;
-    const lovelaceFiles = await getBackupLovelaceFileNames(backupPath);
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, req.body?.backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const lovelaceFiles = await getBackupLovelaceFileNames(resolvedBackupPath);
     res.json({ lovelaceFiles });
   } catch (error) {
     console.error('[get-backup-lovelace] Error:', error);
@@ -3610,10 +3914,21 @@ app.post('/api/get-backup-lovelace-file', async (req, res) => {
   try {
     const { backupPath, fileName } = req.body;
 
-    // Use chain resolution
-    const filePath = await resolveFileInBackupChain(backupPath, path.join('.storage', fileName));
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
 
-    console.log(`[get-backup-lovelace-file] Request for file: ${fileName} in backup: ${backupPath} -> Resolved: ${filePath}`);
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    // Use chain resolution
+    const filePath = await resolveFileInBackupChain(resolvedBackupPath, path.join('.storage', fileName));
+
+    console.log(`[get-backup-lovelace-file] Request for file: ${fileName} in backup: ${resolvedBackupPath} -> Resolved: ${filePath}`);
 
     res.sendFile(filePath, (err) => {
       if (err) {
@@ -3631,14 +3946,20 @@ const getLiveLovelaceFile = async (req, res) => {
   try {
     const payload = req.method === 'GET' ? req.query : req.body;
     const fileName = payload?.fileName;
-    const liveConfigPath = payload?.liveConfigPath;
 
     if (!fileName) {
       return res.status(400).json({ error: 'fileName is required' });
     }
 
-    const configPath = liveConfigPath || '/config';
-    const filePath = path.join(configPath, '.storage', fileName);
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { liveConfigPath: configPath } = await getConfiguredRoots();
+    const filePath = resolveInside(path.join(configPath, '.storage'), fileName);
+    if (!filePath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
 
     console.log(`[get-live-lovelace-file] Request for file: ${fileName} in config: ${configPath}`);
 
@@ -3659,7 +3980,7 @@ app.post('/api/get-live-lovelace-file', getLiveLovelaceFile);
 
 app.post('/api/restore-lovelace-file', async (req, res) => {
   try {
-    const { fileName, backupPath, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    const { fileName, backupPath, content, timezone, smartBackupEnabled } = req.body;
 
     if (!fileName) {
       return res.status(400).json({ error: 'fileName is required' });
@@ -3667,6 +3988,27 @@ app.post('/api/restore-lovelace-file', async (req, res) => {
 
     if (!backupPath && typeof content === 'undefined') {
       return res.status(400).json({ error: 'backupPath or content is required' });
+    }
+
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { liveConfigPath: configuredLiveConfigPath, backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    let resolvedBackupPath = null;
+    if (backupPath) {
+      resolvedBackupPath = resolveInside(backupRoot, backupPath);
+      if (!resolvedBackupPath) {
+        return res.status(400).json({ error: 'Invalid path' });
+      }
+    }
+
+    const configPath = configuredLiveConfigPath;
+    const lovelaceDir = path.join(configPath, '.storage');
+    const targetFilePath = resolveInside(lovelaceDir, fileName);
+    if (!targetFilePath || !(await realPathInsideParent(lovelaceDir, targetFilePath))) {
+      return res.status(400).json({ error: 'Invalid path' });
     }
 
     // Perform a backup before restoring - respect Smart Backup setting
@@ -3677,14 +4019,12 @@ app.post('/api/restore-lovelace-file', async (req, res) => {
       const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
       effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
     }
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
+    await performBackup(configuredLiveConfigPath, backupFolderPath, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
-    const configPath = liveConfigPath || '/config';
-    const targetFilePath = path.join(configPath, '.storage', fileName);
     await fs.mkdir(path.dirname(targetFilePath), { recursive: true });
 
-    if (backupPath) {
-      const sourceFilePath = path.join(backupPath, '.storage', fileName);
+    if (resolvedBackupPath) {
+      const sourceFilePath = path.join(resolvedBackupPath, '.storage', fileName);
       try {
         await fs.copyFile(sourceFilePath, targetFilePath);
       } catch (copyError) {
@@ -3715,8 +4055,13 @@ app.post('/api/get-backup-esphome', async (req, res) => {
     if (!(await isEsphomeEnabled())) {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
-    const { backupPath } = req.body;
-    const esphomeFiles = await getBackupEsphomeFileNames(backupPath);
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, req.body?.backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+    const esphomeFiles = await getBackupEsphomeFileNames(resolvedBackupPath);
     res.json({ esphomeFiles });
   } catch (error) {
     console.error('[get-backup-esphome] Error:', error);
@@ -3731,9 +4076,20 @@ app.post('/api/get-backup-esphome-file', async (req, res) => {
     }
     const { backupPath, fileName } = req.body;
 
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
     // Use chain resolution
     // fileName is relative to esphome directory, so join 'esphome'
-    const filePath = await resolveFileInBackupChain(backupPath, path.join('esphome', fileName));
+    const filePath = await resolveFileInBackupChain(resolvedBackupPath, path.join('esphome', fileName));
 
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
@@ -3751,10 +4107,18 @@ app.post('/api/get-live-esphome-file', async (req, res) => {
     if (!(await isEsphomeEnabled())) {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
-    const { fileName, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { fileName } = req.body;
+
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { liveConfigPath: configPath } = await getConfiguredRoots();
     const esphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
-    const filePath = resolveWithinDirectory(esphomeDir, fileName);
+    const filePath = resolveInside(esphomeDir, fileName);
+    if (!filePath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
   } catch (error) {
@@ -3771,7 +4135,20 @@ app.post('/api/restore-esphome-file', async (req, res) => {
     if (!(await isEsphomeEnabled())) {
       return res.status(404).json({ error: 'ESPHome feature disabled' });
     }
-    const { fileName, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    const { fileName, content, timezone, smartBackupEnabled } = req.body;
+
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { liveConfigPath: configuredLiveConfigPath, backupFolderPath } = await getConfiguredRoots();
+    const configPath = configuredLiveConfigPath;
+    const esphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
+    const filePath = resolveInside(esphomeDir, fileName);
+    if (!filePath || !(await realPathInsideParent(esphomeDir, filePath))) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
     // Perform a backup before restoring - respect Smart Backup setting
     // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
     let effectiveSmartBackup = smartBackupEnabled;
@@ -3780,11 +4157,8 @@ app.post('/api/restore-esphome-file', async (req, res) => {
       const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
       effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
     }
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
+    await performBackup(configuredLiveConfigPath, backupFolderPath, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
-    const configPath = liveConfigPath || '/config';
-    const esphomeDir = process.env.ESPHOME_CONFIG_PATH || path.join(configPath, 'esphome');
-    const filePath = resolveWithinDirectory(esphomeDir, fileName);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     // Handle content being an object or a string
@@ -3809,8 +4183,13 @@ app.post('/api/get-backup-packages', async (req, res) => {
     if (!(await isPackagesEnabled())) {
       return res.status(404).json({ error: 'Packages feature disabled' });
     }
-    const { backupPath } = req.body;
-    const packagesFiles = await getBackupPackagesFileNames(backupPath);
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, req.body?.backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+    const packagesFiles = await getBackupPackagesFileNames(resolvedBackupPath);
     res.json({ packagesFiles });
   } catch (error) {
     console.error('[get-backup-packages] Error:', error);
@@ -3828,8 +4207,19 @@ app.post('/api/get-backup-packages-file', async (req, res) => {
     }
     const { backupPath, fileName } = req.body;
 
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { backupFolderPath } = await getConfiguredRoots();
+    const backupRoot = resolveBackupRootPath(backupFolderPath);
+    const resolvedBackupPath = resolveInside(backupRoot, backupPath);
+    if (!resolvedBackupPath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
     // Use chain resolution
-    const filePath = await resolveFileInBackupChain(backupPath, path.join('packages', fileName));
+    const filePath = await resolveFileInBackupChain(resolvedBackupPath, path.join('packages', fileName));
 
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
@@ -3847,10 +4237,18 @@ app.post('/api/get-live-packages-file', async (req, res) => {
     if (!(await isPackagesEnabled())) {
       return res.status(404).json({ error: 'Packages feature disabled' });
     }
-    const { fileName, liveConfigPath } = req.body;
-    const configPath = liveConfigPath || '/config';
+    const { fileName } = req.body;
+
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { liveConfigPath: configPath } = await getConfiguredRoots();
     const packagesDir = path.join(configPath, 'packages');
-    const filePath = resolveWithinDirectory(packagesDir, fileName);
+    const filePath = resolveInside(packagesDir, fileName);
+    if (!filePath) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
     const content = await fs.readFile(filePath, 'utf-8');
     res.json({ content });
   } catch (error) {
@@ -3870,7 +4268,20 @@ app.post('/api/restore-packages-file', async (req, res) => {
     if (!(await isPackagesEnabled())) {
       return res.status(404).json({ error: 'Packages feature disabled' });
     }
-    const { fileName, content, timezone, liveConfigPath, smartBackupEnabled } = req.body;
+    const { fileName, content, timezone, smartBackupEnabled } = req.body;
+
+    if (!isPlainFileName(fileName)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const { liveConfigPath: configuredLiveConfigPath, backupFolderPath } = await getConfiguredRoots();
+    const configPath = configuredLiveConfigPath;
+    const packagesDir = path.join(configPath, 'packages');
+    const filePath = resolveInside(packagesDir, fileName);
+    if (!filePath || !(await realPathInsideParent(packagesDir, filePath))) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
     // Perform a backup before restoring - respect Smart Backup setting
     // If smartBackupEnabled not explicitly provided, read from scheduled jobs settings
     let effectiveSmartBackup = smartBackupEnabled;
@@ -3879,11 +4290,8 @@ app.post('/api/restore-packages-file', async (req, res) => {
       const defaultJob = scheduledJobsData.jobs?.['default-backup-job'] || {};
       effectiveSmartBackup = defaultJob.smartBackupEnabled ?? false;
     }
-    await performBackup(liveConfigPath || null, null, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
+    await performBackup(configuredLiveConfigPath, backupFolderPath, 'pre-restore', false, 100, timezone, effectiveSmartBackup);
 
-    const configPath = liveConfigPath || '/config';
-    const packagesDir = path.join(configPath, 'packages');
-    const filePath = resolveWithinDirectory(packagesDir, fileName);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     // Handle content being an object or a string
@@ -3991,7 +4399,7 @@ loadBackupState().then(() => {
               try {
                 const response = await fetch(`http://localhost:${PORT}/api/backup-now`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: internalApiHeaders(),
                   body: JSON.stringify({
                     liveConfigPath: job.liveConfigPath || options.liveConfigPath || '/config',
                     backupFolderPath: job.backupFolderPath || options.backupFolderPath || '/media/timemachine',

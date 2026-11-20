@@ -89,6 +89,7 @@ docker run -d \
   -p 54000:54000 \
   -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
   -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -e HATM_PASSWORD="choose-a-password" \
   -e ESPHOME_CONFIG_PATH="/path/to/esphome/config" \
   -e THEME="dark" \
   -e DEBUG_LOGS="false" \
@@ -110,6 +111,7 @@ docker run -d \
   -p 54000:54000 \
   -e HOME_ASSISTANT_URL="http://your-ha-instance:8123" \
   -e LONG_LIVED_ACCESS_TOKEN="your-long-lived-access-token" \
+  -e HATM_PASSWORD="choose-a-password" \
   -e ESPHOME_CONFIG_PATH="/path/to/esphome/config" \
   -e THEME="dark" \
   -e DEBUG_LOGS="false" \
@@ -123,6 +125,17 @@ docker run -d \
 Supplying the URL and token keeps credentials out of the UI. These environment variables are optional—if you set them, the settings fields are read-only; if you omit them, you can enter credentials in the web UI instead.
 
 **Alternative:** omit the environment variables, start the container with the same volumes, then visit `http://localhost:54000` to enter credentials in the settings modal. They are stored in `/data/docker-ha-credentials.json`.
+
+#### API Password (Docker and standalone)
+
+Every `/api` call needs a password when the app runs outside Home Assistant (Docker or bare metal). The browser asks once and remembers it for the session. Add-on installs skip this because Home Assistant Ingress already handles the login.
+
+- Username: `hatm` unless you set `HATM_USERNAME`.
+- Password: set `HATM_PASSWORD` in the container environment, or let the app generate one on first start. The generated password is printed once in `docker logs ha-time-machine` and saved to `/data/api-password` inside the container.
+- Need to change it later? Set `HATM_PASSWORD` and restart, or delete `/data/api-password` and restart to get a new generated one.
+- `HATM_API_AUTH=off` disables the password. Only do that when an authenticating reverse proxy sits in front of the container.
+- `HATM_ALLOWED_ORIGINS=https://one.example,https://two.example` allows browser clients from those exact origins to call the API. No origins are allowed by default.
+- For a reverse proxy on a subpath, set `HATM_TRUST_PROXY_HEADERS=1` so the app honours `X-Forwarded-Prefix`.
 
 #### Changing Options in Docker
 

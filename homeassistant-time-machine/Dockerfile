@@ -21,6 +21,8 @@ EXPOSE 54000
 
 # Set environment variables
 ENV NODE_ENV=development
+# The container must listen on all interfaces; app.js defaults to loopback outside add-on mode.
+ENV HOST=0.0.0.0
 
 # Start the application
 CMD ["/bin/sh", "run.sh"]

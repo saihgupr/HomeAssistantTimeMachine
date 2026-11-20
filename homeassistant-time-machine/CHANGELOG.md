@@ -1,5 +1,11 @@
 # v2.4.4
 
+- **Security:** Standalone and Docker installs now require a password for every `/api` call. One is generated on first start and saved to `/data/api-password`, or set `HATM_PASSWORD` yourself. Add-on installs keep using Ingress and stay password-free.
+- **Security:** Delete, lock, export, scan and every restore now resolve paths against the configured config and backup folders, so a crafted request cannot delete or overwrite files outside them.
+- **Security:** Only explicitly allowed origins receive CORS headers, cross-site writes are blocked, and Ingress headers are trusted only from the Supervisor.
+- **Changed:** Standalone runs bind to `127.0.0.1` by default. The Docker image still listens on all interfaces. Express updated to 4.22.3 and `node-fetch` was replaced with `undici`.
+- **Added:** The settings sheet now links to GitHub, Version Control, and Donate.
+- **Added:** Path-safety unit tests plus an end-to-end test for auth, containment, and add-on mode.
 - **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
 - **Fixed:** Backup timestamps now follow the selected language's time format, so French and other 24-hour locales no longer show AM/PM.
 - **Changed:** The links now sit below the Save and Cancel buttons in the settings sheet, with a little more breathing room above them.
