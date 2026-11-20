@@ -131,9 +131,12 @@ Supplying the URL and token keeps credentials out of the UI. These environment v
 Every `/api` call needs a password when the app runs outside Home Assistant (Docker or bare metal). The browser asks once and remembers it for the session. Add-on installs skip this because Home Assistant Ingress already handles the login.
 
 - Username: `hatm` unless you set `HATM_USERNAME`.
+- Mobile and Companion app: the webview does not show the browser password dialog. Open `http://<your-host>:54000/login` once and sign in there. The session cookie lasts 30 days and is invalidated when `HATM_PASSWORD` changes.
 - Password: set `HATM_PASSWORD` in the container environment, or let the app generate one on first start. The generated password is printed once in `docker logs ha-time-machine` and saved to `/data/api-password` inside the container.
-- Need to change it later? Set `HATM_PASSWORD` and restart, or delete `/data/api-password` and restart to get a new generated one.
+- Need to change it later? Set `HATM_PASSWORD` and restart, or delete `/data/api-password` and restart to get a new generated one. This also signs out existing sessions.
+- Sign out on a shared browser by visiting `/logout`.
 - `HATM_API_AUTH=off` disables the password. Only do that when an authenticating reverse proxy sits in front of the container.
+- Add-on installs can turn the same password on from Settings → Add-ons → Time Machine → Configuration (`api_auth` and `api_auth_password`). It is off by default because Ingress already requires a Home Assistant login.
 - `HATM_ALLOWED_ORIGINS=https://one.example,https://two.example` allows browser clients from those exact origins to call the API. No origins are allowed by default.
 - For a reverse proxy on a subpath, set `HATM_TRUST_PROXY_HEADERS=1` so the app honours `X-Forwarded-Prefix`.
 

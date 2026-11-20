@@ -28,8 +28,12 @@ options:
   esphome: false
   packages: false
   language: 'en'
+  api_auth: false
+  api_auth_password: ''
 schema:
   theme: list(dark|light)
   esphome: bool?
   packages: bool?
   language: 'list(en|es|de|fr|nl|it)'
+  api_auth: bool?
+  api_auth_password: password?

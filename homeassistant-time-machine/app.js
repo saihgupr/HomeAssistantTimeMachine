@@ -112,6 +112,118 @@ function constantTimeEqual(left, right) {
   return crypto.timingSafeEqual(leftHash, rightHash);
 }
 
+// ---------------------------------------------------------------------------
+// Cookie session fallback
+//
+// The Home Assistant Companion app runs the UI in a webview that never shows
+// the browser Basic auth prompt, so a 401 from /api would leave the page dead.
+// The login page sets a signed, stateless cookie instead. Basic auth remains
+// first-class for scripts and cross-origin clients.
+// ---------------------------------------------------------------------------
+const SESSION_COOKIE = 'hatm_session';
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function createSessionToken() {
+  const expires = Date.now() + SESSION_TTL_MS;
+  const mac = crypto.createHmac('sha256', String(apiPassword)).update(String(expires)).digest('base64url');
+  return `${expires}.${mac}`;
+}
+
+function isValidSessionToken(value) {
+  if (typeof value !== 'string') return false;
+  const [expiryText, mac] = value.split('.');
+  const expires = Number(expiryText);
+  if (!Number.isFinite(expires) || expires < Date.now() || !mac) return false;
+  const expected = crypto.createHmac('sha256', String(apiPassword)).update(String(expires)).digest('base64url');
+  return constantTimeEqual(mac, expected);
+}
+
+function readCookie(req, name) {
+  const header = req.headers.cookie;
+  if (typeof header !== 'string' || header === '') return null;
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator === -1) continue;
+    if (part.slice(0, separator).trim() !== name) continue;
+    const raw = part.slice(separator + 1).trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch (error) {
+      return raw;
+    }
+  }
+  return null;
+}
+
+function isSessionAuthenticated(req) {
+  return apiAuthEnabled && isValidSessionToken(readCookie(req, SESSION_COOKIE));
+}
+
+function requestPrefix(res) {
+  const raw = (res.locals && res.locals.ingressPath) || basePath || '';
+  return typeof raw === 'string' && raw.endsWith('/') ? raw.slice(0, -1) : raw;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeNextPath(value) {
+  if (typeof value !== 'string') return null;
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null;
+  return value;
+}
+
+function renderLoginPage({ prefix, username, next, hasError }) {
+  const action = `${escapeHtml(prefix)}/login`;
+  const errorBlock = hasError
+    ? '<p class="error" role="alert">Invalid username or password.</p>'
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Assistant Time Machine</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f1216; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; }
+  .card { width: 100%; max-width: 360px; background: #161b22; border: 1px solid #262d36; border-radius: 14px; padding: 28px 24px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45); }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { margin: 0 0 20px; color: #8b98a5; font-size: 13px; }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #8b98a5; margin-bottom: 6px; }
+  input[type="text"], input[type="password"] { width: 100%; padding: 11px 12px; margin-bottom: 14px; border-radius: 9px; border: 1px solid #2c3540; background: #0d1117; color: #e6edf3; font-size: 15px; }
+  input:focus { outline: none; border-color: #4493f8; box-shadow: 0 0 0 3px rgba(68, 147, 248, 0.2); }
+  button { width: 100%; padding: 11px 12px; border: 0; border-radius: 9px; background: #2f81f7; color: #ffffff; font-size: 15px; font-weight: 600; cursor: pointer; }
+  button:hover { background: #4493f8; }
+  .error { margin: 0 0 16px; padding: 10px 12px; border-radius: 9px; background: #3d1418; border: 1px solid #6e2229; color: #ffb3b8; font-size: 13px; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Home Assistant Time Machine</h1>
+  <p class="sub">Sign in to continue</p>
+  ${errorBlock}
+  <form method="post" action="${action}">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" value="${escapeHtml(username)}" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+    <input type="hidden" name="next" value="${escapeHtml(next)}">
+    <button type="submit">Sign in</button>
+  </form>
+</main>
+</body>
+</html>`;
+}
+
 function basicAuth(req, res, next) {
   if (!apiAuthEnabled) return next();
 
@@ -142,7 +254,18 @@ function basicAuth(req, res, next) {
     }
   }
 
-  res.set('WWW-Authenticate', 'Basic realm="Home Assistant Time Machine", charset="UTF-8"');
+  // Companion-app webviews cannot show the Basic auth prompt; accept the
+  // login cookie there. Scripts and API clients keep using Basic auth.
+  if (isSessionAuthenticated(req)) return next();
+
+  // Do not trigger the browser's native dialog for the app's own fetch calls.
+  // The app shows its own login form, which also works inside the Home
+  // Assistant Companion webview where the native dialog is not available.
+  const wantsJson = req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+    (req.headers.accept || '').includes('application/json');
+  if (!wantsJson) {
+    res.set('WWW-Authenticate', 'Basic realm="Home Assistant Time Machine", charset="UTF-8"');
+  }
   return res.status(401).json({ success: false, error: 'Authentication required' });
 }
 
@@ -316,6 +439,53 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+// Login form posts are urlencoded. Registered here so /login works before the
+// later, larger-limit body parsers.
+app.use(express.urlencoded({ extended: false }));
+
+// Cookie login fallback for webviews without a Basic auth prompt. Only the
+// HTML login page is served here; /api failures stay JSON 401.
+app.get('/login', (req, res) => {
+  const prefix = requestPrefix(res);
+  if (!apiAuthEnabled) return res.redirect(`${prefix}/`);
+
+  res.set('Cache-Control', 'no-store');
+  return res.type('html').send(renderLoginPage({
+    prefix,
+    username: apiUsername,
+    next: typeof req.query.next === 'string' ? req.query.next : '',
+    hasError: req.query.error === '1'
+  }));
+});
+
+app.post('/login', (req, res) => {
+  const prefix = requestPrefix(res);
+  if (!apiAuthEnabled) return res.redirect(`${prefix}/`);
+
+  const body = req.body || {};
+  const username = typeof body.username === 'string' ? body.username : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+  // Evaluate both comparisons so a wrong username costs the same as a wrong password.
+  const usernameOk = constantTimeEqual(username, apiUsername);
+  const passwordOk = constantTimeEqual(password, apiPassword);
+
+  if (!usernameOk || !passwordOk) {
+    return res.redirect(`${prefix}/login?error=1`);
+  }
+
+  res.cookie(SESSION_COOKIE, createSessionToken(), {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: SESSION_TTL_MS
+  });
+  return res.redirect(safeNextPath(body.next) || '/');
+});
+
+app.get('/logout', (req, res) => {
+  res.clearCookie(SESSION_COOKIE, { path: '/' });
+  return res.redirect(`${requestPrefix(res)}/login`);
+});
 
 // API authentication runs before every /api route.
 app.use('/api', basicAuth);

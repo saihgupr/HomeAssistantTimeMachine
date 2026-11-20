@@ -5,6 +5,9 @@
 - **Security:** Only explicitly allowed origins receive CORS headers, cross-site writes are blocked, and Ingress headers are trusted only from the Supervisor.
 - **Changed:** Standalone runs bind to `127.0.0.1` by default. The Docker image still listens on all interfaces. Express updated to 4.22.3 and `node-fetch` was replaced with `undici`.
 - **Added:** The settings sheet now links to GitHub, Version Control, and Donate.
+- **Added:** A sign-in page for Docker and standalone installs, so phones and the Home Assistant Companion app can log in without the browser's password dialog. Sessions last 30 days, and `/logout` signs out.
+- **Fixed:** The browser's native password dialog no longer interrupts the app before it can show the sign-in page.
+- **Added:** `api_auth` and `api_auth_password` options in the add-on Configuration tab, matching the standalone password gate.
 - **Added:** Path-safety unit tests plus an end-to-end test for auth, containment, and add-on mode.
 - **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
 - **Fixed:** Backup timestamps now follow the selected language's time format, so French and other 24-hour locales no longer show AM/PM.

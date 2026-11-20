@@ -423,6 +423,53 @@
   </nav>
 
   <script>
+    // Send the user to the password page on 401. The browser's Basic auth prompt
+    // never shows up in the Companion app webview, so this is the only way in.
+    const nativeFetch = window.fetch.bind(window);
+    let loginRedirectStarted = false;
+
+    // The server no longer sends WWW-Authenticate to our own calls, so these
+    // requests are tagged as XHR to keep the browser prompt away. Matches
+    // same-origin /api routes, including an ingress prefix such as
+    // /api/hassio_ingress/<token>/api/...
+    const isApiUrl = (input) => {
+      let target;
+      try {
+        const raw = typeof input === 'string'
+          ? input
+          : (input && typeof input.url === 'string' ? input.url : String(input));
+        target = new URL(raw, location.href);
+      } catch (error) {
+        return false;
+      }
+      if (target.origin !== location.origin) return false;
+      return target.pathname === '/api' || target.pathname.indexOf('/api/') !== -1;
+    };
+
+    // Sessions live in the server cookie, so no Authorization header goes here.
+    const withXhrHeader = (input, init) => {
+      if (input instanceof Request) {
+        const headers = new Headers(input.headers);
+        headers.set('X-Requested-With', 'XMLHttpRequest');
+        return [new Request(input, { headers }), init];
+      }
+      const options = init || {};
+      const headers = new Headers(options.headers || {});
+      headers.set('X-Requested-With', 'XMLHttpRequest');
+      return [input, { ...options, headers }];
+    };
+
+    window.fetch = (input, init) => {
+      const args = isApiUrl(input) ? withXhrHeader(input, init) : [input, init];
+      return nativeFetch(...args).then((response) => {
+        if (response.status === 401 && !loginRedirectStarted) {
+          loginRedirectStarted = true;
+          location.href = '<%= url('/login') %>' + '?next=' + encodeURIComponent(location.pathname + location.search);
+        }
+        return response;
+      });
+    };
+
     // Base path for all API calls
     const BASE_PATH = '<%= ingressPath %>';
     const url = (path) => BASE_PATH + path;

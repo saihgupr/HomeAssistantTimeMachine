@@ -87,6 +87,18 @@ try {
   record('401 sends WWW-Authenticate', /Basic realm=/.test(noAuth.headers.get('www-authenticate') || ''),
     noAuth.headers.get('www-authenticate') || 'missing');
 
+  // Browser calls identify themselves so the native Basic dialog never appears;
+  // the app then redirects to /login itself.
+  const xhr401 = await fetch(`${base}/api/app-settings`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  });
+  record('XHR 401 omits WWW-Authenticate', xhr401.status === 401 && !xhr401.headers.get('www-authenticate'),
+    `status ${xhr401.status} header ${xhr401.headers.get('www-authenticate')}`);
+  const json401 = await fetch(`${base}/api/app-settings`, {
+    headers: { Accept: 'application/json' },
+  });
+  record('Accept JSON 401 omits WWW-Authenticate', json401.status === 401 && !json401.headers.get('www-authenticate'));
+
   // 2. Wrong password is rejected.
   const wrong = await call('/api/app-settings', {
     authValue: 'Basic ' + Buffer.from('smoke:wrong').toString('base64'),
@@ -158,6 +170,46 @@ try {
     `got ${validPath.status}`);
   record('validate-backup-path rejects relative path',
     (await call('/api/validate-backup-path', { method: 'POST', body: { path: 'relative/dir' } })).status === 400);
+
+  // 9. Cookie login fallback for webviews that never show the Basic dialog.
+  const loginPage = await fetch(`${base}/login`);
+  const loginHtml = await loginPage.text();
+  record('login page is served', loginPage.status === 200 && loginHtml.includes('Sign in'));
+  record('login page is not cached', loginPage.headers.get('cache-control') === 'no-store');
+
+  const formHeaders = { 'Content-Type': 'application/x-www-form-urlencoded' };
+  const postLogin = (body) => fetch(`${base}/login`, {
+    method: 'POST',
+    headers: formHeaders,
+    body: new URLSearchParams(body).toString(),
+    redirect: 'manual',
+  });
+
+  const wrongLogin = await postLogin({ username: 'smoke', password: 'wrong', next: '/' });
+  record('wrong login redirects with error',
+    wrongLogin.status === 302 && (wrongLogin.headers.get('location') || '').includes('error=1'),
+    `${wrongLogin.status} ${wrongLogin.headers.get('location')}`);
+
+  const goodLogin = await postLogin({ username: 'smoke', password, next: '/' });
+  const setCookie = goodLogin.headers.get('set-cookie') || '';
+  record('good login redirects home', goodLogin.status === 302 && goodLogin.headers.get('location') === '/',
+    `${goodLogin.status} ${goodLogin.headers.get('location')}`);
+  record('good login sets an httpOnly session cookie',
+    /hatm_session=/.test(setCookie) && /HttpOnly/i.test(setCookie), setCookie);
+
+  const sessionCookie = setCookie.split(';')[0];
+  const sessionApi = await fetch(`${base}/api/app-settings`, { headers: { Cookie: sessionCookie } });
+  record('session cookie authenticates API', sessionApi.status === 200, `got ${sessionApi.status}`);
+
+  const openRedirect = await postLogin({ username: 'smoke', password, next: '//evil.example/path' });
+  record('login ignores off-site next value', openRedirect.status === 302 && openRedirect.headers.get('location') === '/',
+    `${openRedirect.headers.get('location')}`);
+
+  const logout = await fetch(`${base}/logout`, { headers: { Cookie: sessionCookie }, redirect: 'manual' });
+  const clearCookie = logout.headers.get('set-cookie') || '';
+  record('logout clears the session cookie',
+    logout.status === 302 && /hatm_session=;/.test(clearCookie) && /Expires=Thu, 01 Jan 1970/i.test(clearCookie),
+    `${logout.status} ${clearCookie}`);
 } catch (error) {
   failures.push(`harness error: ${error.message}`);
 } finally {
