@@ -1,4 +1,4 @@
-# <sup><img src="https://github.com/saihgupr/HomeAssistantTimeMachine/raw/develop/images/icon-96.png" width="48" height="48" align="middle" alt="Home Assistant Time Machine" /></sup> Home Assistant Time Machine
+# <sup><img src="https://github.com/saihgupr/HomeAssistantTimeMachine/raw/main/images/icon-96.png" width="48" height="48" align="middle" alt="Home Assistant Time Machine" /></sup> Home Assistant Time Machine
 
 [![Release](https://img.shields.io/github/v/release/saihgupr/HomeAssistantTimeMachine?style=flat-square&label=release)](https://github.com/saihgupr/HomeAssistantTimeMachine/releases) [![Docker pulls](https://img.shields.io/badge/Docker_pulls-93.3K-blue?style=flat-square&logo=docker)](https://github.com/saihgupr/HomeAssistantTimeMachine/pkgs/container/homeassistanttimemachine) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](https://github.com/saihgupr/HomeAssistantTimeMachine/blob/main/LICENSE)
 
