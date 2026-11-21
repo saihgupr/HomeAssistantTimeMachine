@@ -1,19 +1,24 @@
 # v2.5.0
 
-- **Security:** Standalone and Docker installs now require a password for every `/api` call. One is generated on first start and saved to `/data/api-password`, or set `HATM_PASSWORD` yourself. Add-on installs keep using Ingress and stay password-free.
-- **Security:** Delete, lock, export, scan and every restore now resolve paths against the configured config and backup folders, so a crafted request cannot delete or overwrite files outside them.
-- **Security:** Only explicitly allowed origins receive CORS headers, cross-site writes are blocked, and Ingress headers are trusted only from the Supervisor.
-- **Changed:** Standalone runs bind to `127.0.0.1` by default. The Docker image still listens on all interfaces. Express updated to 4.22.3 and `node-fetch` was replaced with `undici`.
-- **Added:** The settings sheet now links to GitHub, Version Control, and Donate.
-- **Added:** A sign-in page for Docker and standalone installs, so phones and the Home Assistant Companion app can log in without the browser's password dialog. Sessions last 30 days, and `/logout` signs out.
-- **Fixed:** The browser's native password dialog no longer interrupts the app before it can show the sign-in page.
-- **Added:** Winter Mode in Settings, which makes snow fall across the app window. Off by default, ignored when the system asks for reduced motion.
-- **Added:** `api_auth` and `api_auth_password` options in the add-on Configuration tab, matching the standalone password gate.
-- **Added:** Path-safety unit tests plus an end-to-end test for auth, containment, and add-on mode.
-- **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
-- **Fixed:** Backup timestamps now follow the selected language's time format, so French and other 24-hour locales no longer show AM/PM.
-- **Changed:** The links now sit below the Save and Cancel buttons in the settings sheet, with a little more breathing room above them.
-- **Maintenance:** Updated server dependencies to clear all npm audit advisories.
+### Added
+- **Sign-In Page for Docker and Standalone:** The app now shows its own username and password form instead of the browser's HTTP Basic dialog. This works in the Home Assistant Companion app and other embedded webviews, where the native dialog never appears. Sessions last 30 days, and `/logout` signs out. The password is set with `HATM_PASSWORD`, or generated on first start and saved to `/data/api-password`. Changing it signs out existing sessions.
+- **API Auth for the Container:** Standalone and Docker installs now ask for a password on `/api` routes. Set `HATM_USERNAME` to pick the username. The `/` page stays reachable so the sign-in page can load.
+- **Add-On Auth Option:** Added `api_auth` (default `false`) and `api_auth_password` for add-on users who publish port 54000 directly. With `api_auth` off, Ingress and Home Assistant authentication still protect the panel.
+- **Winter Mode:** A new toggle in Settings that makes snow fall across the app window. Off by default, and skipped when the system asks for reduced motion.
+- **Settings Links:** The settings sheet now links to GitHub, Version Control, and Donate, with the links sitting below the Save and Cancel buttons.
+- **Tests:** Path-safety unit tests plus an end-to-end test for auth, containment, and add-on mode.
+
+### Fixed & Improved
+- **Tab Switching:** Switching tabs clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.
+- **Time Formats:** Backup timestamps follow the selected language's time format, so French and other 24-hour locales no longer show AM/PM.
+- **No Browser Password Dialog:** The native password dialog no longer interrupts the app before it can show the sign-in page.
+- **Loopback by Default:** Bare-metal runs bind to `127.0.0.1`. The Docker image still listens on all interfaces.
+- **Maintenance:** Updated server dependencies (Express 4.22.3, `undici` replacing `node-fetch`) to clear all npm audit advisories.
+
+### Security Hardening
+- **Exact-Match CORS Allowlist:** `HATM_ALLOWED_ORIGINS` takes a comma-separated list of exact origins. No CORS headers are sent when the list is empty, cross-site writes are rejected, and Ingress headers are trusted only when they come from the Supervisor.
+- **Contained File Operations:** Delete, lock, export, scan, and every restore now resolve paths against the configured config and backup folders, so an operation cannot reach outside them.
+- **Scope:** The add-on behind Ingress was not exposed as long as port 54000 was not published. The standalone Docker deployment was the one that needed the password and the origin checks.
 
 # v2.4.3
 
