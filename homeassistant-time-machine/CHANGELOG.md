@@ -1,4 +1,4 @@
-# v2.4.4
+# v2.5.0
 
 - **Security:** Standalone and Docker installs now require a password for every `/api` call. One is generated on first start and saved to `/data/api-password`, or set `HATM_PASSWORD` yourself. Add-on installs keep using Ingress and stay password-free.
 - **Security:** Delete, lock, export, scan and every restore now resolve paths against the configured config and backup folders, so a crafted request cannot delete or overwrite files outside them.

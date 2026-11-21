@@ -284,7 +284,7 @@ const allowedOrigins = (process.env.HATM_ALLOWED_ORIGINS || '')
   .map(origin => origin.trim())
   .filter(origin => origin.length > 0);
 
-const version = '2.4.4';
+const version = '2.5.0';
 const DEBUG_LOGS = process.env.DEBUG_LOGS === 'true' || process.env.HATM_DEBUG === '1';
 const debugLog = (...args) => {
   if (DEBUG_LOGS) {
