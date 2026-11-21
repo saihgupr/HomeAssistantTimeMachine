@@ -156,6 +156,14 @@ window.STRINGS = {
         nl: "Max. back-ups",
         it: "Max Backup"
       },
+      winterMode: {
+        en: "Winter Mode",
+        es: "Modo invierno",
+        de: "Wintermodus",
+        fr: "Mode hiver",
+        nl: "Wintermodus",
+        it: "Modalità inverno"
+      },
       backupsToKeep: {
         en: "Backups to keep",
         es: "Copias a conservar",

@@ -208,6 +208,13 @@
           </div>
         </div>
 
+        <div class="form-group toggle-group" style="margin-bottom: 0; margin-top: 8px;">
+          <label id="winterModeLabel">Winter Mode</label>
+          <label class="toggle">
+            <input type="checkbox" id="winterModeEnabled">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
 
         <div class="settings-actions">
 
@@ -427,6 +434,8 @@
     </button>
   </nav>
 
+  <canvas id="snowCanvas" aria-hidden="true"></canvas>
+
   <script>
     // Send the user to the password page on 401. The browser's Basic auth prompt
     // never shows up in the Companion app webview, so this is the only way in.
@@ -496,6 +505,15 @@
     let esphomeFeatureEnabled = document.body.dataset.esphomeEnabled === 'true';
     let packagesFeatureEnabled = document.body.dataset.packagesEnabled === 'true';
     let showOnlyChanges = false; // Will be set from server in loadAppSettings()
+    let winterMode = false;
+    let snowCanvas = null;
+    let snowCtx = null;
+    let snowFlakes = [];
+    let snowAnimationId = null;
+    let snowLastFrame = 0;
+    let snowRunning = false;
+    let snowSprite = null;
+    let snowSpriteKey = '';
 
     // Backup list search/filter state
     let allBackupsCache = []; // Raw scan results for the current tab
@@ -605,6 +623,7 @@
       if (dayLabel) dayLabel.textContent = 'Day'; // This could be made dynamic too
       document.getElementById('maxBackupsLabel').textContent = getStyledText('ui.labels.maxBackups');
       document.getElementById('maxBackupsCountLabel').textContent = getStyledText('ui.labels.backupsToKeep');
+      document.getElementById('winterModeLabel').textContent = getStyledText('ui.labels.winterMode');
 
       // Update frequency options
       document.getElementById('daily-option').textContent = getStyledText('ui.settings.daily');
@@ -747,6 +766,7 @@
           }
           // Load showOnlyChanges setting from server
           showOnlyChanges = !!haConfig?.showOnlyChanges;
+          applyWinterMode(!!haConfig?.winterMode);
           esphomeFeatureEnabled = !!haConfig?.esphomeEnabled;
           updateEsphomeVisibility();
           packagesFeatureEnabled = !!haConfig?.packagesEnabled;
@@ -4165,6 +4185,159 @@
       div.textContent = text;
       return div.innerHTML;
     }
+
+    // ---- Winter mode: falling snow overlay ----
+    function snowTint() {
+      const theme = document.body.dataset.theme || currentTheme || 'dark';
+      return theme === 'light'
+        ? { r: 92, g: 114, b: 140 }
+        : { r: 255, g: 255, b: 255 };
+    }
+
+    function getSnowSprite() {
+      const tint = snowTint();
+      const key = `${tint.r}-${tint.g}-${tint.b}`;
+      if (snowSprite && snowSpriteKey === key) return snowSprite;
+
+      const size = 64;
+      const sprite = document.createElement('canvas');
+      sprite.width = size;
+      sprite.height = size;
+      const ctx = sprite.getContext('2d');
+      const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      gradient.addColorStop(0, `rgba(${tint.r}, ${tint.g}, ${tint.b}, 1)`);
+      gradient.addColorStop(0.35, `rgba(${tint.r}, ${tint.g}, ${tint.b}, 0.65)`);
+      gradient.addColorStop(0.7, `rgba(${tint.r}, ${tint.g}, ${tint.b}, 0.16)`);
+      gradient.addColorStop(1, `rgba(${tint.r}, ${tint.g}, ${tint.b}, 0)`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      snowSprite = sprite;
+      snowSpriteKey = key;
+      return snowSprite;
+    }
+
+    function makeSnowFlake(width, height, scatter) {
+      const depth = Math.random();
+      const radius = 0.7 + depth * 2.4;
+      return {
+        x: Math.random() * width,
+        y: scatter ? Math.random() * height : -radius * 8,
+        radius,
+        speed: 14 + depth * 58,
+        sway: 8 + Math.random() * 20,
+        swaySpeed: 0.3 + Math.random() * 0.6,
+        phase: Math.random() * Math.PI * 2,
+        opacity: 0.28 + depth * 0.55 + Math.random() * 0.12
+      };
+    }
+
+    function buildSnowFlakes(width, height) {
+      const count = Math.max(60, Math.min(220, Math.round((width * height) / 9000)));
+      snowFlakes = Array.from({ length: count }, () => makeSnowFlake(width, height, true));
+    }
+
+    function resizeSnowCanvas() {
+      if (!snowCanvas || !snowCtx) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      snowCanvas.width = Math.round(width * dpr);
+      snowCanvas.height = Math.round(height * dpr);
+      snowCanvas.style.width = width + 'px';
+      snowCanvas.style.height = height + 'px';
+      snowCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildSnowFlakes(width, height);
+    }
+
+    function drawSnow(now) {
+      if (!snowCtx || !snowRunning) return;
+      const delta = snowLastFrame ? Math.min((now - snowLastFrame) / 1000, 0.05) : 0;
+      snowLastFrame = now;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const sprite = getSnowSprite();
+
+      snowCtx.clearRect(0, 0, width, height);
+      for (const flake of snowFlakes) {
+        flake.y += flake.speed * delta;
+        flake.phase += flake.swaySpeed * delta;
+        flake.x += (Math.sin(flake.phase) * flake.sway + 5) * delta;
+
+        if (flake.y - flake.radius * 3 > height) Object.assign(flake, makeSnowFlake(width, height, false));
+        if (flake.x < -20) flake.x = width + 20;
+        if (flake.x > width + 20) flake.x = -20;
+
+        const size = flake.radius * 6;
+        snowCtx.globalAlpha = flake.opacity;
+        snowCtx.drawImage(sprite, flake.x - size / 2, flake.y - size / 2, size, size);
+      }
+      snowCtx.globalAlpha = 1;
+      snowAnimationId = requestAnimationFrame(drawSnow);
+    }
+
+    function startSnow() {
+      const reducedMotion = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion) return;
+      snowCanvas = snowCanvas || document.getElementById('snowCanvas');
+      if (!snowCanvas) return;
+      snowCtx = snowCtx || snowCanvas.getContext('2d');
+      if (!snowCtx) return;
+      resizeSnowCanvas();
+      snowCanvas.classList.add('snow-active');
+      snowLastFrame = 0;
+      if (!snowRunning) {
+        snowRunning = true;
+        snowAnimationId = requestAnimationFrame(drawSnow);
+      }
+    }
+
+    function stopSnow() {
+      snowRunning = false;
+      if (snowAnimationId) cancelAnimationFrame(snowAnimationId);
+      snowAnimationId = null;
+      if (snowCtx) snowCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      if (snowCanvas) snowCanvas.classList.remove('snow-active');
+    }
+
+    function applyWinterMode(enabled) {
+      winterMode = !!enabled;
+      const checkbox = document.getElementById('winterModeEnabled');
+      if (checkbox) checkbox.checked = winterMode;
+      if (winterMode) startSnow();
+      else stopSnow();
+    }
+
+    document.getElementById('winterModeEnabled').addEventListener('change', async (e) => {
+      applyWinterMode(e.target.checked);
+      try {
+        await fetch(url('/api/app-settings'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ winterMode })
+        });
+      } catch (error) {
+        console.error('[winterMode] Failed to save setting:', error);
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (winterMode) resizeSnowCanvas();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!winterMode) return;
+      if (document.hidden) {
+        if (snowAnimationId) cancelAnimationFrame(snowAnimationId);
+        snowAnimationId = null;
+        snowRunning = false;
+      } else if (!snowRunning) {
+        snowLastFrame = 0;
+        snowRunning = true;
+        snowAnimationId = requestAnimationFrame(drawSnow);
+      }
+    });
 
     // Include js-yaml for client-side YAML parsing
     const yamlScript = document.createElement('script');

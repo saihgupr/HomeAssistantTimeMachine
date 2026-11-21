@@ -7,6 +7,7 @@
 - **Added:** The settings sheet now links to GitHub, Version Control, and Donate.
 - **Added:** A sign-in page for Docker and standalone installs, so phones and the Home Assistant Companion app can log in without the browser's password dialog. Sessions last 30 days, and `/logout` signs out.
 - **Fixed:** The browser's native password dialog no longer interrupts the app before it can show the sign-in page.
+- **Added:** Winter Mode in Settings, which makes snow fall across the app window. Off by default, ignored when the system asks for reduced motion.
 - **Added:** `api_auth` and `api_auth_password` options in the add-on Configuration tab, matching the standalone password gate.
 - **Added:** Path-safety unit tests plus an end-to-end test for auth, containment, and add-on mode.
 - **Fixed:** Switching tabs now clears the right panel and shows "Select a backup to view ..." instead of leaving the previous tab's files on screen.

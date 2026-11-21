@@ -1311,6 +1311,7 @@ app.get('/api/app-settings', async (req, res) => {
         smartBackupEnabled: savedSettings.smartBackupEnabled ?? false,
         diffPalette: savedSettings.diffPalette || 1,
         showOnlyChanges: savedSettings.showOnlyChanges ?? false,
+        winterMode: savedSettings.winterMode ?? false,
       };
 
       global.dockerSettings = { ...global.dockerSettings, ...mergedSettings };
@@ -1325,6 +1326,7 @@ app.get('/api/app-settings', async (req, res) => {
         smartBackupEnabled: mergedSettings.smartBackupEnabled,
         diffPalette: mergedSettings.diffPalette,
         showOnlyChanges: mergedSettings.showOnlyChanges,
+        winterMode: mergedSettings.winterMode,
       };
       debugLog('[app-settings] Addon mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
       debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -1351,6 +1353,7 @@ app.get('/api/app-settings', async (req, res) => {
       smartBackupEnabled: dockerSettings.smartBackupEnabled ?? false,
       diffPalette: dockerSettings.diffPalette || 1,
       showOnlyChanges: dockerSettings.showOnlyChanges ?? false,
+      winterMode: dockerSettings.winterMode ?? false,
     };
     debugLog('[app-settings] Docker mode: Final response payload:', { esphomeEnabled: finalResponse.esphomeEnabled });
     debugLog('[app-settings] --- End ESPHome Flag Resolution ---');
@@ -1364,7 +1367,7 @@ app.get('/api/app-settings', async (req, res) => {
 // Save Docker app settings
 app.post('/api/app-settings', async (req, res) => {
   try {
-    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled, diffPalette, showOnlyChanges } = req.body;
+    const { liveConfigPath, backupFolderPath, theme, esphomeEnabled, packagesEnabled, language, smartBackupEnabled, diffPalette, showOnlyChanges, winterMode } = req.body;
 
     const existingSettings = await loadDockerSettings();
     const settings = {
@@ -1377,6 +1380,7 @@ app.post('/api/app-settings', async (req, res) => {
       smartBackupEnabled: typeof smartBackupEnabled === 'boolean' ? smartBackupEnabled : existingSettings.smartBackupEnabled ?? false,
       diffPalette: diffPalette || existingSettings.diffPalette || 1,
       showOnlyChanges: typeof showOnlyChanges === 'boolean' ? showOnlyChanges : existingSettings.showOnlyChanges ?? false,
+      winterMode: typeof winterMode === 'boolean' ? winterMode : existingSettings.winterMode ?? false,
     };
 
     await saveDockerSettings(settings);
@@ -1428,6 +1432,7 @@ async function loadDockerSettings() {
     smartBackupEnabled: false,
     diffPalette: 1,
     showOnlyChanges: false,
+    winterMode: false,
     ...cachedSettings
   };
 
@@ -1523,7 +1528,8 @@ async function saveDockerSettings(settings) {
     packagesEnabled: settings.packagesEnabled ?? false,
     smartBackupEnabled: settings.smartBackupEnabled ?? false,
     diffPalette: settings.diffPalette || 1,
-    showOnlyChanges: settings.showOnlyChanges ?? false
+    showOnlyChanges: settings.showOnlyChanges ?? false,
+    winterMode: settings.winterMode ?? false
   };
 
   // Save to file

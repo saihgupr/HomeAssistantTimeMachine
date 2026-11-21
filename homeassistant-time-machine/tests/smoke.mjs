@@ -109,6 +109,16 @@ try {
   const ok = await call('/api/app-settings');
   record('authenticated /api/app-settings returns 200', ok.status === 200, `got ${ok.status}`);
 
+  // 3b. Winter mode round-trips and the UI ships the toggle plus the snow canvas.
+  const winterPost = await call('/api/app-settings', { method: 'POST', body: { winterMode: true } });
+  const winterGet = await call('/api/app-settings');
+  record('winter mode saves and reloads',
+    winterPost.status === 200 && winterGet.body?.winterMode === true,
+    `status ${winterPost.status} value ${winterGet.body?.winterMode}`);
+  const winterPage = await (await fetch(`${base}/`)).text();
+  record('winter mode toggle and canvas are in the page',
+    winterPage.includes('id="winterModeEnabled"') && winterPage.includes('id="snowCanvas"'));
+
   // 4. The UI itself stays reachable (browser can load the page before auth prompts).
   const page = await fetch(`${base}/`);
   record('GET / stays open', page.status === 200, `got ${page.status}`);

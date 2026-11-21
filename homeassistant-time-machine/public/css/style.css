@@ -3966,3 +3966,25 @@ body[data-theme='light'] .context-menu-item:hover {
 body[data-theme='light'] .context-menu-separator {
   background-color: rgba(0, 0, 0, 0.08);
 }
+
+/* Winter mode: falling snow over the app window */
+#snowCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 950;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+#snowCanvas.snow-active {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #snowCanvas {
+    display: none !important;
+  }
+}
