@@ -1,3 +1,8 @@
+# Unreleased
+
+### Fixed & Improved
+- **Nested ESPHome and Packages Files:** Viewing and restoring YAML files inside subdirectories now works. The API accepts nested relative paths instead of rejecting every path that contains a slash, and each path is still checked for traversal before use.
+
 # v2.5.0
 
 ### Added

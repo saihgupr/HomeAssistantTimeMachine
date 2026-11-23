@@ -9,7 +9,7 @@ const { fetch, Agent } = require('undici');
 const readline = require('readline');
 const { spawn } = require('child_process');
 const crypto = require('crypto');
-const { resolveInside, isInside, realPathInside, realPathInsideParent } = require('./utils/path-safety');
+const { resolveInside, isSafeRelativePath, isInside, realPathInside, realPathInsideParent } = require('./utils/path-safety');
 
 const DATA_DIR = (() => {
   const addonDataRoot = '/data';
@@ -3415,6 +3415,14 @@ async function hasFileChanged(sourceFile, backupPaths, relativeFilePath) {
 
 // Helper function to find the correct version of a file in the backup chain, starting from a specific backup.
 async function resolveFileInBackupChain(targetBackupPath, relativeFilePath) {
+  // Nested paths are allowed, but the relative path must never climb out of
+  // the backup directory once it is joined below.
+  if (!isSafeRelativePath(relativeFilePath)) {
+    const error = new Error('Invalid file path');
+    error.code = 'INVALID_PATH';
+    throw error;
+  }
+
   try {
     // Determine backup root by going up 3 levels (backup -> MM -> YYYY -> root)
     let rootPath = targetBackupPath;
@@ -4252,7 +4260,7 @@ app.post('/api/get-backup-esphome-file', async (req, res) => {
     }
     const { backupPath, fileName } = req.body;
 
-    if (!isPlainFileName(fileName)) {
+    if (!isSafeRelativePath(fileName)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -4285,7 +4293,7 @@ app.post('/api/get-live-esphome-file', async (req, res) => {
     }
     const { fileName } = req.body;
 
-    if (!isPlainFileName(fileName)) {
+    if (!isSafeRelativePath(fileName)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -4313,7 +4321,7 @@ app.post('/api/restore-esphome-file', async (req, res) => {
     }
     const { fileName, content, timezone, smartBackupEnabled } = req.body;
 
-    if (!isPlainFileName(fileName)) {
+    if (!isSafeRelativePath(fileName)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -4383,7 +4391,7 @@ app.post('/api/get-backup-packages-file', async (req, res) => {
     }
     const { backupPath, fileName } = req.body;
 
-    if (!isPlainFileName(fileName)) {
+    if (!isSafeRelativePath(fileName)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -4415,7 +4423,7 @@ app.post('/api/get-live-packages-file', async (req, res) => {
     }
     const { fileName } = req.body;
 
-    if (!isPlainFileName(fileName)) {
+    if (!isSafeRelativePath(fileName)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -4446,7 +4454,7 @@ app.post('/api/restore-packages-file', async (req, res) => {
     }
     const { fileName, content, timezone, smartBackupEnabled } = req.body;
 
-    if (!isPlainFileName(fileName)) {
+    if (!isSafeRelativePath(fileName)) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 

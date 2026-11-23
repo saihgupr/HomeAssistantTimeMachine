@@ -6,10 +6,30 @@ const fs = require('node:fs').promises;
 
 const {
   resolveInside,
+  isSafeRelativePath,
   isInside,
   realPathInside,
   realPathInsideParent,
 } = require('../utils/path-safety');
+
+test('isSafeRelativePath accepts nested relative paths', () => {
+  assert.equal(isSafeRelativePath('gestion_chauffage.yaml'), true);
+  assert.equal(isSafeRelativePath('gestion_fct_v3/chauffage/gestion_chauffage.yaml'), true);
+  assert.equal(isSafeRelativePath('a/b/c.yaml'), true);
+});
+
+test('isSafeRelativePath rejects traversal, absolute paths and junk', () => {
+  assert.equal(isSafeRelativePath('..'), false);
+  assert.equal(isSafeRelativePath('../secrets.yaml'), false);
+  assert.equal(isSafeRelativePath('a/../../secrets.yaml'), false);
+  assert.equal(isSafeRelativePath('a/../b.yaml'), true);
+  assert.equal(isSafeRelativePath('/etc/passwd'), false);
+  assert.equal(isSafeRelativePath(''), false);
+  assert.equal(isSafeRelativePath('   '), false);
+  assert.equal(isSafeRelativePath('a\0b'), false);
+  assert.equal(isSafeRelativePath(null), false);
+  assert.equal(isSafeRelativePath(42), false);
+});
 
 test('resolveInside keeps a nested path under the root', () => {
   const root = path.join(os.tmpdir(), 'hatm-root');

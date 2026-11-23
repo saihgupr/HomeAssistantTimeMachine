@@ -41,6 +41,29 @@ function resolveInside(root, userPath, options = {}) {
 }
 
 /**
+ * True when value is a usable relative path: non-empty, no null bytes, not
+ * absolute, and with no `..` segment. Nested paths such as
+ * `subdir/chauffage.yaml` are allowed.
+ *
+ * This is a lexical check. A caller that joins the result onto a fixed root
+ * should still use resolveInside() for containment.
+ *
+ * @param {unknown} value Path supplied by the caller.
+ * @returns {boolean}
+ */
+function isSafeRelativePath(value) {
+  if (typeof value !== 'string' || value.includes('\0')) return false;
+
+  const trimmed = value.trim();
+  if (!trimmed || path.isAbsolute(trimmed)) return false;
+
+  const normalized = path.normalize(trimmed);
+  if (normalized === '.' || normalized === '..') return false;
+
+  return !normalized.startsWith(`..${path.sep}`);
+}
+
+/**
  * True when target is root itself or sits underneath root.
  * Lexical only, so callers that touch the filesystem should pair this with a
  * real-path check.
@@ -110,6 +133,7 @@ async function realPathInsideParent(root, target) {
 
 module.exports = {
   resolveInside,
+  isSafeRelativePath,
   isInside,
   realPathInside,
   realPathInsideParent,
